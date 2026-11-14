@@ -55,6 +55,8 @@ type Shot = {
 local shots: { Shot } = {}
 local lastShotId = 0
 
+local kills = 0 -- enemies defeated this run (shown on the HUD)
+
 local weaponFx: RemoteEvent
 
 -- The run's one player (PRD §8.1), or nil before they join.
@@ -350,6 +352,11 @@ function WeaponService.reset()
 	end
 	table.clear(shots)
 	levels[RunRules.Starter] = 1
+	kills = 0
+	local player = getRunPlayer()
+	if player then
+		player:SetAttribute("Kills", 0)
+	end
 	syncAttributes()
 end
 
@@ -368,6 +375,16 @@ function WeaponService:start()
 	syncAttributes()
 	Players.PlayerAdded:Connect(syncAttributes)
 	RunService.Heartbeat:Connect(update)
+
+	-- Kill count for the HUD, as the player's "Kills" attribute. Counted here because this
+	-- service already listens to EnemyService (RunManager can't: EnemyService requires it).
+	EnemyService.onEnemyKilled(function()
+		kills += 1
+		local player = getRunPlayer()
+		if player then
+			player:SetAttribute("Kills", kills)
+		end
+	end)
 end
 
 return WeaponService
