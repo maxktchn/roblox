@@ -7,7 +7,8 @@
 --   "Weapon_<id>", "Ingredient_<id>" WeaponService / StatsService (owned item icons)
 --   "RunSeconds"                    RunManager, run timer in whole seconds (#6)
 --   "Hp", "MaxHp"                   RunManager, the chef's HP (#9)
--- Until RunManager sets Hp/MaxHp, the HP bar shows the Humanoid's health instead, and the
+--   "RunState"                      RunManager: "Playing" or "Lost" (shows the run-over banner)
+-- If Hp/MaxHp are missing the HP bar shows the Humanoid's health instead, and the
 -- timer shows "--:--" until RunSeconds exists.
 -- Pause button: not in Phase 1 yet (the run already pauses during "Order Up!").
 
@@ -51,6 +52,8 @@ local killsLabel: TextLabel
 local iconRow: Frame
 local hpBillboard: BillboardGui
 local hpFill: Frame
+local runOverPanel: Frame
+local runOverStats: TextLabel
 
 -- Helper: a text label in the game font.
 local function makeLabel(parent: Instance, name: string, size: number): TextLabel
@@ -158,6 +161,36 @@ local function buildScreen()
 	hpFill.BackgroundColor3 = COLORS.hpHigh
 	corner(hpFill, UDim.new(0, 4))
 	hpFill.Parent = hpBack
+
+	-- Shown in the middle of the screen when the run is lost.
+	runOverPanel = Instance.new("Frame")
+	runOverPanel.Name = "RunOver"
+	runOverPanel.AnchorPoint = Vector2.new(0.5, 0.5)
+	runOverPanel.Position = UDim2.fromScale(0.5, 0.45)
+	runOverPanel.Size = UDim2.fromOffset(420, 150)
+	runOverPanel.BackgroundColor3 = COLORS.barBack
+	runOverPanel.BackgroundTransparency = 0.15
+	runOverPanel.Visible = false
+	corner(runOverPanel, UDim.new(0, 16))
+	runOverPanel.Parent = gui
+	local title = makeLabel(runOverPanel, "Title", 48)
+	title.Text = "SHIFT OVER"
+	title.TextColor3 = COLORS.hpLow
+	title.Size = UDim2.new(1, 0, 0, 70)
+	title.Position = UDim2.fromOffset(0, 14)
+	runOverStats = makeLabel(runOverPanel, "Stats", 22)
+	runOverStats.Size = UDim2.new(1, 0, 0, 40)
+	runOverStats.Position = UDim2.fromOffset(0, 88)
+end
+
+-- The run-over banner, with how far the player got.
+local function updateRunState()
+	local lost = player:GetAttribute("RunState") == "Lost"
+	runOverPanel.Visible = lost
+	if lost then
+		runOverStats.Text =
+			`Reached Lv {player:GetAttribute("Level") or 1} · Defeated {player:GetAttribute("Kills") or 0}`
+	end
 end
 
 -- Tip bar, level, kills and timer from the player's attributes.
@@ -287,11 +320,14 @@ function HUDController:start()
 
 	updateNumbers()
 	updateIcons()
+	updateRunState()
 	player.AttributeChanged:Connect(function(name: string)
 		if string.match(name, "^Weapon_") or string.match(name, "^Ingredient_") then
 			updateIcons()
 		elseif name == "Hp" or name == "MaxHp" then
 			updateHp()
+		elseif name == "RunState" then
+			updateRunState()
 		else
 			updateNumbers()
 		end

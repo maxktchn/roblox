@@ -10,6 +10,14 @@ return {
 	CameraDistance = 45, -- studs from the chef
 	CameraFieldOfView = 50, -- degrees; lower = less stretching at the screen edges
 
+	-- The chef (PRD §2.1, §2.7)
+	ChefMaxHp = 100, -- before Bread's +% max HP
+	-- After any hit the chef can't be hurt again for this long, so a swarm wears HP down
+	-- instead of deleting it in one frame. Only the strongest touching enemy's hit counts.
+	ChefHurtCooldown = 0.5,
+	-- An enemy hurts the chef when it is within touching distance plus this many studs.
+	ContactReach = 0.75,
+
 	-- Phase 1 has no lobby, so every run starts with this starter (PRD §9). Checked by ConfigCheck.
 	Starter = "ChefsKnife",
 
