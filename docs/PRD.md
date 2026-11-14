@@ -430,6 +430,11 @@ StarterPlayerScripts/
 
 ### Phase 1: Playable run prototype
 - One map, Chef's Knife, 4 gadgets, 4 ingredients, 3 enemy types, 1 boss
+  - **Map:** Diner Kitchen
+  - **Gadgets:** Pepper Shaker (cone), Blender (aura), Spinning Forks (orbit), Toaster (projectile). Four different attack shapes that the other gadgets reuse later.
+  - **Ingredients:** Salt, Hot Sauce, Beef Jerky, Fridge Magnet. Together these make 4 recipes testable: Sushi Master Blade, Ghost Pepper Blaster, Fondue Ring, Smoothie Vortex. (Toaster has no recipe in Phase 1, since Buttered Barrage needs Butter.)
+  - **Enemies:** Moldy Bread, Fruit Flies, Meatball (movement only, no puddles or ranged attacks)
+  - **Boss:** Microwave Monster at 10:00. The Big Cheese mini-boss waits for Phase 2.
 - Tips, "Order Up!" cards, and recipes working
 - No saving, no lobby, no progression
 - **Done when:** A full 10-minute run is fun and runs smoothly on a mid-range phone

@@ -14,6 +14,13 @@ return {
 	CardsPerLevelUp = 3,
 	RerollsPerRun = 2,
 
+	-- Which gadgets and ingredients can show up as cards. Phase 1 picks (PRD §9);
+	-- add ids here to put more items in the game. Checked by ConfigCheck.
+	UpgradePool = {
+		Gadgets = { "PepperShaker", "Blender", "SpinningForks", "Toaster" },
+		Ingredients = { "Salt", "HotSauce", "BeefJerky", "FridgeMagnet" },
+	},
+
 	-- Pickups (PRD §2.6)
 	PieHealFraction = 0.3,
 	LunchboxUpgradesMin = 1,
