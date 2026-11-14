@@ -1,6 +1,7 @@
 --!strict
--- Aim indicator (PRD §2.2, #62): a thin curved line (an arc, like a "U" opening toward the
--- player) on the floor a short fixed distance in front of the chef, centred on the direction
+-- Aim indicator (PRD §2.2, #62): a thin orange curved line (an arc, like a "U" opening toward
+-- the player) a short fixed distance in front of the chef, at about the height the starter's
+-- slash is drawn (so the two line up), centred on the direction
 -- they're aiming. It doesn't depend on any weapon's shape or reach, so it works for every
 -- aimed weapon, now and later. It follows the local aim (AimController) every frame, so it
 -- feels instant even though the server uses the aim a moment later. Before the player has
@@ -23,12 +24,14 @@ local AimIndicatorController = {}
 local player = Players.LocalPlayer
 
 local RADIUS = 4 -- studs from the chef's centre to the arc
-local ARC_DEGREES = 70 -- how wide the arc is
-local PIECES = 7 -- short straight pieces that make up the curve
+local ARC_DEGREES = 50 -- how wide the arc is
+local PIECES = 5 -- short straight pieces that make up the curve
 local THICKNESS = 0.3 -- studs
-local COLOR = Color3.fromRGB(255, 255, 255)
-local TRANSPARENCY = 0.35
-local FLOOR_OFFSET = 2.9 -- studs below the chef's root: just above the floor
+local COLOR = Color3.fromRGB(255, 140, 40) -- orange: easy to see on the white floor
+local TRANSPARENCY = 0.15 -- fairly solid, so the orange stays strong on the white floor
+-- Studs below the chef's root. The knife's slash is drawn at the root's height, so this keeps
+-- the arc just under it, lined up with the swing instead of down on the floor.
+local HEIGHT_BELOW_ROOT = 0.5
 
 local folder: Folder
 local pieces: { Part } = {}
@@ -70,7 +73,7 @@ local function buildArc()
 		piece.CanQuery = false
 		piece.CanTouch = false
 		piece.CastShadow = false
-		piece.Material = Enum.Material.Neon
+		piece.Material = Enum.Material.SmoothPlastic -- Neon would glow it toward yellow
 		piece.Color = COLOR
 		piece.Transparency = 1
 		piece.Parent = folder
@@ -100,7 +103,7 @@ local function update()
 	-- Same direction the server uses: the aim, or the chef's facing before the first aim.
 	local look = root.CFrame.LookVector
 	local direction: Vector3 = AimController.getAim() or Vector3.new(look.X, 0, look.Z).Unit
-	local centre = root.Position - Vector3.new(0, FLOOR_OFFSET, 0)
+	local centre = root.Position - Vector3.new(0, HEIGHT_BELOW_ROOT, 0)
 	local halfArc = math.rad(ARC_DEGREES) / 2
 	local step = math.rad(ARC_DEGREES) / PIECES
 
