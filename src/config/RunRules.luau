@@ -47,4 +47,11 @@ return {
 
 	-- Performance (PRD §8.3)
 	MaxAliveEnemies = 150,
+
+	-- Enemy spawning (PRD §2.1, §8.3)
+	EnemySpawnsPerSecond = 2, -- RunManager changes this over the timeline (#6)
+	-- Enemies appear on a ring this far from the chef, just outside the camera view.
+	-- With the camera above (pitch 55, distance 45, FOV 50) the farthest visible ground,
+	-- a corner of a wide phone screen, is about 85 studs away. Retune if the camera changes.
+	EnemySpawnRadius = 90,
 }
