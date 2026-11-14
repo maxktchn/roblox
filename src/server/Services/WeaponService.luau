@@ -11,6 +11,7 @@ local RunService = game:GetService("RunService")
 
 local EnemyService = require(script.Parent.EnemyService)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local RunManager = require(script.Parent.RunManager)
 local RunRules = require(ReplicatedStorage.Config.RunRules)
 local Starters = require(ReplicatedStorage.Config.Starters)
 local StatsService = require(script.Parent.StatsService)
@@ -75,6 +76,9 @@ local function slash(weaponId: string, stats: Starters.WeaponLevel, root: BasePa
 end
 
 local function update(deltaTime: number)
+	if RunManager.isPaused() then
+		return -- "Order Up!" is on screen: cooldowns freeze too
+	end
 	local root = getChef()
 	if not root then
 		return -- no living chef: weapons wait
