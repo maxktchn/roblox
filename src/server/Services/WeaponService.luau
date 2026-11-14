@@ -348,6 +348,14 @@ local function updateBurns(deltaTime: number)
 	end
 end
 
+-- PULL (Smoothie Vortex): every frame, drag enemies within Range toward the chef.
+local function updatePull(stats: WeaponLevel, root: BasePart, deltaTime: number)
+	local studs = (stats.PullStrength or 0) * deltaTime
+	for _, enemyId in getEnemiesInReach(root.Position, stats.Range) do
+		EnemyService.pull(enemyId, root.Position, studs)
+	end
+end
+
 -- Shapes that attack on a cooldown. (Orbit is always on, so it's handled separately.)
 local ATTACKS: { [string]: (string, WeaponLevel, BasePart) -> () } = {
 	Arc = attackArc,
@@ -372,6 +380,9 @@ local function update(deltaTime: number)
 		local stats = weaponLevels and weaponLevels[level]
 		if not (shape and stats) then
 			continue -- not playable yet (no numbers in config)
+		end
+		if stats.PullStrength then
+			updatePull(stats, root, deltaTime) -- always on, as well as its normal attack
 		end
 		if shape == "Orbit" then
 			updateOrbit(weaponId, stats, root) -- always on, no cooldown to wait for

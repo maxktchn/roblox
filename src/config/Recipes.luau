@@ -69,12 +69,11 @@ local Recipes: { [string]: Recipe } = {
 		Name = "Smoothie Vortex",
 		Weapon = "Blender",
 		Ingredient = "FridgeMagnet",
-		-- The pull is not in yet: it needs a way to move enemies from EnemyService.
 		Description = "Pulls enemies in",
 		Shape = "Aura",
 		FxColor = Color3.fromRGB(255, 120, 200),
 		Levels = {
-			{ Damage = 9, Cooldown = 0.35, Range = 12 },
+			{ Damage = 9, Cooldown = 0.35, Range = 12, PullStrength = 8 },
 		},
 	},
 	FondueRing = {

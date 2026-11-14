@@ -305,6 +305,24 @@ function EnemyService.getEnemyPart(enemyId: EnemyId): BasePart?
 	return enemy and enemy.part
 end
 
+-- Pull one enemy up to `studs` toward `toward` (Smoothie Vortex, #51). It stops at the
+-- chef's edge rather than inside (pulls are always toward the chef) and stays inside the
+-- arena. Bosses are too heavy to pull: nothing happens. The part follows on the next frame.
+function EnemyService.pull(enemyId: EnemyId, toward: Vector3, studs: number)
+	local enemy = alive[enemyId]
+	if not enemy or Bosses[enemy.enemyType] or studs <= 0 then
+		return
+	end
+	local offset = Vector3.new(toward.X - enemy.position.X, 0, toward.Z - enemy.position.Z)
+	local distance = offset.Magnitude
+	local stopDistance = CHEF_RADIUS + enemy.config.Size.X / 2
+	local step = math.min(studs, distance - stopDistance)
+	if step <= 0 then
+		return -- already touching the chef
+	end
+	enemy.position = clampToArena(enemy.position + offset / distance * step)
+end
+
 -- An enemy's current HP and max HP, or nil if it is dead (boss HP bar).
 function EnemyService.getEnemyHp(enemyId: EnemyId): (number?, number?)
 	local enemy = alive[enemyId]

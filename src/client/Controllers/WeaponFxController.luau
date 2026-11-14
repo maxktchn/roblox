@@ -126,7 +126,12 @@ local function drawArc(weaponId: string, color: Color3, facing: Vector3, range: 
 end
 
 -- AURA: a flat see-through disc around the chef that grows slightly and fades.
+-- A weapon that pulls (PullStrength, e.g. Smoothie Vortex) shrinks inward instead,
+-- so every pulse looks like it is sucking enemies in.
 local function drawAura(weaponId: string, color: Color3, range: number)
+	local config = getConfig(weaponId)
+	local levels = config and config.Levels
+	local pulls = levels ~= nil and levels[1].PullStrength ~= nil
 	local part = getPart(weaponId, color)
 	part.Shape = Enum.PartType.Cylinder
 	animate(weaponId, function(elapsed)
@@ -136,7 +141,7 @@ local function drawAura(weaponId: string, color: Color3, range: number)
 			return false
 		end
 		local progress = elapsed / PULSE_SECONDS
-		local radius = range * (0.85 + 0.15 * progress)
+		local radius = if pulls then range * (1 - 0.6 * progress) else range * (0.85 + 0.15 * progress)
 		-- A cylinder's length runs along X, so turn it on its side to lie flat.
 		part.Size = Vector3.new(0.2, radius * 2, radius * 2)
 		part.CFrame = CFrame.new(root.Position - Vector3.new(0, 2.5, 0)) * CFrame.Angles(0, 0, math.rad(90))
