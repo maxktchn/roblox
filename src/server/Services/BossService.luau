@@ -361,6 +361,20 @@ local function update(deltaTime: number)
 	end
 end
 
+-- End any boss fight without a winner (a new run is starting, #50): forget the fight,
+-- take down the ring and its walls, and let enemies roam the whole kitchen again.
+-- The boss itself is an enemy: RestartService removes it with EnemyService.clearAll().
+function BossService.reset()
+	active = nil
+	hpFill = nil
+	hidePulse()
+	EnemyService.setBossArena(nil, 0)
+	local ring = workspace:FindFirstChild("BossRing")
+	if ring then
+		ring:Destroy()
+	end
+end
+
 function BossService:init()
 	pulsePart = Instance.new("Part")
 	pulsePart.Name = "BossPulse"

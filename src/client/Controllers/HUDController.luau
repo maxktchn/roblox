@@ -18,6 +18,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Gadgets = require(ReplicatedStorage.Config.Gadgets)
 local Ingredients = require(ReplicatedStorage.Config.Ingredients)
 local Recipes = require(ReplicatedStorage.Config.Recipes)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Starters = require(ReplicatedStorage.Config.Starters)
 
 local HUDController = {}
@@ -61,6 +62,7 @@ local hpFill: Frame
 local runOverPanel: Frame
 local runOverTitle: TextLabel
 local runOverStats: TextLabel
+local playAgainButton: TextButton
 
 -- Helper: a text label in the game font.
 local function makeLabel(parent: Instance, name: string, size: number): TextLabel
@@ -178,7 +180,7 @@ local function buildScreen()
 	runOverPanel.Name = "RunOver"
 	runOverPanel.AnchorPoint = Vector2.new(0.5, 0.5)
 	runOverPanel.Position = UDim2.fromScale(0.5, 0.45)
-	runOverPanel.Size = UDim2.fromOffset(420, 150)
+	runOverPanel.Size = UDim2.fromOffset(420, 220)
 	runOverPanel.BackgroundColor3 = COLORS.barBack
 	runOverPanel.BackgroundTransparency = 0.15
 	runOverPanel.Visible = false
@@ -190,6 +192,20 @@ local function buildScreen()
 	runOverStats = makeLabel(runOverPanel, "Stats", 22)
 	runOverStats.Size = UDim2.new(1, 0, 0, 40)
 	runOverStats.Position = UDim2.fromOffset(0, 88)
+
+	-- "Play again" (#50): the server starts a fresh run (RestartService).
+	playAgainButton = Instance.new("TextButton")
+	playAgainButton.Name = "PlayAgain"
+	playAgainButton.AnchorPoint = Vector2.new(0.5, 0)
+	playAgainButton.Position = UDim2.new(0.5, 0, 0, 142)
+	playAgainButton.Size = UDim2.fromOffset(220, 56) -- big enough for a thumb (PRD §7.4)
+	playAgainButton.BackgroundColor3 = COLORS.tips
+	playAgainButton.Font = Enum.Font.FredokaOne
+	playAgainButton.TextSize = 26
+	playAgainButton.TextColor3 = COLORS.ink
+	playAgainButton.Text = "Play again"
+	corner(playAgainButton, UDim.new(0, 12))
+	playAgainButton.Parent = runOverPanel
 end
 
 -- The run-over banner, with how far the player got.
@@ -197,6 +213,9 @@ local function updateRunState()
 	local state = player:GetAttribute("RunState")
 	local over = state == "Lost" or state == "Won"
 	runOverPanel.Visible = over
+	-- Ready for the next tap whenever the banner (re)appears.
+	playAgainButton.Text = "Play again"
+	playAgainButton.Active = true
 	if over then
 		if state == "Won" then
 			runOverTitle.Text = "SHIFT SURVIVED!"
@@ -331,6 +350,16 @@ function HUDController:init()
 end
 
 function HUDController:start()
+	local requestRestart = Remotes.get("RequestRestart")
+	playAgainButton.Activated:Connect(function()
+		if not playAgainButton.Active then
+			return -- already asked: wait for the new run
+		end
+		playAgainButton.Active = false
+		playAgainButton.Text = "Starting..."
+		requestRestart:FireServer()
+	end)
+
 	local playerGui = player:WaitForChild("PlayerGui")
 	gui.Parent = playerGui
 	hpBillboard.Parent = playerGui
