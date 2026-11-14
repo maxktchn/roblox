@@ -10,6 +10,9 @@
 --
 -- Owned weapon levels are also copied onto the player as attributes ("Weapon_<id>" = level),
 -- so the client can draw always-on effects (orbiting forks) and the HUD can show icons (#21).
+--
+-- Every hit is also recorded and sent to the client in small batches (HitFx), so it can
+-- flash the enemy and float a damage number (#43). Visual only.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -58,6 +61,17 @@ local lastShotId = 0
 local kills = 0 -- enemies defeated this run (shown on the HUD)
 
 local weaponFx: RemoteEvent
+local hitFx: RemoteEvent
+
+-- Hit feedback (#43). Hits are collected here and sent together every HIT_FX_INTERVAL
+-- seconds, instead of one message per hit, to keep network traffic low with a big swarm.
+-- Past MAX_HIT_FX hits in one batch the rest are not shown (the damage still counts).
+local HIT_FX_INTERVAL = 0.1
+local MAX_HIT_FX = 30
+-- One hit as the client sees it. Kind is "Hit", "Crit" or "Burn".
+type HitFx = { part: BasePart, position: Vector3, amount: number, kind: string }
+local pendingHits: { HitFx } = {}
+local hitFxTimer = 0
 
 -- The run's one player (PRD §8.1), or nil before they join.
 local function getRunPlayer(): Player?
@@ -96,17 +110,51 @@ end
 -- Final damage for one hit: base damage + Hot Sauce bonus, and a crit roll (Salt, plus
 -- the weapon's own CritBonus if it has one, e.g. Sushi Master Blade).
 -- Rolled separately for every enemy hit, so a big swing can mix crits and normal hits.
-local function rollDamage(baseDamage: number, critBonus: number?): number
+-- Also returns whether it was a crit (crits show a bigger damage number).
+local function rollDamage(baseDamage: number, critBonus: number?): (number, boolean)
 	local damage = baseDamage * (1 + StatsService.getStat("Damage"))
-	if math.random() < StatsService.getStat("CritChance") + (critBonus or 0) then
+	local isCrit = math.random() < StatsService.getStat("CritChance") + (critBonus or 0)
+	if isCrit then
 		damage *= RunRules.CritDamageMultiplier
 	end
-	return damage
+	return damage, isCrit
+end
+
+-- Damage one enemy and remember the hit for the client's hit feedback.
+-- Every weapon hit goes through here. `kind` is "Hit", "Crit" or "Burn".
+local function dealDamage(enemyId: number, amount: number, kind: string)
+	-- Read the part and position before the damage: a killing hit parks the part.
+	local part = EnemyService.getEnemyPart(enemyId)
+	local position = EnemyService.getEnemyPosition(enemyId)
+	EnemyService.damage(enemyId, amount)
+	if part and position and #pendingHits < MAX_HIT_FX then
+		table.insert(pendingHits, { part = part, position = position, amount = amount, kind = kind })
+	end
+end
+
+-- Damage one enemy with a crit roll.
+local function dealRolledDamage(enemyId: number, baseDamage: number, critBonus: number?)
+	local damage, isCrit = rollDamage(baseDamage, critBonus)
+	dealDamage(enemyId, damage, if isCrit then "Crit" else "Hit")
+end
+
+-- Send the collected hits every HIT_FX_INTERVAL seconds.
+local function flushHitFx(deltaTime: number)
+	hitFxTimer -= deltaTime
+	if hitFxTimer > 0 or #pendingHits == 0 then
+		return
+	end
+	hitFxTimer = HIT_FX_INTERVAL
+	local player = getRunPlayer()
+	if player then
+		hitFx:FireClient(player, pendingHits)
+	end
+	pendingHits = {}
 end
 
 -- Hit one enemy with a weapon: damage now, plus a burn if the weapon has one.
 local function hit(enemyId: number, stats: WeaponLevel)
-	EnemyService.damage(enemyId, rollDamage(stats.Damage, stats.CritBonus))
+	dealRolledDamage(enemyId, stats.Damage, stats.CritBonus)
 	if stats.BurnDps and stats.BurnSeconds and EnemyService.getEnemyPosition(enemyId) then
 		local burn = burns[enemyId]
 		if burn then
@@ -203,7 +251,7 @@ local function updateShots(deltaTime: number)
 		local targets = EnemyService.getEnemiesInRadius(shot.position, RunRules.ProjectileHitRadius)
 		local target = targets[1]
 		if target then
-			EnemyService.damage(target, rollDamage(shot.damage))
+			dealRolledDamage(target, shot.damage)
 		end
 		if target or shot.traveled >= shot.maxDistance then
 			table.remove(shots, i)
@@ -259,7 +307,7 @@ local function updateBurns(deltaTime: number)
 			burn.tickTimer += RunRules.BurnTickSeconds
 			-- Burns get Hot Sauce but can't crit.
 			local damage = burn.dps * RunRules.BurnTickSeconds * (1 + StatsService.getStat("Damage"))
-			EnemyService.damage(enemyId, damage)
+			dealDamage(enemyId, damage, "Burn")
 		end
 		if burn.timeLeft <= 0 then
 			burns[enemyId] = nil
@@ -280,6 +328,7 @@ local function update(deltaTime: number)
 	end
 	updateShots(deltaTime)
 	updateBurns(deltaTime)
+	flushHitFx(deltaTime)
 
 	local root = getChef()
 	if not root then
@@ -351,6 +400,7 @@ function WeaponService.reset()
 		sendFx(shot.weaponId, "End", shot.id)
 	end
 	table.clear(shots)
+	table.clear(pendingHits)
 	levels[RunRules.Starter] = 1
 	kills = 0
 	local player = getRunPlayer()
@@ -372,6 +422,7 @@ end
 
 function WeaponService:start()
 	weaponFx = Remotes.get("WeaponFx")
+	hitFx = Remotes.get("HitFx")
 	syncAttributes()
 	Players.PlayerAdded:Connect(syncAttributes)
 	RunService.Heartbeat:Connect(update)
