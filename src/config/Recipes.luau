@@ -20,6 +20,7 @@ export type Recipe = {
 	Shape: WeaponTypes.Shape?,
 	Levels: { WeaponTypes.WeaponLevel }?,
 	FxColor: Color3?,
+	Aimed: boolean?, -- a starter's recipe stays aimed like the starter (PRD §3.1)
 }
 
 local Recipes: { [string]: Recipe } = {
@@ -30,6 +31,7 @@ local Recipes: { [string]: Recipe } = {
 		Ingredient = "Salt",
 		Description = "Crit combos",
 		Shape = "Arc",
+		Aimed = true,
 		FxColor = Color3.fromRGB(255, 130, 150),
 		Levels = {
 			{ Damage = 30, Cooldown = 0.45, Range = 13, ArcDegrees = 150, CritBonus = 0.25 },
