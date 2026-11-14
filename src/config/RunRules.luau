@@ -22,6 +22,10 @@ return {
 	SharedItemMaxLevel = 5,
 
 	-- "Order Up!" (PRD §2.3)
+	-- Tips needed to fill the bar: FirstLevelTips for level 1 -> 2, then ExtraTipsPerLevel more each level.
+	-- So 5, 8, 11, 14... Leftover tips carry over to the next bar.
+	FirstLevelTips = 5,
+	ExtraTipsPerLevel = 3,
 	CardsPerLevelUp = 3,
 	RerollsPerRun = 2,
 

@@ -13,6 +13,11 @@ function RunManager.damagePlayer(_amount: number)
 	-- TODO(#9)
 end
 
+-- Heal the player by a fraction of max HP (0.3 = 30%), capped at max HP. Used by the Pie card.
+function RunManager.healPlayer(_fraction: number)
+	-- TODO(#9)
+end
+
 function RunManager:init() end
 
 function RunManager:start() end

@@ -73,7 +73,8 @@ The restaurant's food has gone rotten and come alive. You're the chef, and you h
 - Starter upgrades **do not** get a guaranteed slot. They compete in the same pool.
 - **Rerolls:** Players get **2 rerolls per run**. A reroll replaces all 3 cards with a new draw. Talents can add more (see 4.5).
 - Items already at max level are removed from the pool. Once all 6 shared slots are full, new gadgets and ingredients are removed too, and only upgrades to owned items can appear.
-- If the pool runs out completely, show filler cards: **Pie** (heal 30% HP) or **Tip Jar** (bonus gold)
+- If the pool runs out completely, show filler cards: **Pie** (heal 30% HP) or **Tip Jar** (bonus gold). Phase 1 has no gold, so it shows only Pie.
+- **Tip bar:** 5 tips fill the first bar, and each bar after needs 3 more than the last (5, 8, 11, 14…). Leftover tips carry over. If several bars fill at once, the "Order Up!" screens come one after another.
 
 ### 2.4 Loadout limits
 | Slot type | Max | Max level each |
