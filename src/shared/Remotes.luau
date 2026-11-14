@@ -1,7 +1,8 @@
 --!strict
 -- Every RemoteEvent the game uses, in one list. The server creates them at boot
 -- (ReplicatedStorage.Remotes); the client waits for them. Never create remotes anywhere else.
--- The client only ever sends movement (handled by Roblox) and card choices (PRD §8.4).
+-- The client only ever sends movement (handled by Roblox), card choices and its aim
+-- direction (PRD §8.4); the server validates all of it.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -19,6 +20,12 @@ local NAMES = {
 	"HitFx", -- server -> client: { HitFx } recent hits, for enemy flashes and damage numbers (visual only)
 }
 
+-- Unreliable remotes: for frequent, throwaway updates where only the latest one matters
+-- (a lost or late message is simply replaced by the next). Get them with getUnreliable.
+local UNRELIABLE_NAMES = {
+	"AimDirection", -- client -> server: (x, z) flat aim direction for the starter weapon (PRD §2.2)
+}
+
 local Remotes = {}
 
 local FOLDER_NAME = "Remotes"
@@ -33,6 +40,11 @@ function Remotes.create()
 		remote.Name = name
 		remote.Parent = folder
 	end
+	for _, name in UNRELIABLE_NAMES do
+		local remote = Instance.new("UnreliableRemoteEvent")
+		remote.Name = name
+		remote.Parent = folder
+	end
 	folder.Parent = ReplicatedStorage
 end
 
@@ -41,6 +53,13 @@ function Remotes.get(name: string): RemoteEvent
 	assert(table.find(NAMES, name), `Unknown remote "{name}"`)
 	local folder = ReplicatedStorage:WaitForChild(FOLDER_NAME)
 	return folder:WaitForChild(name) :: RemoteEvent
+end
+
+-- Both sides: get an unreliable remote by name (see UNRELIABLE_NAMES).
+function Remotes.getUnreliable(name: string): UnreliableRemoteEvent
+	assert(table.find(UNRELIABLE_NAMES, name), `Unknown unreliable remote "{name}"`)
+	local folder = ReplicatedStorage:WaitForChild(FOLDER_NAME)
+	return folder:WaitForChild(name) :: UnreliableRemoteEvent
 end
 
 return Remotes
