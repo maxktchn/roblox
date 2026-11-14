@@ -6,7 +6,8 @@
 
 local RunManager = {}
 
--- Hurt the player (enemy contact, boss pulses). Armor is applied here, so pass raw damage.
+-- Hurt the player (enemy contact, boss pulses). Armor (StatsService.getStat("Armor")) is
+-- applied here, so pass raw damage.
 -- Does nothing once the player is dead. HP 0 ends the run as lost.
 function RunManager.damagePlayer(_amount: number)
 	-- TODO(#9)

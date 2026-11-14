@@ -13,6 +13,9 @@ return {
 	-- Phase 1 has no lobby, so every run starts with this starter (PRD §9). Checked by ConfigCheck.
 	Starter = "ChefsKnife",
 
+	-- Combat (PRD §3.3): Salt adds crit chance; a crit multiplies one hit's damage.
+	CritDamageMultiplier = 2,
+
 	-- Loadout (PRD §2.4)
 	StarterMaxLevel = 5,
 	SharedSlots = 6, -- gadgets + ingredients combined
