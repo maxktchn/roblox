@@ -42,6 +42,12 @@ local ICON_COLORS = {
 }
 
 local ICON_SIZE = 38 -- pixels
+local ICON_COLUMNS = 4
+local EDGE = 16 -- pixels between the HUD and the screen edge
+-- Width kept free on each side of the top bar for the owned icons (left) and the kill count
+-- (right), so on a small phone (about 640 wide) the bar shrinks instead of covering them.
+local SIDE_SPACE = EDGE + (ICON_SIZE + 6) * ICON_COLUMNS + 8
+local TOP_BAR_MAX_WIDTH = 520 -- on big screens the bar stops growing here
 
 local gui: ScreenGui
 local levelLabel: TextLabel
@@ -79,7 +85,8 @@ local function buildScreen()
 	gui = Instance.new("ScreenGui")
 	gui.Name = "HUD"
 	gui.ResetOnSpawn = false
-	gui.ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets -- clear of notches (PRD §7.4)
+	-- Clear of phone notches and of Roblox's own top-bar buttons (menu, chat) (PRD §7.4).
+	gui.ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets
 
 	-- Top centre: level badge + tip bar.
 	local top = Instance.new("Frame")
@@ -87,8 +94,11 @@ local function buildScreen()
 	top.BackgroundTransparency = 1
 	top.AnchorPoint = Vector2.new(0.5, 0)
 	top.Position = UDim2.new(0.5, 0, 0, 12)
-	top.Size = UDim2.new(0.55, 0, 0, 34)
+	top.Size = UDim2.new(1, -2 * SIDE_SPACE, 0, 34)
 	top.Parent = gui
+	local topLimit = Instance.new("UISizeConstraint")
+	topLimit.MaxSize = Vector2.new(TOP_BAR_MAX_WIDTH, 34)
+	topLimit.Parent = top
 
 	local badge = Instance.new("Frame")
 	badge.Name = "LevelBadge"
@@ -127,16 +137,16 @@ local function buildScreen()
 
 	killsLabel = makeLabel(gui, "Kills", 22)
 	killsLabel.AnchorPoint = Vector2.new(1, 0)
-	killsLabel.Position = UDim2.new(1, -16, 0, 14)
-	killsLabel.Size = UDim2.fromOffset(160, 30)
+	killsLabel.Position = UDim2.new(1, -EDGE, 0, 14)
+	killsLabel.Size = UDim2.fromOffset(SIDE_SPACE - EDGE - 8, 30)
 	killsLabel.TextXAlignment = Enum.TextXAlignment.Right
 
 	-- Top left: one small icon per owned weapon and ingredient.
 	iconRow = Instance.new("Frame")
 	iconRow.Name = "Owned"
 	iconRow.BackgroundTransparency = 1
-	iconRow.Position = UDim2.fromOffset(16, 14)
-	iconRow.Size = UDim2.fromOffset((ICON_SIZE + 6) * 4, (ICON_SIZE + 6) * 2)
+	iconRow.Position = UDim2.fromOffset(EDGE, 14)
+	iconRow.Size = UDim2.fromOffset((ICON_SIZE + 6) * ICON_COLUMNS, (ICON_SIZE + 6) * 2)
 	iconRow.Parent = gui
 	local grid = Instance.new("UIGridLayout")
 	grid.CellSize = UDim2.fromOffset(ICON_SIZE, ICON_SIZE)
@@ -344,6 +354,17 @@ function HUDController:start()
 		task.spawn(attachHpBar, player.Character)
 	end
 	player.CharacterAdded:Connect(attachHpBar)
+
+	-- Hide the HUD while the "Order Up!" cards are open (UpgradeUIController's "OrderUp" screen):
+	-- nothing on it changes during a pick, and its top bar would show through behind the title.
+	task.spawn(function()
+		local orderUp = playerGui:WaitForChild("OrderUp") :: ScreenGui
+		local function sync()
+			gui.Enabled = not orderUp.Enabled
+		end
+		sync()
+		orderUp:GetPropertyChangedSignal("Enabled"):Connect(sync)
+	end)
 end
 
 return HUDController
