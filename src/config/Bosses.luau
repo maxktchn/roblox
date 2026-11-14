@@ -12,6 +12,7 @@
 --   PulseWarning  seconds the pulse ring grows (the warning) before it hits
 --   PulseRadius   studs from the boss's center that the pulse reaches
 --   PulseDamage   damage to the chef if inside the pulse, before armor
+-- Power: the boss power (id in BossPowers.luau) that defeating this boss unlocks (PRD §3.8).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -34,6 +35,7 @@ export type Boss = {
 	Mvp: boolean,
 	Body: Enemies.Enemy?,
 	Fight: BossFight?,
+	Power: string?,
 }
 
 local Bosses: { [string]: Boss } = {
@@ -59,6 +61,7 @@ local Bosses: { [string]: Boss } = {
 			Color = Color3.fromRGB(225, 228, 232),
 			Movement = "Chase",
 		},
+		Power = "MicrowavePulse",
 		Fight = {
 			ArenaRadius = 38,
 			SummonEvery = 7,

@@ -5,6 +5,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = ReplicatedStorage.Config
+local BossPowers = require(Config.BossPowers)
 local Bosses = require(Config.Bosses)
 local Chapters = require(Config.Chapters)
 local Enemies = require(Config.Enemies)
@@ -65,6 +66,7 @@ function ConfigCheck.run(): { string }
 			local needs = if weapon.Shape == "Arc"
 				then stats.ArcDegrees
 				elseif weapon.Shape == "Orbit" or weapon.Shape == "Projectile" then stats.Count and stats.Speed
+				elseif weapon.Shape == "Pulse" then (stats.Speed or 0) > 0 and stats.Range > 0
 				else true
 			if not needs then
 				fail(`Weapon {id} Lv {i}: missing a field its {weapon.Shape} shape needs`)
@@ -108,7 +110,35 @@ function ConfigCheck.run(): { string }
 		end
 	end
 
+	-- Boss powers (PRD §3.8): every one in the pool must be playable at all 5 levels, and
+	-- each boss's Power and each power's Boss must point at each other.
+	for _, id in RunRules.UpgradePool.BossPowers do
+		local power = BossPowers[id]
+		if not power then
+			fail(`RunRules.UpgradePool: unknown boss power "{id}"`)
+		else
+			checkWeapon(id, power, RunRules.SharedItemMaxLevel)
+		end
+	end
+	for id, power in BossPowers do
+		local boss = Bosses[power.Boss]
+		if not boss then
+			fail(`Boss power {id}: unknown boss "{power.Boss}"`)
+		elseif boss.Power ~= id then
+			fail(`Boss power {id}: boss {power.Boss} has Power "{boss.Power}", not "{id}"`)
+		end
+		if Gadgets[id] or Starters[id] or Recipes[id] then
+			fail(`{id} is both a boss power and another weapon`)
+		end
+	end
+	if RunRules.BossPowerNewCardChance < 0 or RunRules.BossPowerNewCardChance > 1 then
+		fail(`RunRules.BossPowerNewCardChance must be between 0 and 1`)
+	end
+
 	for id, boss in Bosses do
+		if boss.Power and not BossPowers[boss.Power] then
+			fail(`Boss {id}: unknown Power "{boss.Power}"`)
+		end
 		if boss.Fight and not Enemies[boss.Fight.SummonEnemy] then
 			fail(`Boss {id}: unknown SummonEnemy "{boss.Fight.SummonEnemy}"`)
 		end
