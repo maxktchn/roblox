@@ -50,6 +50,18 @@ function ConfigCheck.run(): { string }
 		end
 	end
 
+	for id, starter in Starters do
+		if starter.Levels and #starter.Levels ~= RunRules.StarterMaxLevel then
+			fail(`Starter {id}: has {#starter.Levels} levels, needs {RunRules.StarterMaxLevel}`)
+		end
+	end
+	local runStarter = Starters[RunRules.Starter]
+	if not runStarter then
+		fail(`RunRules.Starter: unknown starter "{RunRules.Starter}"`)
+	elseif not runStarter.Levels then
+		fail(`RunRules.Starter: {RunRules.Starter} has no Levels (combat numbers)`)
+	end
+
 	for _, id in RunRules.UpgradePool.Gadgets do
 		if not Gadgets[id] then
 			fail(`RunRules.UpgradePool: unknown gadget "{id}"`)

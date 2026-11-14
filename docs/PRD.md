@@ -135,6 +135,8 @@ Rewards scale with how long the player survived and how far they got:
 | Whisk | Spinning flurry at close range | Chest drop | + Coffee = **Hurricane Whisk** | No |
 | Ladle | Lobs soup that leaves damaging puddles | Chest drop | + Beef Jerky = **Stew Cauldron** | No |
 
+**Chef's Knife starting values** (Lv 1 → Lv 5): damage 10 / 13 / 13 / 18 / 24, cooldown 0.8 / 0.8 / 0.65 / 0.65 / 0.55 s, range 10 / 10 / 11 / 12 / 12 studs, arc 90° / 90° / 100° / 100° / 120°.
+
 ### 3.2 Kitchen Gadgets (shared pool)
 | Gadget | Behavior | Recipe |
 |---|---|---|
