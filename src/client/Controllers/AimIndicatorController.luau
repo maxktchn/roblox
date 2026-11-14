@@ -9,11 +9,10 @@
 -- Shown only while the player owns an aimed weapon (otherwise aiming does nothing).
 -- Hidden while the "Order Up!" cards are open, after the run ends, and with no chef.
 --
--- The arc is PIECES short flat pieces placed along a circle around the chef. To avoid dark
--- seams where pieces meet:
---   * each piece is exactly as long as its slice of the circle, so neighbours don't overlap
---   * neighbouring pieces sit at slightly different heights (STEP_HEIGHT), so no two surfaces
---     ever share the same plane (two surfaces in one plane flicker and show as dark lines)
+-- How it's drawn: a flat, invisible panel lies around the chef, turned to face the aim. On its
+-- top face a SurfaceGui draws a circle outline (a round Frame with a UIStroke) and crops it so
+-- only the front slice shows. UI drawing is smooth and isn't lit, so the curve has no seams and
+-- stays exactly orange. (Arcs built from 3D pieces showed dark lines where pieces met.)
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -29,17 +28,16 @@ local player = Players.LocalPlayer
 
 local RADIUS = 4 -- studs from the chef's centre to the arc
 local ARC_DEGREES = 50 -- how wide the arc is
-local PIECES = 12 -- more pieces = a smoother curve
 local THICKNESS = 0.3 -- studs
 local COLOR = Color3.fromRGB(255, 140, 40) -- orange: easy to see on the white floor
 local TRANSPARENCY = 0.15 -- fairly solid, so the orange stays strong on the white floor
 -- Studs below the chef's root. The knife's slash is drawn at the root's height, so this keeps
 -- the arc just under it, lined up with the swing instead of down on the floor.
 local HEIGHT_BELOW_ROOT = 0.5
-local STEP_HEIGHT = 0.004 -- every other piece sits this much higher (too small to see)
+local PIXELS_PER_STUD = 60 -- drawing resolution: higher = crisper edges
 
-local folder: Folder
-local pieces: { Part } = {}
+local panel: Part
+local gui: SurfaceGui
 
 -- Ids of every aimed weapon (the starter and its recipe), found once at load.
 local aimedIds: { string } = {}
@@ -64,33 +62,57 @@ local function ownsAimedWeapon(): boolean
 end
 
 local function buildArc()
-	folder = Instance.new("Folder")
-	folder.Name = "AimIndicator"
-	-- Each piece spans an equal slice of the arc and is exactly that slice's chord long.
-	local step = math.rad(ARC_DEGREES) / PIECES
-	local length = 2 * RADIUS * math.sin(step / 2)
-	for i = 1, PIECES do
-		local piece = Instance.new("Part")
-		piece.Name = `Piece{i}`
-		piece.Size = Vector3.new(length, 0.05, THICKNESS)
-		piece.Anchored = true
-		piece.CanCollide = false
-		piece.CanQuery = false
-		piece.CanTouch = false
-		piece.CastShadow = false
-		piece.Material = Enum.Material.SmoothPlastic -- Neon would glow it toward yellow
-		piece.Color = COLOR
-		piece.Transparency = 1
-		piece.Parent = folder
-		pieces[i] = piece
-	end
-	folder.Parent = workspace
-end
+	-- The panel is a square around the chef, big enough for the whole circle plus its stroke.
+	local size = 2 * (RADIUS + THICKNESS)
+	panel = Instance.new("Part")
+	panel.Name = "AimIndicator"
+	panel.Size = Vector3.new(size, 0.05, size)
+	panel.Anchored = true
+	panel.CanCollide = false
+	panel.CanQuery = false
+	panel.CanTouch = false
+	panel.CastShadow = false
+	panel.Transparency = 1
 
-local function hide()
-	for _, piece in pieces do
-		piece.Transparency = 1
-	end
+	gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Top
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = PIXELS_PER_STUD
+	gui.LightInfluence = 0 -- the same orange whatever the lighting
+	gui.Enabled = false
+	gui.Parent = panel
+
+	local px = PIXELS_PER_STUD
+	-- Crop: keep only the strip of the panel in front of where the arc's ends are, so just a
+	-- 50° slice of the circle shows. The top of the drawing is turned toward the aim (update).
+	local cutFromTop = size / 2 - RADIUS * math.cos(math.rad(ARC_DEGREES) / 2)
+	local crop = Instance.new("Frame")
+	crop.Name = "Crop"
+	crop.BackgroundTransparency = 1
+	crop.ClipsDescendants = true
+	crop.Position = UDim2.fromOffset(0, 0)
+	crop.Size = UDim2.fromOffset(size * px, cutFromTop * px)
+	crop.Parent = gui
+
+	-- The full circle (only its top slice is inside the crop). The stroke is centred on the
+	-- circle's edge, so the circle's diameter is the arc's diameter.
+	local circle = Instance.new("Frame")
+	circle.Name = "Circle"
+	circle.BackgroundTransparency = 1
+	circle.Position = UDim2.fromOffset((size / 2 - RADIUS) * px, (size / 2 - RADIUS) * px)
+	circle.Size = UDim2.fromOffset(2 * RADIUS * px, 2 * RADIUS * px)
+	local round = Instance.new("UICorner")
+	round.CornerRadius = UDim.new(0.5, 0)
+	round.Parent = circle
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = COLOR
+	stroke.Transparency = TRANSPARENCY
+	stroke.Thickness = THICKNESS * px
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	stroke.Parent = circle
+	circle.Parent = crop
+
+	panel.Parent = workspace
 end
 
 local function update()
@@ -101,7 +123,7 @@ local function update()
 	local runState = player:GetAttribute("RunState")
 	local playing = runState ~= "Lost" and runState ~= "Won"
 	if not (root and root:IsA("BasePart") and playing and ownsAimedWeapon()) or cardsOpen then
-		hide()
+		gui.Enabled = false
 		return
 	end
 
@@ -109,19 +131,10 @@ local function update()
 	local look = root.CFrame.LookVector
 	local direction: Vector3 = AimController.getAim() or Vector3.new(look.X, 0, look.Z).Unit
 	local centre = root.Position - Vector3.new(0, HEIGHT_BELOW_ROOT, 0)
-	local halfArc = math.rad(ARC_DEGREES) / 2
-	local step = math.rad(ARC_DEGREES) / PIECES
-
-	for i, piece in pieces do
-		-- The middle of this piece's slice, from one end of the arc to the other.
-		local angle = -halfArc + step * (i - 0.5)
-		local outward = CFrame.fromAxisAngle(Vector3.yAxis, angle):VectorToWorldSpace(direction)
-		local lift = if i % 2 == 0 then STEP_HEIGHT else 0
-		local position = centre + outward * RADIUS + Vector3.new(0, lift, 0)
-		-- Face outward, so the piece's length (its X) runs along the curve.
-		piece.CFrame = CFrame.lookAt(position, position + outward)
-		piece.Transparency = TRANSPARENCY
-	end
+	-- The top edge of a Top-face SurfaceGui points along the panel's -X axis, so turn the panel
+	-- until -X is the aim: that puts the drawing's top, where the arc is, toward the aim.
+	panel.CFrame = CFrame.fromMatrix(centre, -direction, Vector3.yAxis)
+	gui.Enabled = true
 end
 
 function AimIndicatorController:init()
