@@ -38,7 +38,7 @@ local levels: { [string]: number } = {}
 local cooldowns: { [string]: number } = {}
 
 -- Burning enemies (Pepper Shaker). Enemy id -> burn state.
-type Burn = { dps: number, timeLeft: number, tickTimer: number }
+type Burn = { dps: number, timeLeft: number, tickTimer: number, weaponId: string }
 local burns: { [number]: Burn } = {}
 
 -- Orbit weapons: weapon id -> (enemy id -> time it can be hit again).
@@ -59,6 +59,8 @@ local shots: { Shot } = {}
 local lastShotId = 0
 
 local kills = 0 -- enemies defeated this run (shown on the HUD)
+-- Damage each weapon has actually dealt this run (overkill not counted), for the run report.
+local damageByWeapon: { [string]: number } = {}
 
 local weaponFx: RemoteEvent
 local hitFx: RemoteEvent
@@ -122,20 +124,24 @@ end
 
 -- Damage one enemy and remember the hit for the client's hit feedback.
 -- Every weapon hit goes through here. `kind` is "Hit", "Crit" or "Burn".
-local function dealDamage(enemyId: number, amount: number, kind: string)
-	-- Read the part and position before the damage: a killing hit parks the part.
+local function dealDamage(enemyId: number, amount: number, kind: string, weaponId: string)
+	-- Read the part, position and HP before the damage: a killing hit parks the part.
 	local part = EnemyService.getEnemyPart(enemyId)
 	local position = EnemyService.getEnemyPosition(enemyId)
+	local hpBefore = EnemyService.getEnemyHp(enemyId)
 	EnemyService.damage(enemyId, amount)
+	if hpBefore then
+		damageByWeapon[weaponId] = (damageByWeapon[weaponId] or 0) + math.min(amount, hpBefore)
+	end
 	if part and position and #pendingHits < MAX_HIT_FX then
 		table.insert(pendingHits, { part = part, position = position, amount = amount, kind = kind })
 	end
 end
 
 -- Damage one enemy with a crit roll.
-local function dealRolledDamage(enemyId: number, baseDamage: number, critBonus: number?)
+local function dealRolledDamage(enemyId: number, baseDamage: number, critBonus: number?, weaponId: string)
 	local damage, isCrit = rollDamage(baseDamage, critBonus)
-	dealDamage(enemyId, damage, if isCrit then "Crit" else "Hit")
+	dealDamage(enemyId, damage, if isCrit then "Crit" else "Hit", weaponId)
 end
 
 -- Send the collected hits every HIT_FX_INTERVAL seconds.
@@ -153,16 +159,24 @@ local function flushHitFx(deltaTime: number)
 end
 
 -- Hit one enemy with a weapon: damage now, plus a burn if the weapon has one.
-local function hit(enemyId: number, stats: WeaponLevel)
-	dealRolledDamage(enemyId, stats.Damage, stats.CritBonus)
+local function hit(enemyId: number, stats: WeaponLevel, weaponId: string)
+	dealRolledDamage(enemyId, stats.Damage, stats.CritBonus, weaponId)
 	if stats.BurnDps and stats.BurnSeconds and EnemyService.getEnemyPosition(enemyId) then
 		local burn = burns[enemyId]
 		if burn then
 			-- Already burning: keep the stronger burn and restart the timer.
-			burn.dps = math.max(burn.dps, stats.BurnDps)
+			if stats.BurnDps > burn.dps then
+				burn.dps = stats.BurnDps
+				burn.weaponId = weaponId
+			end
 			burn.timeLeft = stats.BurnSeconds
 		else
-			burns[enemyId] = { dps = stats.BurnDps, timeLeft = stats.BurnSeconds, tickTimer = RunRules.BurnTickSeconds }
+			burns[enemyId] = {
+				dps = stats.BurnDps,
+				timeLeft = stats.BurnSeconds,
+				tickTimer = RunRules.BurnTickSeconds,
+				weaponId = weaponId,
+			}
 		end
 	end
 end
@@ -218,7 +232,7 @@ local function attackArc(weaponId: string, stats: WeaponLevel, root: BasePart)
 			local offset = Vector3.new(position.X - origin.X, 0, position.Z - origin.Z)
 			-- An enemy overlapping the chef counts as hit whatever its direction.
 			if offset.Magnitude <= enemyHalfWidth(enemyId) or facing:Dot(offset.Unit) >= minDot then
-				hit(enemyId, stats)
+				hit(enemyId, stats, weaponId)
 			end
 		end
 	end
@@ -228,7 +242,7 @@ end
 -- AURA: hit every enemy in a circle around the chef.
 local function attackAura(weaponId: string, stats: WeaponLevel, root: BasePart)
 	for _, enemyId in getEnemiesInReach(root.Position, stats.Range) do
-		hit(enemyId, stats)
+		hit(enemyId, stats, weaponId)
 	end
 	sendFx(weaponId, stats.Range)
 end
@@ -280,7 +294,7 @@ local function updateShots(deltaTime: number)
 		local targets = getEnemiesInReach(shot.position, RunRules.ProjectileHitRadius)
 		local target = targets[1]
 		if target then
-			dealRolledDamage(target, shot.damage)
+			dealRolledDamage(target, shot.damage, nil, shot.weaponId)
 		end
 		if target or shot.traveled >= shot.maxDistance then
 			table.remove(shots, i)
@@ -313,7 +327,7 @@ local function updateOrbit(weaponId: string, stats: WeaponLevel, root: BasePart)
 				and now >= readyAt
 				and distanceToEdge(enemyId, position, forkPosition) <= RunRules.OrbitHitRadius
 			then
-				hit(enemyId, stats)
+				hit(enemyId, stats, weaponId)
 				hitTimes[enemyId] = now + stats.Cooldown -- one fork hit per enemy per Cooldown
 			end
 		end
@@ -340,7 +354,7 @@ local function updateBurns(deltaTime: number)
 			burn.tickTimer += RunRules.BurnTickSeconds
 			-- Burns get Hot Sauce but can't crit.
 			local damage = burn.dps * RunRules.BurnTickSeconds * (1 + StatsService.getStat("Damage"))
-			dealDamage(enemyId, damage, "Burn")
+			dealDamage(enemyId, damage, "Burn", burn.weaponId)
 		end
 		if burn.timeLeft <= 0 then
 			burns[enemyId] = nil
@@ -445,6 +459,7 @@ function WeaponService.reset()
 	end
 	table.clear(shots)
 	table.clear(pendingHits)
+	table.clear(damageByWeapon)
 	levels[RunRules.Starter] = 1
 	kills = 0
 	local player = getRunPlayer()
@@ -452,6 +467,11 @@ function WeaponService.reset()
 		player:SetAttribute("Kills", 0)
 	end
 	syncAttributes()
+end
+
+-- Damage each weapon has dealt this run (weapon id -> damage), for the run report.
+function WeaponService.getDamageByWeapon(): { [string]: number }
+	return table.clone(damageByWeapon)
 end
 
 -- Current level of a weapon, or nil if the player doesn't own it.
