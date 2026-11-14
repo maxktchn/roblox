@@ -290,8 +290,8 @@ end
 
 -- Add tips (XP) when the player picks one up. Fills the tip bar and triggers "Order Up!".
 function UpgradeService.addTips(amount: number)
-	if amount <= 0 then
-		return
+	if amount <= 0 or workspace:GetAttribute("StressTest") then
+		return -- (stress test, #12: no level-ups, so "Order Up!" never pauses the measurement)
 	end
 	tips += amount
 	-- One pickup can fill several bars; each full bar is one level-up.
