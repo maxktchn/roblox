@@ -2,8 +2,9 @@
 -- Contact damage: enemies touching the chef hurt them (PRD §3.4, issue #9).
 --
 -- Touching is a distance check, never a physics .Touched (PRD §8.3): an enemy touches the
--- chef when it is within the chef's radius + half its own width + RunRules.ContactReach.
--- (EnemyService stops chasing enemies at exactly the chef's radius + half their width.)
+-- chef when it is within RunRules.ChefRadius + its own half depth (centre to front face, see
+-- EnemyService.getHalfDepth) + RunRules.ContactReach. (EnemyService stops chasing enemies at
+-- exactly the chef's radius + their half depth.)
 --
 -- After a hit the chef can't be hurt again for RunRules.ChefHurtCooldown seconds, and only
 -- the strongest touching enemy's Damage counts, so a crowd wears HP down at a steady pace.
@@ -19,7 +20,7 @@ local RunRules = require(ReplicatedStorage.Config.RunRules)
 
 local ContactService = {}
 
-local CHEF_RADIUS = 1.5 -- same as EnemyService's: roughly how wide the chef is
+local CHEF_RADIUS = RunRules.ChefRadius -- how far the chef's body reaches
 
 local hurtCooldown = 0 -- seconds until the chef can be hurt again
 local searchRadius = CHEF_RADIUS -- widest possible touch distance, worked out in init
@@ -56,7 +57,7 @@ local function update(deltaTime: number)
 		local position = EnemyService.getEnemyPosition(enemyId)
 		local config = enemyType and EnemyService.getConfigForType(enemyType) -- bosses too
 		if config and position then
-			local touchDistance = CHEF_RADIUS + config.Size.X / 2 + RunRules.ContactReach
+			local touchDistance = CHEF_RADIUS + EnemyService.getHalfDepth(config) + RunRules.ContactReach
 			local distance = Vector3.new(position.X - chefPosition.X, 0, position.Z - chefPosition.Z).Magnitude
 			-- Damage grows with run time (PRD §3.4), so read the enemy's own value, not the config's.
 			local damage = EnemyService.getEnemyDamage(enemyId) or config.Damage

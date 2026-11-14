@@ -190,7 +190,7 @@ Burns tick every 0.5 s and get the Hot Sauce bonus but can't crit. A fork hits e
 
 Percent bonuses add up per level and multiply the base value (Hot Sauce Lv 3 = base damage × 1.3). Base crit chance is 0%, and a crit deals **2×** damage.
 
-Weapon ranges (and orbit and shot hit radii) are measured to the enemy's edge, not its center, so big enemies like bosses can be hit from outside touching distance.
+Weapon ranges (and orbit and shot hit radii) are measured to the enemy's edge, not its center, so big enemies like bosses can be hit from outside touching distance. Enemies are measured by their real shape: their **thickness** toward the chef for distances (flat ones like Moldy Bread are thin) and their **width** for side-to-side checks, so a slash that crosses any part of an enemy's body hits it. A slash stays live while its blade is drawn sweeping across (0.15 s, `RunRules.SlashSeconds`): an enemy that runs into it during the sweep is hit too, once per slash.
 
 All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with gadgets (see 2.4).
 
@@ -207,7 +207,7 @@ All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with ga
 
 **Elites:** Larger, glowing versions of normal enemies with more HP. They always drop a Lunchbox.
 
-**Contact damage:** the chef starts with **100 HP** (Bread adds %). An enemy hurts the chef when it touches them (distance check: within 0.75 studs of touching). After a hit, the chef can't be hurt again for **0.5 s**, and only the strongest touching enemy's damage counts. Armor (Beef Jerky) is subtracted from each hit, minimum 1. At 0 HP the run is lost.
+**Contact damage:** the chef starts with **100 HP** (Bread adds %). An enemy hurts the chef when it touches them (distance check: within 0.75 studs of touching, using the chef's body (1 stud from its centre, `RunRules.ChefRadius`) and the enemy's real thickness toward the chef). After a hit, the chef can't be hurt again for **0.5 s**, and only the strongest touching enemy's damage counts. Armor (Beef Jerky) is subtracted from each hit, minimum 1. At 0 HP the run is lost.
 
 **Starting stats** (tune in `Enemies.luau`). Speed is in studs per second; the chef walks at 16. Damage is contact damage before armor. Tips is the tip (XP) value it drops.
 
