@@ -14,6 +14,7 @@
 --   "God"              turn "can't die" on or off (HP refills every frame)
 --   "Wipe"             remove every enemy (no tips, no kills)
 --   "Restart"          start a fresh run right now, even mid-run (RestartService)
+--   "UnlockPowers"     unlock every boss power, as if every boss had been beaten (UnlockService)
 -- Replies go back with DevMessage(text) and show on the panel.
 --
 -- The player gets the attribute "IsDev" = true so the client knows to show the panel,
@@ -34,6 +35,7 @@ local RunManager = require(script.Parent.RunManager)
 local RunRules = require(ReplicatedStorage.Config.RunRules)
 local Starters = require(ReplicatedStorage.Config.Starters)
 local StatsService = require(script.Parent.StatsService)
+local UnlockService = require(script.Parent.UnlockService)
 local UpgradeService = require(script.Parent.UpgradeService)
 local WeaponService = require(script.Parent.WeaponService)
 
@@ -136,6 +138,13 @@ ACTIONS.God = function(player)
 	godMode = not godMode
 	player:SetAttribute("DevGod", godMode)
 	reply(player, if godMode then "God mode ON" else "God mode OFF")
+end
+
+ACTIONS.UnlockPowers = function(player)
+	for _, id in RunRules.UpgradePool.BossPowers do
+		UnlockService.unlock(id)
+	end
+	reply(player, "All boss powers unlocked")
 end
 
 ACTIONS.Restart = function(player)

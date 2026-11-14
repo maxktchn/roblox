@@ -123,6 +123,7 @@ Rewards scale with how long the player survived and how far they got:
 - **Gear materials** (see 4.4)
 - **Chance at a gear drop** (higher on chapter clear)
 - **First-clear rewards:** Gems and a gear chest the first time a player reaches 5:00 and the first time they clear the chapter
+- **Boss power:** defeating a chapter's final boss for the first time unlocks its power (see 3.8)
 
 ---
 
@@ -367,6 +368,8 @@ Players can start as many runs as they want. There is no energy or stamina cost.
 
 ### 5.1 Principle
 **Paying only speeds things up.** Every item and power level can be earned for free. Nothing that adds power is paid-only.
+
+**Boss powers are never sold.** Only defeating the boss unlocks its power (see 3.8): no Robux, gems or chest shortcut.
 
 **Starters are a main monetization driver.** Most starters drop from chests, and Premium Chests (gems) have the best starter odds. Players can still get every starter with gold from Basic Chests, just more slowly.
 

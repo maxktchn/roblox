@@ -18,6 +18,7 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local RunManager = require(script.Parent.RunManager)
 local RunReportService = require(script.Parent.RunReportService)
 local StatsService = require(script.Parent.StatsService)
+local UnlockService = require(script.Parent.UnlockService)
 local UpgradeService = require(script.Parent.UpgradeService)
 local WeaponService = require(script.Parent.WeaponService)
 
@@ -35,6 +36,7 @@ function RestartService.restart()
 	UpgradeService.reset() -- Lv 1, rerolls back, closes any open cards
 	RunManager.reset() -- full HP, 0:00, timeline from the start, RunState "Playing"
 	RunReportService.reset() -- a new report for the new run
+	UnlockService.clearJustUnlocked() -- unlocks stay; only the banner's announcement goes
 
 	-- A fresh chef at the SpawnLocation (also undoes any freeze from the card screen).
 	local player = Players:GetPlayers()[1]
