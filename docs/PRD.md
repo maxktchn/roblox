@@ -58,9 +58,12 @@ The restaurant's food has gone rotten and come alive. You're the chef, and you h
 9. Results screen shows rewards earned
 
 ### 2.2 Controls and camera
-- **Movement only.** All attacks fire automatically.
-- **Mobile:** Roblox's default dynamic thumbstick
-- **PC:** WASD or arrow keys
+- **Move and aim.** All attacks fire automatically. The signature tool (starter) swings toward where the player aims; gadgets don't aim.
+- **Mobile:** Roblox's default dynamic thumbstick on the left to move; an **aim stick** fixed bottom-right to aim. Letting go keeps the last aim.
+- **PC:** WASD or arrow keys to move; the **mouse cursor** aims
+- **Gamepad:** left stick moves, right stick aims
+- **No jump.** It does nothing in this game, and on phones the right thumb aims.
+- **Aim indicator:** a faint fan on the floor shows where the next swing will land and how far it reaches. Until the player aims, the starter swings the way the chef faces.
 - **Camera:** Fixed, angled overhead view (3/4 view like survivor.io). Players cannot rotate or zoom it during a run. Starting values: looks down at 55°, 45 studs from the chef, 50° field of view.
 
 ### 2.3 Leveling up ("Order Up!")
@@ -445,6 +448,7 @@ For now the lobby is a set of **menu screens inside the run place** (see 8.1), s
 
 ### 7.4 Mobile requirements
 - All buttons must be large enough for thumbs
+- The aim stick sits in a fixed spot in the bottom-right corner, thumb-sized (140 px), only on touch devices
 - Nothing important near the screen edges where phones cut off content
 - Test on a small phone screen before each milestone
 
