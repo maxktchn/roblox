@@ -220,13 +220,13 @@ All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with ga
 **Scaling over the run:** enemies get tougher the longer the run goes, so a strong build still meets resistance late. Every minute of run time (paused time doesn't count), new enemies get **+15% HP** and **+5% contact damage**, compounding. That's x2.0 HP at 5:00 and x4.0 at 10:00, and x1.6 damage at 10:00. This is well below the player's growth (about 10-20x damage from Lv 1 knife to a maxed build), so the player still pulls ahead. Speed and tips don't scale. The boss doesn't scale either (its numbers are in 3.5), but its minions do. Tune in `RunRules.luau` (`EnemyHpGrowthPerMinute`, `EnemyDamageGrowthPerMinute`).
 
 ### 3.5 Bosses
-| Boss | When | Mechanics | MVP |
-|---|---|---|---|
-| The Big Cheese | 5:00 mini-boss (Chapter 1) | Splits into smaller cheeses when damaged | Yes |
-| Microwave Monster | 10:00 final boss (Chapter 1) | Summons minions and sends out damage pulses | Yes |
-| Doughzilla | Final boss (Chapter 2, Bakery) | Giant dough that grows bigger by absorbing flour clouds | No |
-| Kraken Roll | Final boss (Chapter 3, Sushi Bar) | Sushi kraken that grabs the player from the conveyor belts | No |
-| Pantry Rat King | Final boss (Chapter 4, Walk-in Freezer) | TBD | No |
+| Boss | When | Mechanics | Power (see 3.8) | MVP |
+|---|---|---|---|---|
+| The Big Cheese | 5:00 mini-boss (Chapter 1) | Splits into smaller cheeses when damaged | None (mini-boss) | Yes |
+| Microwave Monster | 10:00 final boss (Chapter 1) | Summons minions and sends out damage pulses | **Microwave Pulse** | Yes |
+| Doughzilla | Final boss (Chapter 2, Bakery) | Giant dough that grows bigger by absorbing flour clouds | TBD | No |
+| Kraken Roll | Final boss (Chapter 3, Sushi Bar) | Sushi kraken that grabs the player from the conveyor belts | TBD | No |
+| Pantry Rat King | Final boss (Chapter 4, Walk-in Freezer) | TBD | TBD | No |
 
 **Boss arena:** When a final boss spawns, a ring of counters closes around the player and boss. Normal enemies stop spawning until the boss is defeated.
 
@@ -261,6 +261,28 @@ All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with ga
 | 2 | Bakery | Flour clouds that block vision | No |
 | 3 | Sushi Bar | Conveyor belts that move the player | No |
 | 4 | Walk-in Freezer | Ice floor where players slide | No |
+
+### 3.8 Boss Powers
+Beating a chapter's final boss takes its **power**: an ability the player keeps and can use in later runs. Every final boss has one. It's an extra layer of progress on top of gear, talents and starter unlocks.
+
+- **Unlock:** defeating the boss unlocks its power for good (the first time only; dying in the fight unlocks nothing). The win screen says "New power unlocked: <name>".
+- **In a run:** once unlocked, the power can show up as an "Order Up!" card, marked **BOSS POWER**. It works like a gadget: it uses one of the 6 shared slots and levels 1 to 5.
+- **Rarity:** its NEW card is rarer than a gadget's. Each "Order Up!" has a **35%** chance to include it (while you don't own it and have a free slot). Once owned, its upgrade cards appear like any gadget's.
+- **Strength:** at Lv 1 about as strong as a normal gadget; at Lv 5 stronger than a maxed gadget.
+- **No recipes.** Boss powers never evolve.
+- **Never sold.** Only beating the boss unlocks a power (see 5.1).
+- Nothing existing gets locked: the Blender and Smoothie Vortex stay in the normal pool.
+- **Phase 1:** unlocks last until the server closes (no saving yet); Phase 2 saves them.
+
+**Microwave Pulse** (Microwave Monster's power, tune in `BossPowers.luau`): every few seconds a shockwave ring grows out from where the chef stands, hitting each enemy once as it passes and knocking it back. Bosses aren't knocked back.
+
+| Lv | Damage | Every | Ring reaches | Ring speed | Knockback |
+|---|---|---|---|---|---|
+| 1 | 12 | 3.0 s | 14 studs | 30 studs/s | 4 studs |
+| 2 | 15 | 2.8 s | 15 | 32 | 5 |
+| 3 | 19 | 2.6 s | 17 | 34 | 6 |
+| 4 | 24 | 2.4 s | 19 | 36 | 7 |
+| 5 | 30 | 2.2 s | 22 | 40 | 8 |
 
 ---
 
@@ -389,6 +411,8 @@ Gamepasses must only save time. Starting list:
 ## 7. UI/UX
 
 ### 7.1 Lobby screens
+For now the lobby is a set of **menu screens inside the run place** (see 8.1), shown before and between runs.
+
 | Screen | Contents |
 |---|---|
 | Home | Play button, selected chapter, equipped starter, currencies |
@@ -423,10 +447,10 @@ Gamepasses must only save time. Starting list:
 ## 8. Technical Notes for Roblox
 
 ### 8.1 Places and servers
-- **Lobby place:** Players manage gear, talents, shop, and start runs
-- **Run place:** Each run happens in its own reserved server (one player per server), using `TeleportService`
-- **Why:** Keeps run code simple (only one player to handle) and keeps heavy enemy simulation off the lobby server
-- **Downside:** A loading screen between lobby and run. Make it short and on theme.
+- **One place for now.** The lobby is a set of menu screens inside the run place; each server holds **one player**, so run code only handles one player. No teleporting.
+- **Why:** much easier to build and test (teleports don't work in Studio playtests), simpler saving (no save and load handoff between servers), one place to keep in sync, and an instant "Play again".
+- **Cost accepted:** no shared social lobby where players see each other.
+- **Revisit when co-op is designed:** co-op needs players matched into a shared run, which is when a separate Lobby place and teleports (`TeleportService`, reserved servers) come back. Build the lobby as its own screen code so it can move to a separate place later.
 
 ### 8.2 Saving player data
 - Use a session-locked data library such as **ProfileStore** instead of writing DataStore code from scratch. It prevents lost or duplicated data when players switch servers.
@@ -494,13 +518,17 @@ StarterPlayerScripts/
   - **Boss:** Microwave Monster at 10:00. The Big Cheese mini-boss waits for Phase 2.
 - Tips, "Order Up!" cards, and recipes working
 - No saving, no lobby, no progression
+- **Boss powers prototype:** Microwave Pulse, unlocked by beating the Microwave Monster until the server closes (no saving yet)
 - **Done when:** A full 10-minute run is fun and runs smoothly on a mid-range phone
 
 ### Phase 2: MVP
-- Full Chapter 1 content: 3 starters, 7 gadgets, 7 ingredients, 5 enemies, elites, 2 bosses
-- Lobby and Run places with teleporting
-- Saving player data
-- Gear (5 slots, rarity, merging, leveling), talents, Basic Chests, chapter unlocks
+- **Build order:**
+  1. Saving player data
+  2. Boss powers saving properly (unlocks kept between sessions)
+  3. Chapter and starter unlocks
+  4. Full Chapter 1 content: 3 starters, 7 gadgets, 7 ingredients, 5 enemies, elites, 2 bosses (The Big Cheese)
+  5. Gear (5 slots, rarity, merging, leveling), talents, Basic Chests
+- Lobby as menu screens in the run place (see 8.1)
 - **Done when:** A new player can go from first run to unlocking the Rolling Pin, and all progress saves correctly
 
 ### Phase 3: Monetization and live features

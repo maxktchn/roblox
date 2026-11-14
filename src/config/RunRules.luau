@@ -45,7 +45,12 @@ return {
 	UpgradePool = {
 		Gadgets = { "PepperShaker", "Blender", "SpinningForks", "Toaster" },
 		Ingredients = { "Salt", "HotSauce", "BeefJerky", "FridgeMagnet" },
+		-- Boss powers only show up once their boss has been defeated (PRD §3.8).
+		BossPowers = { "MicrowavePulse" },
 	},
+	-- Chance (0 to 1) that an unlocked boss power the player doesn't own yet is offered in a
+	-- given "Order Up!". Makes its NEW card rarer than a gadget's; its upgrades appear normally.
+	BossPowerNewCardChance = 0.35,
 
 	-- Pickups (PRD §2.6)
 	TipPickupRange = 8, -- studs; tips this close start flying to the chef. Fridge Magnet adds % on top.
