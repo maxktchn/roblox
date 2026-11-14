@@ -209,7 +209,9 @@ local function buildPanel()
 
 	makeHeader("JUMP TO TIME")
 	local time = makeGrid()
-	for _, seconds in { 60, 120, 300, 540, 590 } do
+	-- Follows the run length: 1:00, 2:00, halfway, a minute before the boss, 10 s before it.
+	local runLength = RunRules.RunLengthSeconds
+	for _, seconds in { 60, 120, runLength // 2, runLength - 60, runLength - 10 } do
 		makeButton(time, string.format("%d:%02d", seconds // 60, seconds % 60), COLORS.button, function()
 			send("SetTime", seconds)
 		end)

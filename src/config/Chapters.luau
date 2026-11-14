@@ -29,28 +29,29 @@ local Chapters: { [string]: Chapter } = {
 		Notes = "Starter map",
 		MiniBoss = "BigCheese",
 		FinalBoss = "MicrowaveMonster",
+		-- A 6-minute run (RunRules.RunLengthSeconds); phases must run back to back up to it.
 		Timeline = {
-			-- First minute: slow Moldy Bread only, so the player can level up a couple of times
+			-- Warm-up: slow Moldy Bread only, so the player can level up a couple of times
 			-- before the fast Fruit Flies (faster than the chef) arrive.
-			{ From = 0, To = 60, Enemies = { "MoldyBread" }, SpawnsPerSecond = 0.6 },
-			{ From = 60, To = 120, Enemies = { "MoldyBread", "FruitFlies" }, SpawnsPerSecond = 0.6 },
+			{ From = 0, To = 40, Enemies = { "MoldyBread" }, SpawnsPerSecond = 0.6 },
+			{ From = 40, To = 75, Enemies = { "MoldyBread", "FruitFlies" }, SpawnsPerSecond = 0.6 },
 			{
-				From = 120,
-				To = 300,
+				From = 75,
+				To = 180,
 				Enemies = { "MoldyBread", "FruitFlies", "RottenTomato", "Meatball" },
 				SpawnsPerSecond = 1,
-				Note = "First elite at 3:00",
+				Note = "First elite at 1:50",
 			},
 			{
-				From = 300,
-				To = 540,
+				From = 180,
+				To = 325,
 				Enemies = { "MoldyBread", "FruitFlies", "RottenTomato", "Meatball", "SourLemon" },
 				SpawnsPerSecond = 1.4,
-				Note = "Larger waves; dinner rush swarm at 7:30",
+				Note = "Larger waves; dinner rush swarm at 4:30",
 			},
 			{
-				From = 540,
-				To = 600,
+				From = 325,
+				To = 360,
 				Enemies = { "MoldyBread", "FruitFlies", "RottenTomato", "Meatball", "SourLemon" },
 				SpawnsPerSecond = 2,
 				Note = "Final heavy wave",
