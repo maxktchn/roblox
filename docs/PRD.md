@@ -184,6 +184,8 @@ Burns tick every 0.5 s and get the Hot Sauce bonus but can't crit. A fork hits e
 
 Percent bonuses add up per level and multiply the base value (Hot Sauce Lv 3 = base damage × 1.3). Base crit chance is 0%, and a crit deals **2×** damage.
 
+Weapon ranges (and orbit and shot hit radii) are measured to the enemy's edge, not its center, so big enemies like bosses can be hit from outside touching distance.
+
 All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with gadgets (see 2.4).
 
 ### 3.4 Enemies

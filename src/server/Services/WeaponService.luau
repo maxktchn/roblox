@@ -172,6 +172,35 @@ local function flatDistance(a: Vector3, b: Vector3): number
 	return Vector3.new(a.X - b.X, 0, a.Z - b.Z).Magnitude
 end
 
+-- Weapon reach is measured to an enemy's EDGE, not its center, so big enemies (the boss)
+-- can be hit from outside touching distance (PRD §3.3). Half the widest enemy's width,
+-- so the center-based EnemyService search can be widened just enough. Set in init.
+local maxEnemyHalfWidth = 0
+
+-- Half an enemy's width (0 if it is dead).
+local function enemyHalfWidth(enemyId: number): number
+	local enemyType = EnemyService.getEnemyType(enemyId)
+	local config = enemyType and EnemyService.getConfigForType(enemyType)
+	return if config then config.Size.X / 2 else 0
+end
+
+-- How far `point` is from an enemy's edge (flat). Negative = inside the enemy.
+local function distanceToEdge(enemyId: number, enemyPosition: Vector3, point: Vector3): number
+	return flatDistance(enemyPosition, point) - enemyHalfWidth(enemyId)
+end
+
+-- Every enemy whose edge is within `reach` studs of `origin`.
+local function getEnemiesInReach(origin: Vector3, reach: number): { number }
+	local found = {}
+	for _, enemyId in EnemyService.getEnemiesInRadius(origin, reach + maxEnemyHalfWidth) do
+		local position = EnemyService.getEnemyPosition(enemyId)
+		if position and distanceToEdge(enemyId, position, origin) <= reach then
+			table.insert(found, enemyId)
+		end
+	end
+	return found
+end
+
 -- ARC: hit every enemy inside a slice of circle in front of the chef.
 local function attackArc(weaponId: string, stats: WeaponLevel, root: BasePart)
 	local origin = root.Position
@@ -183,12 +212,12 @@ local function attackArc(weaponId: string, stats: WeaponLevel, root: BasePart)
 	-- Comparing dot products avoids computing angles: dot >= cos(half arc).
 	local minDot = math.cos(math.rad(arcDegrees / 2))
 
-	for _, enemyId in EnemyService.getEnemiesInRadius(origin, stats.Range) do
+	for _, enemyId in getEnemiesInReach(origin, stats.Range) do
 		local position = EnemyService.getEnemyPosition(enemyId)
 		if position then
 			local offset = Vector3.new(position.X - origin.X, 0, position.Z - origin.Z)
-			-- An enemy standing right on the chef counts as hit (no direction to check).
-			if offset.Magnitude < 0.01 or facing:Dot(offset.Unit) >= minDot then
+			-- An enemy overlapping the chef counts as hit whatever its direction.
+			if offset.Magnitude <= enemyHalfWidth(enemyId) or facing:Dot(offset.Unit) >= minDot then
 				hit(enemyId, stats)
 			end
 		end
@@ -198,7 +227,7 @@ end
 
 -- AURA: hit every enemy in a circle around the chef.
 local function attackAura(weaponId: string, stats: WeaponLevel, root: BasePart)
-	for _, enemyId in EnemyService.getEnemiesInRadius(root.Position, stats.Range) do
+	for _, enemyId in getEnemiesInReach(root.Position, stats.Range) do
 		hit(enemyId, stats)
 	end
 	sendFx(weaponId, stats.Range)
@@ -209,10 +238,10 @@ local function attackProjectile(weaponId: string, stats: WeaponLevel, root: Base
 	local origin = root.Position
 	-- Sort the enemies in range by distance and take the closest few.
 	local targets = {}
-	for _, enemyId in EnemyService.getEnemiesInRadius(origin, stats.Range) do
+	for _, enemyId in getEnemiesInReach(origin, stats.Range) do
 		local position = EnemyService.getEnemyPosition(enemyId)
 		if position then
-			table.insert(targets, { position = position, distance = flatDistance(position, origin) })
+			table.insert(targets, { position = position, distance = distanceToEdge(enemyId, position, origin) })
 		end
 	end
 	table.sort(targets, function(a, b)
@@ -248,7 +277,7 @@ local function updateShots(deltaTime: number)
 		shot.position += shot.direction * step
 		shot.traveled += step
 
-		local targets = EnemyService.getEnemiesInRadius(shot.position, RunRules.ProjectileHitRadius)
+		local targets = getEnemiesInReach(shot.position, RunRules.ProjectileHitRadius)
 		local target = targets[1]
 		if target then
 			dealRolledDamage(target, shot.damage)
@@ -272,14 +301,18 @@ local function updateOrbit(weaponId: string, stats: WeaponLevel, root: BasePart)
 	end
 
 	-- Only enemies near the circle can be touched, so check those.
-	local nearby = EnemyService.getEnemiesInRadius(root.Position, stats.Range + RunRules.OrbitHitRadius)
+	local nearby = getEnemiesInReach(root.Position, stats.Range + RunRules.OrbitHitRadius)
 	for i = 0, count - 1 do
 		local angle = math.rad(now * (stats.Speed or 180) + i * 360 / count)
 		local forkPosition = root.Position + Vector3.new(math.cos(angle), 0, math.sin(angle)) * stats.Range
 		for _, enemyId in nearby do
 			local position = EnemyService.getEnemyPosition(enemyId)
 			local readyAt = hitTimes[enemyId] or 0
-			if position and now >= readyAt and flatDistance(position, forkPosition) <= RunRules.OrbitHitRadius then
+			if
+				position
+				and now >= readyAt
+				and distanceToEdge(enemyId, position, forkPosition) <= RunRules.OrbitHitRadius
+			then
 				hit(enemyId, stats)
 				hitTimes[enemyId] = now + stats.Cooldown -- one fork hit per enemy per Cooldown
 			end
@@ -416,6 +449,7 @@ function WeaponService.getWeaponLevel(weaponId: string): number?
 end
 
 function WeaponService:init()
+	maxEnemyHalfWidth = EnemyService.getMaxEnemyWidth() / 2
 	table.clear(levels)
 	levels[RunRules.Starter] = 1
 end
