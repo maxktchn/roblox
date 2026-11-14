@@ -13,6 +13,7 @@ local EnemyService = require(script.Parent.EnemyService)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local RunRules = require(ReplicatedStorage.Config.RunRules)
 local Starters = require(ReplicatedStorage.Config.Starters)
+local StatsService = require(script.Parent.StatsService)
 
 local WeaponService = {}
 
@@ -36,6 +37,16 @@ local function getChef(): BasePart?
 	return nil
 end
 
+-- Final damage for one hit: base damage + Hot Sauce bonus, and a crit roll (Salt).
+-- Rolled separately for every enemy hit, so a big swing can mix crits and normal hits.
+local function rollDamage(baseDamage: number): number
+	local damage = baseDamage * (1 + StatsService.getStat("Damage"))
+	if math.random() < StatsService.getStat("CritChance") then
+		damage *= RunRules.CritDamageMultiplier
+	end
+	return damage
+end
+
 -- Chef's Knife: hit every enemy inside a slice of circle in front of the chef.
 local function slash(weaponId: string, stats: Starters.WeaponLevel, root: BasePart)
 	local origin = root.Position
@@ -52,7 +63,7 @@ local function slash(weaponId: string, stats: Starters.WeaponLevel, root: BasePa
 			local offset = Vector3.new(position.X - origin.X, 0, position.Z - origin.Z)
 			-- An enemy standing right on the chef counts as hit (no direction to check).
 			if offset.Magnitude < 0.01 or facing:Dot(offset.Unit) >= minDot then
-				EnemyService.damage(enemyId, stats.Damage)
+				EnemyService.damage(enemyId, rollDamage(stats.Damage))
 			end
 		end
 	end

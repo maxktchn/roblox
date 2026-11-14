@@ -161,6 +161,8 @@ All 7 gadgets are in the MVP.
 | Beef Jerky | +1 armor (flat damage reduction) |
 | Fridge Magnet | +20% tip pickup range |
 
+Percent bonuses add up per level and multiply the base value (Hot Sauce Lv 3 = base damage × 1.3). Base crit chance is 0%, and a crit deals **2×** damage.
+
 All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with gadgets (see 2.4).
 
 ### 3.4 Enemies
