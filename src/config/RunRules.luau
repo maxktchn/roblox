@@ -21,6 +21,10 @@ return {
 	-- Phase 1 has no lobby, so every run starts with this starter (PRD §9). Checked by ConfigCheck.
 	Starter = "ChefsKnife",
 
+	-- Aiming (PRD §2.2): the client sends its aim direction at most this many times a second;
+	-- the server ignores anything faster.
+	AimMessagesPerSecond = 20,
+
 	-- Combat (PRD §3.3): Salt adds crit chance; a crit multiplies one hit's damage.
 	CritDamageMultiplier = 2,
 	BurnTickSeconds = 0.5, -- burns (Pepper Shaker) deal their damage in ticks this far apart

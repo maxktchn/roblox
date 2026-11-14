@@ -131,6 +131,33 @@ function ConfigCheck.run(): { string }
 			fail(`{id} is both a boss power and another weapon`)
 		end
 	end
+	-- Aimed (PRD §2.2): only starters and starters' recipes, and only shapes with a direction.
+	local function checkAimed(id: string, weapon: any, allowed: boolean)
+		if not weapon.Aimed then
+			return
+		end
+		if not allowed then
+			fail(`Weapon {id}: Aimed is only for starters and their recipes`)
+		elseif weapon.Shape ~= "Arc" then
+			fail(`Weapon {id}: Aimed needs a shape with a direction (Arc)`)
+		end
+	end
+	for id, starter in Starters do
+		checkAimed(id, starter, true)
+	end
+	for id, gadget in Gadgets do
+		checkAimed(id, gadget, false)
+	end
+	for id, recipe in Recipes do
+		checkAimed(id, recipe, Starters[recipe.Weapon] ~= nil)
+	end
+	for id, power in BossPowers do
+		checkAimed(id, power, false)
+	end
+	if RunRules.AimMessagesPerSecond <= 0 then
+		fail(`RunRules.AimMessagesPerSecond must be more than 0`)
+	end
+
 	if RunRules.BossPowerNewCardChance < 0 or RunRules.BossPowerNewCardChance > 1 then
 		fail(`RunRules.BossPowerNewCardChance must be between 0 and 1`)
 	end

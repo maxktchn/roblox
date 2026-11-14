@@ -18,12 +18,16 @@ export type Starter = {
 	Shape: WeaponTypes.Shape?,
 	Levels: { WeaponTypes.WeaponLevel }?,
 	FxColor: Color3?, -- colour of its attack effect
+	-- Aimed: swings toward where the player aims (mouse / aim stick) instead of the way the
+	-- chef faces (PRD §2.2). Only starters and their recipes; checked by ConfigCheck.
+	Aimed: boolean?,
 }
 
 local Starters: { [string]: Starter } = {
 	ChefsKnife = {
 		Name = "Chef's Knife",
-		Attack = "Quick slashes in the direction you face",
+		Attack = "Quick slashes toward where you aim",
+		Aimed = true,
 		Unlock = "Free",
 		Mvp = true,
 		Shape = "Arc",
