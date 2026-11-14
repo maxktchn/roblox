@@ -11,6 +11,7 @@ local Enemies = require(Config.Enemies)
 local Gadgets = require(Config.Gadgets)
 local Ingredients = require(Config.Ingredients)
 local Recipes = require(Config.Recipes)
+local RunRules = require(Config.RunRules)
 local Starters = require(Config.Starters)
 
 local ConfigCheck = {}
@@ -46,6 +47,17 @@ function ConfigCheck.run(): { string }
 	for id in Gadgets do
 		if not recipeFor[id] then
 			fail(`Gadget {id} has no recipe`)
+		end
+	end
+
+	for _, id in RunRules.UpgradePool.Gadgets do
+		if not Gadgets[id] then
+			fail(`RunRules.UpgradePool: unknown gadget "{id}"`)
+		end
+	end
+	for _, id in RunRules.UpgradePool.Ingredients do
+		if not Ingredients[id] then
+			fail(`RunRules.UpgradePool: unknown ingredient "{id}"`)
 		end
 	end
 
