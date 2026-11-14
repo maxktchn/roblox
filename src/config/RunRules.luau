@@ -40,6 +40,9 @@ return {
 	},
 
 	-- Pickups (PRD §2.6)
+	TipPickupRange = 8, -- studs; tips this close start flying to the chef. Fridge Magnet adds % on top.
+	TipFlySpeed = 45, -- studs per second while a tip flies to the chef
+	MaxTipsOnGround = 250, -- above this, new tips are added to the oldest tip instead (keeps phones fast)
 	PieHealFraction = 0.3,
 	LunchboxUpgradesMin = 1,
 	LunchboxUpgradesMax = 3,

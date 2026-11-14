@@ -5,6 +5,7 @@
 -- Hp:     hit points
 -- Speed:  studs per second (the chef walks at 16)
 -- Damage: contact damage to the chef, before armor
+-- Tips:   tip (XP) value it drops when defeated (PRD §2.4, §2.6)
 -- Size:   size of the enemy's part, in studs
 -- Shape:  "Block" or "Ball" (one simple part each, so the swarm stays cheap on phones)
 -- Movement: how it moves, handled in EnemyService (one code path per movement, not per enemy):
@@ -21,6 +22,7 @@ export type Enemy = {
 	Hp: number,
 	Speed: number,
 	Damage: number,
+	Tips: number,
 	Size: Vector3,
 	Shape: "Block" | "Ball",
 	Color: Color3,
@@ -37,6 +39,7 @@ local Enemies: { [string]: Enemy } = {
 		Hp = 10,
 		Speed = 8,
 		Damage = 5,
+		Tips = 2,
 		Size = Vector3.new(3, 3.5, 1.2),
 		Shape = "Block",
 		Color = Color3.fromRGB(150, 170, 90),
@@ -50,6 +53,7 @@ local Enemies: { [string]: Enemy } = {
 		Hp = 3,
 		Speed = 17, -- just faster than the chef (16): can't simply be outrun
 		Damage = 2,
+		Tips = 1,
 		Size = Vector3.new(1.5, 1.5, 1.5),
 		Shape = "Ball",
 		Color = Color3.fromRGB(60, 50, 70),
@@ -64,6 +68,7 @@ local Enemies: { [string]: Enemy } = {
 		Hp = 15,
 		Speed = 7,
 		Damage = 6,
+		Tips = 3,
 		Size = Vector3.new(3, 3, 3),
 		Shape = "Ball",
 		Color = Color3.fromRGB(170, 60, 50),
@@ -77,6 +82,7 @@ local Enemies: { [string]: Enemy } = {
 		Hp = 25,
 		Speed = 20,
 		Damage = 10,
+		Tips = 4,
 		Size = Vector3.new(3.5, 3.5, 3.5),
 		Shape = "Ball",
 		Color = Color3.fromRGB(120, 70, 45),
@@ -90,6 +96,7 @@ local Enemies: { [string]: Enemy } = {
 		Hp = 12,
 		Speed = 9,
 		Damage = 6,
+		Tips = 3,
 		Size = Vector3.new(2.8, 2.8, 2.8),
 		Shape = "Ball",
 		Color = Color3.fromRGB(245, 220, 60),
@@ -103,6 +110,7 @@ local Enemies: { [string]: Enemy } = {
 		Hp = 30,
 		Speed = 6,
 		Damage = 4,
+		Tips = 4,
 		Size = Vector3.new(4, 4, 4),
 		Shape = "Ball",
 		Color = Color3.fromRGB(240, 200, 110),
@@ -116,6 +124,7 @@ local Enemies: { [string]: Enemy } = {
 		Hp = 80,
 		Speed = 4,
 		Damage = 12,
+		Tips = 8,
 		Size = Vector3.new(4, 4.5, 1.6),
 		Shape = "Block",
 		Color = Color3.fromRGB(60, 40, 30),
