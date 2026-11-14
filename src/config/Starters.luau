@@ -4,12 +4,21 @@
 
 export type Unlock = "Free" | "Achievement" | "Chest"
 
+-- Combat numbers for one weapon level. Levels[1] is Lv 1, Levels[5] is Lv 5.
+export type WeaponLevel = {
+	Damage: number,
+	Cooldown: number, -- seconds between attacks
+	Range: number, -- studs from the chef
+	ArcDegrees: number, -- width of the slash, centred on where the chef faces
+}
+
 export type Starter = {
 	Name: string,
 	Attack: string,
 	Unlock: Unlock,
 	Achievement: string?,
 	Mvp: boolean,
+	Levels: { WeaponLevel }?, -- only starters playable so far have numbers
 }
 
 local Starters: { [string]: Starter } = {
@@ -18,6 +27,13 @@ local Starters: { [string]: Starter } = {
 		Attack = "Quick slashes in the direction you face",
 		Unlock = "Free",
 		Mvp = true,
+		Levels = {
+			{ Damage = 10, Cooldown = 0.8, Range = 10, ArcDegrees = 90 },
+			{ Damage = 13, Cooldown = 0.8, Range = 10, ArcDegrees = 90 },
+			{ Damage = 13, Cooldown = 0.65, Range = 11, ArcDegrees = 100 },
+			{ Damage = 18, Cooldown = 0.65, Range = 12, ArcDegrees = 100 },
+			{ Damage = 24, Cooldown = 0.55, Range = 12, ArcDegrees = 120 },
+		},
 	},
 	FryingPan = {
 		Name = "Frying Pan",

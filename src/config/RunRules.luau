@@ -10,6 +10,9 @@ return {
 	CameraDistance = 45, -- studs from the chef
 	CameraFieldOfView = 50, -- degrees; lower = less stretching at the screen edges
 
+	-- Phase 1 has no lobby, so every run starts with this starter (PRD §9). Checked by ConfigCheck.
+	Starter = "ChefsKnife",
+
 	-- Loadout (PRD §2.4)
 	StarterMaxLevel = 5,
 	SharedSlots = 6, -- gadgets + ingredients combined

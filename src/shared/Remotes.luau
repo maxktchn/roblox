@@ -10,6 +10,7 @@ local NAMES = {
 	"OfferCards", -- server -> client: the 3 cards for an "Order Up!"
 	"ChooseCard", -- client -> server: index of the chosen card (server validates it was offered)
 	"RequestReroll", -- client -> server: reroll the current offer
+	"WeaponFx", -- server -> client: a weapon just attacked, draw its effect (visual only)
 }
 
 local Remotes = {}
