@@ -1,25 +1,41 @@
 --!strict
--- Draws weapon attack effects when the server says a weapon fired (WeaponFx remote).
--- Visual only: damage was already decided on the server.
+-- Draws weapon effects. Visual only: damage was already decided on the server.
 --
--- Effects reuse the same parts instead of creating new ones each attack (PRD §8.3).
--- New weapons add a function here and a line in EFFECTS.
+-- One drawing function per weapon Shape (see Shared/WeaponTypes), coloured by the
+-- weapon's FxColor in config, so new weapons need no code here.
+--   Arc        - a blade sweeps across the slice        (WeaponFx: facing, range, arcDegrees)
+--   Aura       - a ring pulses around the chef           (WeaponFx: range)
+--   Projectile - a shot flies out                        (WeaponFx: "Launch"/"End", ...)
+--   Orbit      - objects circle the chef all the time. No messages: we read the weapon's
+--                level from the player's "Weapon_<id>" attribute and use the shared server
+--                clock, so they appear exactly where the server checks for hits.
+--
+-- Effect parts are created once and reused (PRD §8.3). They live only on this client.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local Gadgets = require(ReplicatedStorage.Config.Gadgets)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Starters = require(ReplicatedStorage.Config.Starters)
+local WeaponTypes = require(ReplicatedStorage.Shared.WeaponTypes)
 
 local WeaponFxController = {}
 
 local player = Players.LocalPlayer
 
-local SLASH_SECONDS = 0.15 -- how long the blade takes to sweep across the arc
-local FADE_SECONDS = 0.1 -- then it fades out over this long
+local SLASH_SECONDS = 0.15 -- Arc: how long the blade takes to sweep across
+local SLASH_FADE_SECONDS = 0.1 -- then it fades out over this long
+local PULSE_SECONDS = 0.3 -- Aura: how long one ring pulse lasts
 
-local slashPart: Part
-local slashToken = 0 -- bumped each slash so an old animation stops if a new one starts
+local folder: Folder -- holds every effect part
+
+type WeaponConfig = { Shape: WeaponTypes.Shape?, Levels: { WeaponTypes.WeaponLevel }?, FxColor: Color3? }
+
+local function getConfig(weaponId: string): WeaponConfig?
+	return (Starters[weaponId] or Gadgets[weaponId]) :: any
+end
 
 local function getRoot(): BasePart?
 	local character = player.Character
@@ -30,65 +46,194 @@ local function getRoot(): BasePart?
 	return nil
 end
 
--- Chef's Knife: a thin white blade that sweeps across the arc in front of the chef.
-local function slash(facing: Vector3, range: number, arcDegrees: number)
-	slashToken += 1
-	local myToken = slashToken
-	local halfArc = math.rad(arcDegrees / 2)
-	local started = os.clock()
-	slashPart.Size = Vector3.new(0.4, 0.2, range)
+-- A plain glowing part for effects: no physics, no shadows, hidden until used.
+local function makeFxPart(name: string, color: Color3): Part
+	local part = Instance.new("Part")
+	part.Name = name
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
+	part.CastShadow = false
+	part.Material = Enum.Material.Neon
+	part.Color = color
+	part.Transparency = 1
+	part.Parent = folder
+	return part
+end
 
+-- One reusable part per weapon id (and key), made the first time it's needed.
+local partsByKey: { [string]: Part } = {}
+local function getPart(key: string, color: Color3): Part
+	local part = partsByKey[key]
+	if not part then
+		part = makeFxPart(key, color)
+		partsByKey[key] = part
+	end
+	return part
+end
+
+-- Run `step(elapsed)` every frame until it returns false. A newer animation on the same
+-- key stops the older one (token check), so effects never fight over a part.
+local animationTokens: { [string]: number } = {}
+local function animate(key: string, step: (elapsed: number) -> boolean)
+	local token = (animationTokens[key] or 0) + 1
+	animationTokens[key] = token
+	local started = os.clock()
 	local connection: RBXScriptConnection
 	connection = RunService.RenderStepped:Connect(function()
-		local root = getRoot()
-		local elapsed = os.clock() - started
-		if myToken ~= slashToken or not root or elapsed > SLASH_SECONDS + FADE_SECONDS then
-			if myToken == slashToken then
-				slashPart.Transparency = 1
-			end
+		if animationTokens[key] ~= token or not step(os.clock() - started) then
 			connection:Disconnect()
-			return
 		end
+	end)
+end
 
-		-- Sweep from the left edge of the arc to the right edge, then hold and fade.
+-- ARC: a blade sweeps from the left edge of the slice to the right edge, then fades.
+local function drawArc(weaponId: string, color: Color3, facing: Vector3, range: number, arcDegrees: number)
+	local part = getPart(weaponId, color)
+	part.Size = Vector3.new(0.4, 0.2, range)
+	local halfArc = math.rad(arcDegrees / 2)
+	animate(weaponId, function(elapsed)
+		local root = getRoot()
+		if not root or elapsed > SLASH_SECONDS + SLASH_FADE_SECONDS then
+			part.Transparency = 1
+			return false
+		end
 		local progress = math.min(elapsed / SLASH_SECONDS, 1)
 		local angle = halfArc - progress * 2 * halfArc
-		local fade = math.max(elapsed - SLASH_SECONDS, 0) / FADE_SECONDS
-		slashPart.Transparency = 0.2 + 0.8 * fade
-
+		local fade = math.max(elapsed - SLASH_SECONDS, 0) / SLASH_FADE_SECONDS
+		part.Transparency = 0.2 + 0.8 * fade
 		-- Start at the chef, face along `facing`, turn by `angle`, then push the
 		-- blade forward by half its length so one end sits at the chef.
 		local base = CFrame.lookAt(root.Position, root.Position + facing)
-		slashPart.CFrame = base * CFrame.Angles(0, angle, 0) * CFrame.new(0, 0, -range / 2)
+		part.CFrame = base * CFrame.Angles(0, angle, 0) * CFrame.new(0, 0, -range / 2)
+		return true
 	end)
 end
 
-local EFFECTS: { [string]: (facing: Vector3, range: number, arcDegrees: number) -> () } = {
-	ChefsKnife = slash,
-}
+-- AURA: a flat see-through disc around the chef that grows slightly and fades.
+local function drawAura(weaponId: string, color: Color3, range: number)
+	local part = getPart(weaponId, color)
+	part.Shape = Enum.PartType.Cylinder
+	animate(weaponId, function(elapsed)
+		local root = getRoot()
+		if not root or elapsed > PULSE_SECONDS then
+			part.Transparency = 1
+			return false
+		end
+		local progress = elapsed / PULSE_SECONDS
+		local radius = range * (0.85 + 0.15 * progress)
+		-- A cylinder's length runs along X, so turn it on its side to lie flat.
+		part.Size = Vector3.new(0.2, radius * 2, radius * 2)
+		part.CFrame = CFrame.new(root.Position - Vector3.new(0, 2.5, 0)) * CFrame.Angles(0, 0, math.rad(90))
+		part.Transparency = 0.55 + 0.45 * progress
+		return true
+	end)
+end
+
+-- PROJECTILE: one flying part per shot, moved here until the server says it ended.
+local shotParts: { [number]: Part } = {}
+local spareShotParts: { Part } = {}
+
+local function endShot(shotId: number)
+	local part = shotParts[shotId]
+	if part then
+		shotParts[shotId] = nil
+		part.Transparency = 1
+		table.insert(spareShotParts, part)
+	end
+end
+
+local function drawShot(
+	color: Color3,
+	shotId: number,
+	origin: Vector3,
+	direction: Vector3,
+	speed: number,
+	maxDistance: number
+)
+	local part = table.remove(spareShotParts) or makeFxPart("Shot", color)
+	part.Color = color
+	part.Material = Enum.Material.SmoothPlastic
+	part.Size = Vector3.new(1.4, 0.4, 1.4) -- a slice of toast
+	part.Transparency = 0
+	shotParts[shotId] = part
+	animate(`Shot{shotId}`, function(elapsed)
+		if shotParts[shotId] ~= part then
+			return false -- the server ended it (hit something)
+		end
+		local traveled = math.min(elapsed * speed, maxDistance)
+		local spin = CFrame.Angles(0, elapsed * 12, 0)
+		part.CFrame = CFrame.new(origin + direction * traveled) * spin
+		if traveled >= maxDistance then
+			endShot(shotId)
+			return false
+		end
+		return true
+	end)
+end
+
+-- ORBIT: every frame, place each owned orbit weapon's objects around the chef.
+local function updateOrbits()
+	local root = getRoot()
+	local now = workspace:GetServerTimeNow()
+	for weaponId, config in Gadgets do
+		if config.Shape ~= "Orbit" or not config.Levels then
+			continue
+		end
+		local level = player:GetAttribute(`Weapon_{weaponId}`)
+		local stats = if type(level) == "number" then config.Levels[level] else nil
+		local count = if stats and root then stats.Count or 1 else 0
+		local maxCount = 8 -- more than any level uses
+		for i = 0, maxCount - 1 do
+			local key = `{weaponId}_{i}`
+			if i < count and stats and root then
+				local part = getPart(key, config.FxColor or Color3.new(1, 1, 1))
+				part.Material = Enum.Material.Metal
+				part.Size = Vector3.new(0.5, 0.5, 2.4) -- a fork, pointing along its path
+				local angle = math.rad(now * (stats.Speed or 180) + i * 360 / count)
+				local offset = Vector3.new(math.cos(angle), 0, math.sin(angle)) * stats.Range
+				local position = root.Position + offset
+				-- Point the fork along the direction it's moving (90° ahead of its angle).
+				local ahead = Vector3.new(-math.sin(angle), 0, math.cos(angle))
+				part.CFrame = CFrame.lookAt(position, position + ahead)
+				part.Transparency = 0
+			elseif partsByKey[key] then
+				partsByKey[key].Transparency = 1
+			end
+		end
+	end
+end
+
+local function onWeaponFx(weaponId: string, ...: any)
+	local config = getConfig(weaponId)
+	if not config or not config.Shape then
+		return
+	end
+	local color = config.FxColor or Color3.new(1, 1, 1)
+	if config.Shape == "Arc" then
+		drawArc(weaponId, color, ...)
+	elseif config.Shape == "Aura" then
+		drawAura(weaponId, color, ...)
+	elseif config.Shape == "Projectile" then
+		local action, shotId = ...
+		if action == "Launch" then
+			drawShot(color, select(2, ...))
+		elseif action == "End" then
+			endShot(shotId)
+		end
+	end
+end
 
 function WeaponFxController:init()
-	-- Parts that live only on this client, so other players never see or touch them.
-	slashPart = Instance.new("Part")
-	slashPart.Name = "KnifeSlash"
-	slashPart.Anchored = true
-	slashPart.CanCollide = false
-	slashPart.CanQuery = false
-	slashPart.CanTouch = false
-	slashPart.CastShadow = false
-	slashPart.Material = Enum.Material.Neon
-	slashPart.Color = Color3.fromRGB(235, 245, 255)
-	slashPart.Transparency = 1
-	slashPart.Parent = workspace
+	folder = Instance.new("Folder")
+	folder.Name = "WeaponFx"
+	folder.Parent = workspace
 end
 
 function WeaponFxController:start()
-	Remotes.get("WeaponFx").OnClientEvent:Connect(function(weaponId: string, ...: any)
-		local effect = EFFECTS[weaponId]
-		if effect then
-			effect(...)
-		end
-	end)
+	Remotes.get("WeaponFx").OnClientEvent:Connect(onWeaponFx)
+	RunService.RenderStepped:Connect(updateOrbits)
 end
 
 return WeaponFxController

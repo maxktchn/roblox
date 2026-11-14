@@ -1,24 +1,23 @@
 --!strict
 -- Signature Tools (PRD §3.1). The equipped Utensil is the run's starter weapon.
--- Recipes live in Recipes.luau. Combat numbers (damage, cooldown) are added in Phase 1 tuning.
+-- Recipes live in Recipes.luau. Shape and level fields are explained in Shared/WeaponTypes.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local WeaponTypes = require(ReplicatedStorage.Shared.WeaponTypes)
 
 export type Unlock = "Free" | "Achievement" | "Chest"
 
--- Combat numbers for one weapon level. Levels[1] is Lv 1, Levels[5] is Lv 5.
-export type WeaponLevel = {
-	Damage: number,
-	Cooldown: number, -- seconds between attacks
-	Range: number, -- studs from the chef
-	ArcDegrees: number, -- width of the slash, centred on where the chef faces
-}
-
 export type Starter = {
 	Name: string,
-	Attack: string,
+	Attack: string, -- description for players
 	Unlock: Unlock,
 	Achievement: string?,
 	Mvp: boolean,
-	Levels: { WeaponLevel }?, -- only starters playable so far have numbers
+	-- Only starters playable so far have these:
+	Shape: WeaponTypes.Shape?,
+	Levels: { WeaponTypes.WeaponLevel }?,
+	FxColor: Color3?, -- colour of its attack effect
 }
 
 local Starters: { [string]: Starter } = {
@@ -27,6 +26,8 @@ local Starters: { [string]: Starter } = {
 		Attack = "Quick slashes in the direction you face",
 		Unlock = "Free",
 		Mvp = true,
+		Shape = "Arc",
+		FxColor = Color3.fromRGB(235, 245, 255),
 		Levels = {
 			{ Damage = 10, Cooldown = 0.8, Range = 10, ArcDegrees = 90 },
 			{ Damage = 13, Cooldown = 0.8, Range = 10, ArcDegrees = 90 },

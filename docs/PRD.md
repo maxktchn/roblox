@@ -151,6 +151,16 @@ Rewards scale with how long the player survived and how far they got:
 
 All 7 gadgets are in the MVP.
 
+**Phase 1 gadget starting values** (Lv 1 → Lv 5, tune in `Gadgets.luau`):
+| Gadget | Shape | Lv 1 | Changes by Lv 5 |
+|---|---|---|---|
+| Pepper Shaker | Arc | 4 damage, 60° cone, 9 range, every 1.2 s, burns 3/s for 2 s | 7 damage, 90° cone, 10 range, every 0.9 s, burns 6/s for 3 s |
+| Blender | Aura | 3 damage every 0.5 s within 6 studs | 6 damage every 0.4 s within 9 studs |
+| Spinning Forks | Orbit | 2 forks on a 7-stud circle, 180°/s, 6 damage, each enemy hit at most every 0.6 s | 4 forks, 8 studs, 240°/s, 11 damage |
+| Toaster | Projectile | 1 toast every 1.4 s at the nearest enemy within 40 studs, 9 damage, 45 studs/s | 4 toasts every 1.2 s, 16 damage |
+
+Burns tick every 0.5 s and get the Hot Sauce bonus but can't crit. A fork hits enemies within 2.5 studs of it; a toast hits the first enemy within 2 studs.
+
 ### 3.3 Ingredients (passives)
 | Ingredient | Effect per level |
 |---|---|

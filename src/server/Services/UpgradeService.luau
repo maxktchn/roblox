@@ -52,6 +52,10 @@ local STAT_LABELS: { [string]: { name: string, unit: string } } = {
 	Cooldown = { name = "Cooldown", unit = "s" },
 	Range = { name = "Range", unit = "" },
 	ArcDegrees = { name = "Arc", unit = "°" },
+	Count = { name = "Amount", unit = "" },
+	Speed = { name = "Speed", unit = "" },
+	BurnDps = { name = "Burn", unit = "/s" },
+	BurnSeconds = { name = "Burn time", unit = "s" },
 }
 
 -- One line saying what changes between two levels of a weapon, built from its config numbers.
@@ -112,14 +116,17 @@ local function buildPool(): { Card }
 		local owned = WeaponService.getWeaponLevel(id)
 		if (owned and owned < RunRules.SharedItemMaxLevel) or (not owned and slotsFree) then
 			local from = owned or 0
+			local gadgetLevels = Gadgets[id].Levels
 			table.insert(pool, {
 				Kind = "Gadget",
 				Id = id,
 				Name = Gadgets[id].Name,
 				FromLevel = from,
 				ToLevel = from + 1,
-				-- Gadget level numbers come in #19; until then upgrades just say "Level up".
-				Description = if from == 0 then Gadgets[id].Behavior else "Level up",
+				-- NEW shows what it does; upgrades show what the numbers change to.
+				Description = if from == 0 or not gadgetLevels
+					then Gadgets[id].Behavior
+					else describeChange(gadgetLevels[from], gadgetLevels[from + 1]),
 			})
 		end
 	end
