@@ -235,14 +235,15 @@ All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with ga
 ### 3.6 Run timeline (Chapter 1, starting values)
 | Time | What happens |
 |---|---|
-| 0:00 to 2:00 | Moldy Bread and Fruit Flies only |
+| 0:00 to 1:00 | Moldy Bread only (warm-up: time to level up before the fast Fruit Flies) |
+| 1:00 to 2:00 | Add Fruit Flies |
 | 2:00 to 5:00 | Add Rotten Tomatoes and Meatballs. First elite at 3:00. |
 | 5:00 | The Big Cheese (mini-boss) |
 | 5:00 to 9:00 | Add Sour Lemons. Larger waves and a "dinner rush" swarm event at 7:30. |
 | 9:00 to 10:00 | Final heavy wave |
 | 10:00 | Microwave Monster in the closed arena |
 
-**Spawn rate per phase** (spawn groups per second, tune in `Chapters.luau`; most enemies spawn alone, Fruit Flies in groups of 6): 0.6 until 2:00, 1 until 5:00, 1.4 until 9:00, 2 until 10:00. Normal spawns stop at 10:00.
+**Spawn rate per phase** (spawn groups per second, tune in `Chapters.luau`; most enemies spawn alone, Fruit Flies in groups of 6): 0.6 until 2:00 (Moldy Bread only until 1:00), 1 until 5:00, 1.4 until 9:00, 2 until 10:00. Normal spawns stop at 10:00.
 
 **Phase 1:** only the Phase 1 enemies (Moldy Bread, Fruit Flies, Meatball, set in `RunRules.EnemyPool`) spawn from this timeline. Elites, the mini-boss and the dinner rush wait for later. At 10:00 the Microwave Monster arrives; defeating it wins the run.
 
