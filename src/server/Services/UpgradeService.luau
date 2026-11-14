@@ -252,8 +252,8 @@ end
 
 -- If a level-up is waiting and nothing is on screen, draw and send the next offer.
 local function offerNext()
-	if currentOffer or pendingLevelUps == 0 then
-		return
+	if currentOffer or pendingLevelUps == 0 or RunManager.isRunOver() then
+		return -- nothing waiting, already showing cards, or the run has ended
 	end
 	if not getRunPlayer() then
 		return -- no one to show it to yet; tried again on the next tip or choice

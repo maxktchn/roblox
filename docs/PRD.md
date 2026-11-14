@@ -199,6 +199,8 @@ All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with ga
 
 **Elites:** Larger, glowing versions of normal enemies with more HP. They always drop a Lunchbox.
 
+**Contact damage:** the chef starts with **100 HP** (Bread adds %). An enemy hurts the chef when it touches them (distance check: within 0.75 studs of touching). After a hit, the chef can't be hurt again for **0.5 s**, and only the strongest touching enemy's damage counts. Armor (Beef Jerky) is subtracted from each hit, minimum 1. At 0 HP the run is lost.
+
 **Starting stats** (tune in `Enemies.luau`). Speed is in studs per second; the chef walks at 16. Damage is contact damage before armor. Tips is the tip (XP) value it drops.
 
 | Enemy | HP | Speed | Damage | Tips |

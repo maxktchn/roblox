@@ -240,6 +240,13 @@ function EnemyService.getEnemyPosition(enemyId: EnemyId): Vector3?
 	return enemy and enemy.position
 end
 
+-- An enemy's config id (e.g. "MoldyBread"), or nil if it is dead. ContactService uses this
+-- to look up its Damage and Size.
+function EnemyService.getEnemyType(enemyId: EnemyId): string?
+	local enemy = alive[enemyId]
+	return enemy and enemy.enemyType
+end
+
 -- Deal damage to one enemy. Does nothing if the enemy is already dead.
 -- When HP reaches 0 the enemy dies, returns to the pool and every onEnemyKilled callback runs.
 function EnemyService.damage(enemyId: EnemyId, amount: number)
