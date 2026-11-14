@@ -18,6 +18,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TextChatService = game:GetService("TextChatService")
 
+local DevAccess = require(script.Parent.Parent.DevAccess)
 local DevTools = require(ReplicatedStorage.Config.DevTools)
 local EnemyService = require(script.Parent.EnemyService)
 local PickupService = require(script.Parent.PickupService)
@@ -31,16 +32,6 @@ local active = false
 local reportTimer = 0
 local frameTimes = 0 -- sum of server frame times since the last report
 local frameCount = 0
-
-local function isAllowed(player: Player): boolean
-	if RunService:IsStudio() then
-		return true
-	end
-	if game.CreatorType == Enum.CreatorType.User and player.UserId == game.CreatorId then
-		return true
-	end
-	return table.find(DevTools.DevUserIds, player.UserId) ~= nil
-end
 
 local function turnOn(player: Player)
 	if active then
@@ -97,7 +88,7 @@ function StressTestService:start()
 	command.PrimaryAlias = "/stress"
 	command.Triggered:Connect(function(source: TextSource)
 		local player = Players:GetPlayerByUserId(source.UserId)
-		if player and isAllowed(player) then
+		if player and DevAccess.isAllowed(player) then
 			turnOn(player)
 		end
 	end)

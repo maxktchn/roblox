@@ -12,6 +12,8 @@ local NAMES = {
 	"RequestReroll", -- client -> server: reroll the current offer
 	"CloseCards", -- server -> client: the offer ended without a pick (e.g. the run was reset), hide the cards
 	"WeaponFx", -- server -> client: a weapon just attacked, draw its effect (visual only)
+	"DevAction", -- client -> server: (action, arg) from the DEV panel; devs only, validated (DevCommandService)
+	"DevMessage", -- server -> client: (text) reply shown on the DEV panel; devs only
 	"HitFx", -- server -> client: { HitFx } recent hits, for enemy flashes and damage numbers (visual only)
 }
 
