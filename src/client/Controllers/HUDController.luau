@@ -8,6 +8,7 @@
 --   "RunSeconds"                    RunManager, run timer in whole seconds (#6)
 --   "Hp", "MaxHp"                   RunManager, the chef's HP (#9)
 --   "RunState"                      RunManager: "Playing", "Lost" or "Won" (shows the run-over banner)
+--   "JustUnlocked"                  UnlockService: a boss power this run unlocked (line on the banner)
 -- If Hp/MaxHp are missing the HP bar shows the Humanoid's health instead, and the
 -- timer shows "--:--" until RunSeconds exists.
 -- Pause button: not in Phase 1 yet (the run already pauses during "Order Up!").
@@ -62,6 +63,7 @@ local hpFill: Frame
 local runOverPanel: Frame
 local runOverTitle: TextLabel
 local runOverStats: TextLabel
+local runOverUnlock: TextLabel
 local playAgainButton: TextButton
 
 -- Helper: a text label in the game font.
@@ -180,7 +182,7 @@ local function buildScreen()
 	runOverPanel.Name = "RunOver"
 	runOverPanel.AnchorPoint = Vector2.new(0.5, 0.5)
 	runOverPanel.Position = UDim2.fromScale(0.5, 0.45)
-	runOverPanel.Size = UDim2.fromOffset(420, 220)
+	runOverPanel.Size = UDim2.fromOffset(420, 250)
 	runOverPanel.BackgroundColor3 = COLORS.barBack
 	runOverPanel.BackgroundTransparency = 0.15
 	runOverPanel.Visible = false
@@ -192,12 +194,18 @@ local function buildScreen()
 	runOverStats = makeLabel(runOverPanel, "Stats", 22)
 	runOverStats.Size = UDim2.new(1, 0, 0, 40)
 	runOverStats.Position = UDim2.fromOffset(0, 88)
+	-- Shown only when this run unlocked a boss power (PRD §3.8).
+	runOverUnlock = makeLabel(runOverPanel, "Unlock", 20)
+	runOverUnlock.Size = UDim2.new(1, 0, 0, 28)
+	runOverUnlock.Position = UDim2.fromOffset(0, 128)
+	runOverUnlock.TextColor3 = COLORS.tips
+	runOverUnlock.Visible = false
 
 	-- "Play again" (#50): the server starts a fresh run (RestartService).
 	playAgainButton = Instance.new("TextButton")
 	playAgainButton.Name = "PlayAgain"
 	playAgainButton.AnchorPoint = Vector2.new(0.5, 0)
-	playAgainButton.Position = UDim2.new(0.5, 0, 0, 142)
+	playAgainButton.Position = UDim2.new(0.5, 0, 0, 172)
 	playAgainButton.Size = UDim2.fromOffset(220, 56) -- big enough for a thumb (PRD §7.4)
 	playAgainButton.BackgroundColor3 = COLORS.tips
 	playAgainButton.Font = Enum.Font.FredokaOne
@@ -224,6 +232,9 @@ local function updateRunState()
 			runOverTitle.Text = "SHIFT OVER"
 			runOverTitle.TextColor3 = COLORS.hpLow
 		end
+		local unlockedName = player:GetAttribute("JustUnlocked")
+		runOverUnlock.Visible = type(unlockedName) == "string"
+		runOverUnlock.Text = `New power unlocked: {unlockedName}`
 		runOverStats.Text =
 			`Reached Lv {player:GetAttribute("Level") or 1} · Defeated {player:GetAttribute("Kills") or 0}`
 	end
@@ -372,7 +383,7 @@ function HUDController:start()
 			updateIcons()
 		elseif name == "Hp" or name == "MaxHp" then
 			updateHp()
-		elseif name == "RunState" then
+		elseif name == "RunState" or name == "JustUnlocked" then
 			updateRunState()
 		else
 			updateNumbers()
