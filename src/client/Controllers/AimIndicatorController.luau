@@ -1,11 +1,14 @@
 --!strict
--- Aim indicator (PRD §2.2, #62): a small circle on the floor, a fixed distance in front of
--- the chef in the direction they're aiming. It doesn't depend on any weapon's shape or
--- reach, so it works for every aimed weapon, now and later. It follows the local aim
--- (AimController) every frame, so it feels instant even though the server uses the aim a
--- moment later. Before the player has aimed it sits the way the chef faces, matching the server.
+-- Aim indicator (PRD §2.2, #62): a thin curved line (an arc, like a "U" opening toward the
+-- player) on the floor a short fixed distance in front of the chef, centred on the direction
+-- they're aiming. It doesn't depend on any weapon's shape or reach, so it works for every
+-- aimed weapon, now and later. It follows the local aim (AimController) every frame, so it
+-- feels instant even though the server uses the aim a moment later. Before the player has
+-- aimed it sits the way the chef faces, matching the server.
 -- Shown only while the player owns an aimed weapon (otherwise aiming does nothing).
 -- Hidden while the "Order Up!" cards are open, after the run ends, and with no chef.
+--
+-- The arc is a few short straight pieces placed along a circle around the chef.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -19,13 +22,16 @@ local AimIndicatorController = {}
 
 local player = Players.LocalPlayer
 
-local DISTANCE = 8 -- studs in front of the chef
-local DIAMETER = 2.2 -- studs
+local RADIUS = 4 -- studs from the chef's centre to the arc
+local ARC_DEGREES = 70 -- how wide the arc is
+local PIECES = 7 -- short straight pieces that make up the curve
+local THICKNESS = 0.3 -- studs
 local COLOR = Color3.fromRGB(255, 255, 255)
 local TRANSPARENCY = 0.35
 local FLOOR_OFFSET = 2.9 -- studs below the chef's root: just above the floor
 
-local marker: Part
+local folder: Folder
+local pieces: { Part } = {}
 
 -- Ids of every aimed weapon (the starter and its recipe), found once at load.
 local aimedIds: { string } = {}
@@ -49,21 +55,34 @@ local function ownsAimedWeapon(): boolean
 	return false
 end
 
-local function buildMarker()
-	marker = Instance.new("Part")
-	marker.Name = "AimIndicator"
-	marker.Shape = Enum.PartType.Cylinder
-	-- A cylinder's length runs along X; it's laid flat in update().
-	marker.Size = Vector3.new(0.1, DIAMETER, DIAMETER)
-	marker.Anchored = true
-	marker.CanCollide = false
-	marker.CanQuery = false
-	marker.CanTouch = false
-	marker.CastShadow = false
-	marker.Material = Enum.Material.Neon
-	marker.Color = COLOR
-	marker.Transparency = 1
-	marker.Parent = workspace
+local function buildArc()
+	folder = Instance.new("Folder")
+	folder.Name = "AimIndicator"
+	-- Each piece spans an equal slice of the arc, a little longer so neighbours overlap.
+	local step = math.rad(ARC_DEGREES) / PIECES
+	local length = 2 * RADIUS * math.sin(step / 2) + 0.1
+	for i = 1, PIECES do
+		local piece = Instance.new("Part")
+		piece.Name = `Piece{i}`
+		piece.Size = Vector3.new(length, 0.05, THICKNESS)
+		piece.Anchored = true
+		piece.CanCollide = false
+		piece.CanQuery = false
+		piece.CanTouch = false
+		piece.CastShadow = false
+		piece.Material = Enum.Material.Neon
+		piece.Color = COLOR
+		piece.Transparency = 1
+		piece.Parent = folder
+		pieces[i] = piece
+	end
+	folder.Parent = workspace
+end
+
+local function hide()
+	for _, piece in pieces do
+		piece.Transparency = 1
+	end
 end
 
 local function update()
@@ -74,21 +93,30 @@ local function update()
 	local runState = player:GetAttribute("RunState")
 	local playing = runState ~= "Lost" and runState ~= "Won"
 	if not (root and root:IsA("BasePart") and playing and ownsAimedWeapon()) or cardsOpen then
-		marker.Transparency = 1
+		hide()
 		return
 	end
 
 	-- Same direction the server uses: the aim, or the chef's facing before the first aim.
 	local look = root.CFrame.LookVector
 	local direction: Vector3 = AimController.getAim() or Vector3.new(look.X, 0, look.Z).Unit
-	local spot = root.Position + direction * DISTANCE - Vector3.new(0, FLOOR_OFFSET, 0)
-	-- Turn the cylinder on its side so it lies flat on the floor.
-	marker.CFrame = CFrame.new(spot) * CFrame.Angles(0, 0, math.rad(90))
-	marker.Transparency = TRANSPARENCY
+	local centre = root.Position - Vector3.new(0, FLOOR_OFFSET, 0)
+	local halfArc = math.rad(ARC_DEGREES) / 2
+	local step = math.rad(ARC_DEGREES) / PIECES
+
+	for i, piece in pieces do
+		-- The middle of this piece's slice, from one end of the arc to the other.
+		local angle = -halfArc + step * (i - 0.5)
+		local outward = CFrame.fromAxisAngle(Vector3.yAxis, angle):VectorToWorldSpace(direction)
+		local position = centre + outward * RADIUS
+		-- Face outward, so the piece's length (its X) runs along the curve.
+		piece.CFrame = CFrame.lookAt(position, position + outward)
+		piece.Transparency = TRANSPARENCY
+	end
 end
 
 function AimIndicatorController:init()
-	buildMarker()
+	buildArc()
 end
 
 function AimIndicatorController:start()
