@@ -179,6 +179,18 @@ All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with ga
 
 **Elites:** Larger, glowing versions of normal enemies with more HP. They always drop a Lunchbox.
 
+**Starting stats** (tune in `Enemies.luau`). Speed is in studs per second; the chef walks at 16. Damage is contact damage before armor.
+
+| Enemy | HP | Speed | Damage |
+|---|---|---|---|
+| Moldy Bread | 10 | 8 | 5 |
+| Fruit Flies | 3 | 18 | 2 |
+| Rotten Tomato | 15 | 7 | 6 |
+| Meatball | 25 | 20 | 10 |
+| Sour Lemon | 12 | 9 | 6 |
+| Spaghetti Monster | 30 | 6 | 4 |
+| Burnt Toast | 80 | 4 | 12 |
+
 ### 3.5 Bosses
 | Boss | When | Mechanics | MVP |
 |---|---|---|---|
@@ -389,6 +401,7 @@ This is the biggest technical risk. Rules:
 - **Object pooling:** Reuse enemy, projectile, and tip objects instead of creating and destroying them
 - Use simple distance checks for hits instead of Roblox physics touches
 - Limit how many enemies can be alive at once (starting cap: 150, tune after testing)
+- Spawn enemies on a ring just outside the camera view (starting radius: 90 studs), at a base rate of 2 per second that the timeline raises
 - **Phase 1 must prove** the cap runs smoothly on a mid-range phone
 
 ### 8.4 Security (server authority)
