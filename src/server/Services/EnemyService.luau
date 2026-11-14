@@ -339,6 +339,21 @@ function EnemyService.pull(enemyId: EnemyId, toward: Vector3, studs: number)
 	enemy.position = clampToArena(enemy.position + offset / distance * step)
 end
 
+-- Push one enemy `studs` directly away from `from` (Microwave Pulse knockback, #66): the mirror
+-- of pull. Stays inside the arena. Bosses are too heavy to push: nothing happens. The part
+-- follows on the next frame.
+function EnemyService.push(enemyId: EnemyId, from: Vector3, studs: number)
+	local enemy = alive[enemyId]
+	if not enemy or Bosses[enemy.enemyType] or studs <= 0 then
+		return
+	end
+	local away = Vector3.new(enemy.position.X - from.X, 0, enemy.position.Z - from.Z)
+	if away.Magnitude < 0.01 then
+		away = Vector3.new(math.cos(enemyId), 0, math.sin(enemyId)) -- right on the spot: pick a side
+	end
+	enemy.position = clampToArena(enemy.position + away.Unit * studs)
+end
+
 -- An enemy's current HP and max HP, or nil if it is dead (boss HP bar).
 function EnemyService.getEnemyHp(enemyId: EnemyId): (number?, number?)
 	local enemy = alive[enemyId]
