@@ -63,7 +63,7 @@ The restaurant's food has gone rotten and come alive. You're the chef, and you h
 - **PC:** WASD or arrow keys to move; the **mouse cursor** aims
 - **Gamepad:** left stick moves, right stick aims
 - **No jump.** It does nothing in this game, and on phones the right thumb aims.
-- **Aim indicator:** a faint fan on the floor shows where the next swing will land and how far it reaches. Until the player aims, the starter swings the way the chef faces.
+- **Aim indicator:** a small circle on the floor, 8 studs in front of the chef in the aim direction. It doesn't depend on the weapon, so it works for any aimed weapon. Until the player aims, the starter swings the way the chef faces (and the circle sits there).
 - **Camera:** Fixed, angled overhead view (3/4 view like survivor.io). Players cannot rotate or zoom it during a run. Starting values: looks down at 55°, 45 studs from the chef, 50° field of view.
 
 ### 2.3 Leveling up ("Order Up!")
