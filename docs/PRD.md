@@ -61,7 +61,7 @@ The restaurant's food has gone rotten and come alive. You're the chef, and you h
 - **Movement only.** All attacks fire automatically.
 - **Mobile:** Roblox's default dynamic thumbstick
 - **PC:** WASD or arrow keys
-- **Camera:** Fixed, angled overhead view (3/4 view like survivor.io). Players cannot rotate or zoom it during a run.
+- **Camera:** Fixed, angled overhead view (3/4 view like survivor.io). Players cannot rotate or zoom it during a run. Starting values: looks down at 55°, 45 studs from the chef, 50° field of view.
 
 ### 2.3 Leveling up ("Order Up!")
 - Each card shows: icon, name, new level, and a one-line description of what changes

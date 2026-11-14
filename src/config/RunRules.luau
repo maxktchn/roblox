@@ -5,6 +5,11 @@ return {
 	RunLengthSeconds = 600, -- final boss at 10:00
 	MiniBossAtSeconds = 300, -- mini-boss at 5:00
 
+	-- Camera (PRD §2.2): fixed 3/4 overhead view
+	CameraPitchDegrees = 55, -- angle looking down; 90 = straight down
+	CameraDistance = 45, -- studs from the chef
+	CameraFieldOfView = 50, -- degrees; lower = less stretching at the screen edges
+
 	-- Loadout (PRD §2.4)
 	StarterMaxLevel = 5,
 	SharedSlots = 6, -- gadgets + ingredients combined
