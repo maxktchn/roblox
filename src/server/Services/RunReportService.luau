@@ -96,13 +96,14 @@ local function buildReport(result: string): string
 	local level = player and player:GetAttribute("Level") or 1
 	local kills = player and player:GetAttribute("Kills") or 0
 
+	-- "Lv 3 at 1:00, Lv 5 at 2:00, not reached 5:00, ..."
 	local checkpoints = {}
 	for _, seconds in CHECKPOINTS do
-		table.insert(checkpoints, if seconds <= endSeconds then tostring(levelAt(seconds)) else "-")
-	end
-	local checkpointNames = {}
-	for _, seconds in CHECKPOINTS do
-		table.insert(checkpointNames, formatTime(seconds))
+		if seconds <= endSeconds then
+			table.insert(checkpoints, `Lv {levelAt(seconds)} at {formatTime(seconds)}`)
+		else
+			table.insert(checkpoints, `not reached {formatTime(seconds)}`)
+		end
 	end
 
 	local function eventList(events: { Event }): string
@@ -121,7 +122,7 @@ local function buildReport(result: string): string
 				== math.huge
 			then "full"
 			else math.round(lowestHp)}`,
-		`Level at {table.concat(checkpointNames, " / ")}: {table.concat(checkpoints, " / ")}`,
+		`Progress: {table.concat(checkpoints, ", ")}`,
 		`Level-ups: {eventList(levelUps)}`,
 		`Items: {eventList(itemsGained)}`,
 		`Kills: {breakdown(killsByType)}`,
