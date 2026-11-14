@@ -1,0 +1,20 @@
+# Rojo / luau-lsp outputs
+sourcemap.json
+*.rbxl
+*.rbxlx
+*.rbxl.lock
+*.rbxlx.lock
+globalTypes.d.luau
+roblox.yml
+
+# Wally (if added later)
+Packages/
+ServerPackages/
+DevPackages/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
