@@ -44,8 +44,9 @@ type EnemyRecord = {
 
 -- Where unused parts wait: far below the floor, out of sight.
 local PARK_CFRAME = CFrame.new(0, -200, 0)
--- Roughly how wide the chef is, so chasing enemies stop at the chef's edge instead of inside them.
-local CHEF_RADIUS = 1.5
+-- How far the chef's body reaches (RunRules.ChefRadius), so chasing enemies stop at the chef's
+-- edge instead of inside them.
+local CHEF_RADIUS = RunRules.ChefRadius
 
 local killedCallbacks: { KilledCallback } = {}
 local alive: { [EnemyId]: EnemyRecord } = {}
@@ -331,7 +332,7 @@ function EnemyService.pull(enemyId: EnemyId, toward: Vector3, studs: number)
 	end
 	local offset = Vector3.new(toward.X - enemy.position.X, 0, toward.Z - enemy.position.Z)
 	local distance = offset.Magnitude
-	local stopDistance = CHEF_RADIUS + enemy.config.Size.X / 2
+	local stopDistance = CHEF_RADIUS + EnemyService.getHalfDepth(enemy.config)
 	local step = math.min(studs, distance - stopDistance)
 	if step <= 0 then
 		return -- already touching the chef
@@ -352,6 +353,20 @@ function EnemyService.push(enemyId: EnemyId, from: Vector3, studs: number)
 		away = Vector3.new(math.cos(enemyId), 0, math.sin(enemyId)) -- right on the spot: pick a side
 	end
 	enemy.position = clampToArena(enemy.position + away.Unit * studs)
+end
+
+-- An enemy's shape for distance checks. Enemies turn to face the chef (chasers) or the way they
+-- roll (chargers), so their Size.Z is their thickness toward the chef and Size.X their width.
+-- Flat enemies like Moldy Bread (3 wide, 1.2 thick) must use their thickness, or they'd touch
+-- and get hit from a stud away.
+--   getHalfDepth: centre to front face, for anything about distance (contact, reach, stopping)
+--   getHalfWidth: centre to side, for side-to-side checks (is it inside the knife's swing?)
+function EnemyService.getHalfDepth(config: Enemies.Enemy): number
+	return config.Size.Z / 2
+end
+
+function EnemyService.getHalfWidth(config: Enemies.Enemy): number
+	return config.Size.X / 2
 end
 
 -- An enemy's current HP and max HP, or nil if it is dead (boss HP bar).
@@ -415,7 +430,7 @@ local function moveEnemy(enemy: EnemyRecord, deltaTime: number, chefPosition: Ve
 			enemy.direction = toChef / distance
 		end
 		-- Stop at the chef's edge instead of walking inside them.
-		local stopDistance = CHEF_RADIUS + config.Size.X / 2
+		local stopDistance = CHEF_RADIUS + EnemyService.getHalfDepth(config)
 		step = math.min(step, math.max(distance - stopDistance, 0))
 	elseif config.Movement == "Charge" then
 		-- Keep rolling the same way. Once it has rolled past the chef (moving away)
@@ -499,7 +514,7 @@ local function separateEnemies(deltaTime: number, chefPosition: Vector3)
 		-- (Chargers are allowed to roll through the chef.)
 		if enemy.config.Movement == "Chase" then
 			local fromChef = Vector3.new(enemy.position.X - chefPosition.X, 0, enemy.position.Z - chefPosition.Z)
-			local stopDistance = CHEF_RADIUS + enemy.config.Size.X / 2
+			local stopDistance = CHEF_RADIUS + EnemyService.getHalfDepth(enemy.config)
 			local distance = fromChef.Magnitude
 			if distance < stopDistance and distance > 0.01 then
 				local edge = chefPosition + fromChef / distance * stopDistance

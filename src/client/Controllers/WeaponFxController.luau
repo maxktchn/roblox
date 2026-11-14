@@ -21,6 +21,7 @@ local BossPowers = require(ReplicatedStorage.Config.BossPowers)
 local Gadgets = require(ReplicatedStorage.Config.Gadgets)
 local Recipes = require(ReplicatedStorage.Config.Recipes)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local RunRules = require(ReplicatedStorage.Config.RunRules)
 local Starters = require(ReplicatedStorage.Config.Starters)
 local WeaponTypes = require(ReplicatedStorage.Shared.WeaponTypes)
 
@@ -28,7 +29,9 @@ local WeaponFxController = {}
 
 local player = Players.LocalPlayer
 
-local SLASH_SECONDS = 0.15 -- Arc: how long the blade takes to sweep across
+-- Arc: how long the blade takes to sweep across. Shared with the server, which keeps the
+-- swing live (hitting enemies that enter it) for exactly this long.
+local SLASH_SECONDS = RunRules.SlashSeconds
 local SLASH_FADE_SECONDS = 0.1 -- then it fades out over this long
 local PULSE_SECONDS = 0.3 -- Aura: how long one ring pulse lasts
 

@@ -202,16 +202,27 @@ end
 -- so the center-based EnemyService search can be widened just enough. Set in init.
 local maxEnemyHalfWidth = 0
 
--- Half an enemy's width (0 if it is dead).
-local function enemyHalfWidth(enemyId: number): number
+-- An enemy's config, or nil if it is dead.
+local function enemyConfig(enemyId: number): any
 	local enemyType = EnemyService.getEnemyType(enemyId)
-	local config = enemyType and EnemyService.getConfigForType(enemyType)
-	return if config then config.Size.X / 2 else 0
+	return enemyType and EnemyService.getConfigForType(enemyType)
+end
+
+-- Centre to front face (0 if it is dead): reach is measured to this (EnemyService.getHalfDepth).
+local function enemyHalfDepth(enemyId: number): number
+	local config = enemyConfig(enemyId)
+	return if config then EnemyService.getHalfDepth(config) else 0
+end
+
+-- Centre to side (0 if it is dead): how far it sticks out sideways (EnemyService.getHalfWidth).
+local function enemyHalfWidth(enemyId: number): number
+	local config = enemyConfig(enemyId)
+	return if config then EnemyService.getHalfWidth(config) else 0
 end
 
 -- How far `point` is from an enemy's edge (flat). Negative = inside the enemy.
 local function distanceToEdge(enemyId: number, enemyPosition: Vector3, point: Vector3): number
-	return flatDistance(enemyPosition, point) - enemyHalfWidth(enemyId)
+	return flatDistance(enemyPosition, point) - enemyHalfDepth(enemyId)
 end
 
 -- Every enemy whose edge is within `reach` studs of `origin`.
@@ -238,26 +249,68 @@ local function getAttackDirection(weaponId: string, root: BasePart): Vector3
 end
 
 -- ARC: hit every enemy inside a slice of circle in front of the chef.
-local function attackArc(weaponId: string, stats: WeaponLevel, root: BasePart)
-	local origin = root.Position
-	-- The aim for aimed weapons (the starter), otherwise the way the chef faces.
-	local facing = getAttackDirection(weaponId, root)
-	local arcDegrees = stats.ArcDegrees or 90
-	-- An enemy is inside the arc if the angle to it is at most half the arc width.
-	-- Comparing dot products avoids computing angles: dot >= cos(half arc).
-	local minDot = math.cos(math.rad(arcDegrees / 2))
+-- An Arc swing that is still sweeping (RunRules.SlashSeconds). Enemies that step into the arc
+-- while the blade is drawn are hit too, once each, so what looks slashed is slashed.
+type Swing = {
+	weaponId: string,
+	stats: WeaponLevel,
+	facing: Vector3, -- fixed when the swing starts; the arc moves with the chef like the drawing
+	timeLeft: number,
+	alreadyHit: { [number]: boolean },
+}
+local swings: { Swing } = {}
 
+-- Hit every enemy whose body is inside this swing's arc around `origin` that it hasn't hit yet.
+local function checkSwing(swing: Swing, origin: Vector3)
+	local stats = swing.stats
+	local halfArc = math.rad((stats.ArcDegrees or 90) / 2)
 	for _, enemyId in getEnemiesInReach(origin, stats.Range) do
 		local position = EnemyService.getEnemyPosition(enemyId)
-		if position then
+		if position and not swing.alreadyHit[enemyId] then
 			local offset = Vector3.new(position.X - origin.X, 0, position.Z - origin.Z)
+			local distance = offset.Magnitude
+			-- Inside the swing if ANY part of its body is: the angle to its centre may be past the
+			-- edge of the arc by as much as its half width covers at that distance. (Checking only
+			-- the centre missed enemies the drawn blade visibly passed over.)
 			-- An enemy overlapping the chef counts as hit whatever its direction.
-			if offset.Magnitude <= enemyHalfWidth(enemyId) or facing:Dot(offset.Unit) >= minDot then
-				hit(enemyId, stats, weaponId)
+			local overlapping = distance <= enemyHalfDepth(enemyId)
+			local angle = math.acos(math.clamp(swing.facing:Dot(offset / math.max(distance, 0.01)), -1, 1))
+			local bodyAngle = math.asin(math.min(enemyHalfWidth(enemyId) / math.max(distance, 0.01), 1))
+			if overlapping or angle <= halfArc + bodyAngle then
+				swing.alreadyHit[enemyId] = true
+				hit(enemyId, stats, swing.weaponId)
 			end
 		end
 	end
-	sendFx(weaponId, facing, stats.Range, arcDegrees)
+end
+
+local function attackArc(weaponId: string, stats: WeaponLevel, root: BasePart)
+	-- The aim for aimed weapons (the starter), otherwise the way the chef faces.
+	local facing = getAttackDirection(weaponId, root)
+	local swing: Swing = {
+		weaponId = weaponId,
+		stats = stats,
+		facing = facing,
+		timeLeft = RunRules.SlashSeconds,
+		alreadyHit = {},
+	}
+	checkSwing(swing, root.Position) -- everything already in the arc is hit straight away
+	table.insert(swings, swing)
+	sendFx(weaponId, facing, stats.Range, stats.ArcDegrees or 90)
+end
+
+-- Every frame: keep live swings hitting enemies that walk into them, until the sweep ends.
+local function updateSwings(deltaTime: number, root: BasePart)
+	-- Walk backwards so removing a finished swing doesn't skip the next one.
+	for i = #swings, 1, -1 do
+		local swing = swings[i]
+		swing.timeLeft -= deltaTime
+		if swing.timeLeft <= 0 then
+			table.remove(swings, i)
+		else
+			checkSwing(swing, root.Position)
+		end
+	end
 end
 
 -- AURA: hit every enemy in a circle around the chef.
@@ -447,6 +500,7 @@ local function update(deltaTime: number)
 	if not root then
 		return -- no living chef: weapons wait
 	end
+	updateSwings(deltaTime, root)
 	for weaponId, level in levels do
 		local shape, weaponLevels = getWeaponConfig(weaponId)
 		local stats = weaponLevels and weaponLevels[level]
@@ -520,6 +574,7 @@ function WeaponService.reset()
 	end
 	table.clear(shots)
 	table.clear(pulses)
+	table.clear(swings)
 	table.clear(pendingHits)
 	table.clear(damageByWeapon)
 	aim = nil -- a new run: the knife uses facing until the player aims again

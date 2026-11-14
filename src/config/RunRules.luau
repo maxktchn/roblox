@@ -17,6 +17,10 @@ return {
 	-- After any hit the chef can't be hurt again for this long, so a swarm wears HP down
 	-- instead of deleting it in one frame. Only the strongest touching enemy's hit counts.
 	ChefHurtCooldown = 0.5,
+	-- How far the chef's body reaches from its centre, for every distance check against the
+	-- chef (contact, where chasers stop, boss pulses). The chef's body is about 2 studs wide and
+	-- 1 deep, so 1 is a fair circle around it.
+	ChefRadius = 1,
 	-- An enemy hurts the chef when it is within touching distance plus this many studs.
 	ContactReach = 0.75,
 
@@ -26,6 +30,11 @@ return {
 	-- Aiming (PRD §2.2): the client sends its aim direction at most this many times a second;
 	-- the server ignores anything faster.
 	AimMessagesPerSecond = 20,
+
+	-- How long an Arc swing (the knife's slash) stays live. The blade is drawn sweeping across
+	-- for this long, and any enemy that enters the arc during it is hit (once per swing), so
+	-- what you see slashed is what gets hit. Used by WeaponService and WeaponFxController.
+	SlashSeconds = 0.15,
 
 	-- Combat (PRD §3.3): Salt adds crit chance; a crit multiplies one hit's damage.
 	CritDamageMultiplier = 2,

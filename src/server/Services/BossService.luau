@@ -23,10 +23,11 @@ local Bosses = require(ReplicatedStorage.Config.Bosses)
 local Chapters = require(ReplicatedStorage.Config.Chapters)
 local EnemyService = require(script.Parent.EnemyService)
 local RunManager = require(script.Parent.RunManager)
+local RunRules = require(ReplicatedStorage.Config.RunRules)
 
 local BossService = {}
 
-local CHEF_RADIUS = 1.5 -- same as EnemyService's: roughly how wide the chef is
+local CHEF_RADIUS = RunRules.ChefRadius -- how far the chef's body reaches
 local RING_SEGMENTS = 20 -- counters in the ring
 local COUNTER_HEIGHT = 4
 local COUNTER_DEPTH = 3
