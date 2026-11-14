@@ -25,6 +25,7 @@ export type WeaponLevel = {
 	Speed: number?, -- Orbit: degrees per second. Projectile: studs per second.
 	BurnDps: number?, -- optional: burn damage per second after a hit
 	BurnSeconds: number?, -- optional: how long the burn lasts
+	CritBonus: number?, -- optional: extra crit chance for this weapon only (0.25 = +25%)
 }
 
 return {}

@@ -91,6 +91,16 @@ The restaurant's food has gone rotten and come alive. You're the chef, and you h
 - When the condition is met, the weapon's **Recipe card** is guaranteed to show up at the next "Order Up!"
 - Taking the recipe replaces the weapon with its upgraded version (same slot)
 - Recipes are shown in an in-game **Cookbook** once discovered
+- The recipe card keeps showing up in every "Order Up!" until it is taken. If several are ready, they fill the 3 card slots first.
+- A recipe is a weapon with one level: it can't be upgraded further, and its old weapon never comes back.
+
+**Phase 1 recipe starting values** (tune in `Recipes.luau`):
+| Recipe | Shape | Numbers |
+|---|---|---|
+| Sushi Master Blade | Arc | 30 damage, 150° slash, 13 range, every 0.45 s, +25% crit chance on this weapon |
+| Ghost Pepper Blaster | Arc | 10 damage, 120° cone, 13 range, every 0.7 s, burns 12/s for 3 s |
+| Fondue Ring | Orbit | 6 forks on a 9-stud circle, 260°/s, 14 damage, burns 6/s for 2 s |
+| Smoothie Vortex | Aura | 9 damage every 0.35 s within 12 studs. The pull comes later, since it needs a way to move enemies. |
 
 ### 2.6 Pickups in the arena
 | Pickup | Effect |

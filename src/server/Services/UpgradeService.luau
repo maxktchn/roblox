@@ -9,7 +9,8 @@
 --   weapon levels (starter + gadgets) -> WeaponService
 --   ingredient levels                 -> StatsService
 --   tips, level, the current offer    -> here
--- Not done here yet: recipe cards (#20).
+-- Recipe cards (PRD §2.5): when a max-level weapon's ingredient is owned, its recipe card
+-- is put in every offer until taken; taking it swaps the weapon for the recipe.
 --
 -- Security (PRD §8.4): the client only ever sends ChooseCard(index) and RequestReroll().
 -- Both are checked below; anything unexpected is ignored, never trusted.
@@ -20,6 +21,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Card = require(ReplicatedStorage.Shared.Card)
 local Gadgets = require(ReplicatedStorage.Config.Gadgets)
 local Ingredients = require(ReplicatedStorage.Config.Ingredients)
+local Recipes = require(ReplicatedStorage.Config.Recipes)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local RunManager = require(script.Parent.RunManager)
 local RunRules = require(ReplicatedStorage.Config.RunRules)
@@ -76,11 +78,24 @@ local function describeChange(before: { [string]: any }, after: { [string]: any 
 	return if #parts > 0 then table.concat(parts, ", ") else "Level up"
 end
 
--- How many of the 6 shared slots are used (owned gadgets + owned ingredients).
+-- True if the player owns a recipe that evolved from this weapon (so the weapon is gone for good).
+local function isEvolved(weaponId: string): boolean
+	for ownedId in WeaponService.getOwnedWeapons() do
+		local recipe = Recipes[ownedId]
+		if recipe and recipe.Weapon == weaponId then
+			return true
+		end
+	end
+	return false
+end
+
+-- How many of the 6 shared slots are used: owned gadgets (or the recipes they became)
+-- plus owned ingredients. The starter and its recipe have their own slot.
 local function slotsUsed(): number
 	local used = 0
-	for _, id in RunRules.UpgradePool.Gadgets do
-		if WeaponService.getWeaponLevel(id) then
+	for ownedId in WeaponService.getOwnedWeapons() do
+		local recipe = Recipes[ownedId]
+		if Gadgets[ownedId] or (recipe and Gadgets[recipe.Weapon]) then
 			used += 1
 		end
 	end
@@ -114,6 +129,9 @@ local function buildPool(): { Card }
 	-- Gadgets: upgrade if owned and not maxed; new only if a shared slot is free.
 	for _, id in RunRules.UpgradePool.Gadgets do
 		local owned = WeaponService.getWeaponLevel(id)
+		if isEvolved(id) then
+			continue -- already became a recipe: never offer it again
+		end
 		if (owned and owned < RunRules.SharedItemMaxLevel) or (not owned and slotsFree) then
 			local from = owned or 0
 			local gadgetLevels = Gadgets[id].Levels
@@ -150,17 +168,61 @@ local function buildPool(): { Card }
 	return pool
 end
 
--- Pick up to CardsPerLevelUp different cards at random. If nothing is left, offer a Pie.
+-- Recipe cards that are ready (PRD §2.5): the weapon is owned at max level, its
+-- ingredient is owned at any level, and the recipe is playable (has numbers in config).
+local function readyRecipes(): { Card }
+	local cards: { Card } = {}
+	for id, recipe in Recipes do
+		local weaponLevel = WeaponService.getWeaponLevel(recipe.Weapon)
+		local maxLevel = if recipe.Weapon == RunRules.Starter
+			then RunRules.StarterMaxLevel
+			else RunRules.SharedItemMaxLevel
+		local weapon: any = Starters[recipe.Weapon] or Gadgets[recipe.Weapon]
+		if
+			recipe.Levels
+			and weaponLevel == maxLevel
+			and StatsService.getIngredientLevel(recipe.Ingredient)
+			and not WeaponService.getWeaponLevel(id)
+		then
+			local weaponName = if weapon then weapon.Name else recipe.Weapon
+			table.insert(cards, {
+				Kind = "Recipe",
+				Id = id,
+				Name = recipe.Name,
+				FromLevel = 0,
+				ToLevel = 0,
+				Description = `Replaces {weaponName}. {recipe.Description or ""}`,
+			})
+		end
+	end
+	-- Same order every time, so which recipe shows first doesn't depend on table order.
+	table.sort(cards, function(a, b)
+		return a.Id < b.Id
+	end)
+	return cards
+end
+
+-- Draw an offer: ready recipes first (guaranteed, PRD §2.5), then random cards from the
+-- pool up to CardsPerLevelUp. If nothing at all is left, offer a Pie.
 local function drawCards(): { Card }
+	local cards: { Card } = {}
+	for _, recipeCard in readyRecipes() do
+		if #cards < RunRules.CardsPerLevelUp then
+			table.insert(cards, recipeCard)
+		end
+	end
+
 	local pool = buildPool()
-	-- Shuffle (Fisher-Yates), then take the first few.
+	-- Shuffle (Fisher-Yates), then take from the front.
 	for i = #pool, 2, -1 do
 		local j = random:NextInteger(1, i)
 		pool[i], pool[j] = pool[j], pool[i]
 	end
-	local cards: { Card } = {}
-	for i = 1, math.min(RunRules.CardsPerLevelUp, #pool) do
-		table.insert(cards, pool[i])
+	for _, card in pool do
+		if #cards >= RunRules.CardsPerLevelUp then
+			break
+		end
+		table.insert(cards, card)
 	end
 	if #cards == 0 then
 		table.insert(cards, {
@@ -208,6 +270,9 @@ local function applyCard(card: Card)
 		WeaponService.setWeaponLevel(card.Id, card.ToLevel)
 	elseif card.Kind == "Ingredient" then
 		StatsService.setIngredientLevel(card.Id, card.ToLevel)
+	elseif card.Kind == "Recipe" then
+		-- The recipe takes its weapon's slot; the ingredient stays (PRD §2.5).
+		WeaponService.replaceWeapon(Recipes[card.Id].Weapon, card.Id)
 	elseif card.Id == "Pie" then
 		RunManager.healPlayer(RunRules.PieHealFraction)
 	end

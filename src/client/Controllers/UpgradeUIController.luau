@@ -31,6 +31,7 @@ local COLORS = {
 	level = Color3.fromRGB(214, 84, 40), -- "Lv 1 → Lv 2" badge
 	button = Color3.fromRGB(214, 84, 40),
 	disabled = Color3.fromRGB(150, 140, 130),
+	gold = Color3.fromRGB(230, 175, 30), -- recipe cards (PRD §7.3)
 }
 
 -- Small label at the top of each card, and the colour of its icon circle.
@@ -38,12 +39,14 @@ local KINDS: { [string]: { label: string, color: Color3 } } = {
 	Starter = { label = "SIGNATURE TOOL", color = Color3.fromRGB(214, 84, 40) },
 	Gadget = { label = "KITCHEN GADGET", color = Color3.fromRGB(52, 120, 200) },
 	Ingredient = { label = "INGREDIENT", color = Color3.fromRGB(46, 160, 67) },
+	Recipe = { label = "SECRET RECIPE", color = Color3.fromRGB(230, 175, 30) },
 	Filler = { label = "ON THE HOUSE", color = Color3.fromRGB(190, 120, 200) },
 }
 
 -- The parts of one card we change for each offer.
 type CardView = {
 	button: TextButton,
+	stroke: UIStroke,
 	kind: TextLabel,
 	badge: TextLabel,
 	icon: Frame,
@@ -145,6 +148,7 @@ local function makeCard(parent: Instance, index: number): CardView
 
 	return {
 		button = button,
+		stroke = stroke,
 		kind = kind,
 		badge = badge,
 		icon = icon,
@@ -216,8 +220,17 @@ local function showCard(view: CardView, card: Card)
 	view.name.Text = card.Name
 	view.description.Text = card.Description
 
+	-- Recipe cards get a thick gold border (PRD §7.3); every other card a thin ink one.
+	local isRecipe = card.Kind == "Recipe"
+	view.stroke.Color = if isRecipe then COLORS.gold else COLORS.ink
+	view.stroke.Thickness = if isRecipe then 7 else 3
+
 	if card.Kind == "Filler" then
 		view.badge.Visible = false
+	elseif isRecipe then
+		view.badge.Visible = true
+		view.badge.Text = "RECIPE"
+		view.badge.BackgroundColor3 = COLORS.gold
 	elseif card.FromLevel == 0 then
 		view.badge.Visible = true
 		view.badge.Text = "NEW"
