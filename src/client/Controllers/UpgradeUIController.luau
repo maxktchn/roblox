@@ -5,6 +5,8 @@
 -- from walking. Tapping a card (or pressing 1/2/3) sends ChooseCard(index) and hides
 -- the screen. The server decides what happens; if more level-ups are waiting it simply
 -- sends the next OfferCards and the screen opens again.
+-- The screen also closes if the server sends CloseCards (the offer was cancelled, e.g. the
+-- run was reset) or the run ends (RunState is no longer "Playing").
 --
 -- The whole screen is built here in code once, then reused for every offer.
 
@@ -317,6 +319,18 @@ function UpgradeUIController:start()
 	requestReroll = Remotes.get("RequestReroll")
 
 	Remotes.get("OfferCards").OnClientEvent:Connect(open)
+	Remotes.get("CloseCards").OnClientEvent:Connect(function()
+		if isOpen then
+			close()
+		end
+	end)
+	-- Run over (won or lost): no more picks, so never leave the cards up over the banner.
+	player:GetAttributeChangedSignal("RunState"):Connect(function()
+		local state = player:GetAttribute("RunState")
+		if isOpen and state ~= nil and state ~= "Playing" then
+			close()
+		end
+	end)
 
 	-- PC shortcut: 1, 2, 3 pick a card.
 	local KEYS = { [Enum.KeyCode.One] = 1, [Enum.KeyCode.Two] = 2, [Enum.KeyCode.Three] = 3 }

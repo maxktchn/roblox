@@ -10,6 +10,7 @@ local NAMES = {
 	"OfferCards", -- server -> client: (cards: { Card }, rerollsLeft: number) for an "Order Up!"
 	"ChooseCard", -- client -> server: index of the chosen card (server validates it was offered)
 	"RequestReroll", -- client -> server: reroll the current offer
+	"CloseCards", -- server -> client: the offer ended without a pick (e.g. the run was reset), hide the cards
 	"WeaponFx", -- server -> client: a weapon just attacked, draw its effect (visual only)
 }
 
