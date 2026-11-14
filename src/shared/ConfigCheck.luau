@@ -72,6 +72,9 @@ function ConfigCheck.run(): { string }
 			if (stats.BurnDps == nil) ~= (stats.BurnSeconds == nil) then
 				fail(`Weapon {id} Lv {i}: BurnDps and BurnSeconds go together`)
 			end
+			if stats.PullStrength and stats.PullStrength <= 0 then
+				fail(`Weapon {id} Lv {i}: PullStrength must be more than 0`)
+			end
 		end
 	end
 

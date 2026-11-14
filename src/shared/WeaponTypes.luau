@@ -26,6 +26,9 @@ export type WeaponLevel = {
 	BurnDps: number?, -- optional: burn damage per second after a hit
 	BurnSeconds: number?, -- optional: how long the burn lasts
 	CritBonus: number?, -- optional: extra crit chance for this weapon only (0.25 = +25%)
+	-- optional: pulls enemies within Range toward the chef, in studs per second
+	-- (Smoothie Vortex). Works with any shape. Bosses are too heavy to pull.
+	PullStrength: number?,
 }
 
 return {}
