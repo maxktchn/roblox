@@ -226,6 +226,12 @@ All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with ga
 
 **Boss arena:** When a final boss spawns, a ring of counters closes around the player and boss. Normal enemies stop spawning until the boss is defeated.
 
+**Microwave Monster starting values** (tune in `Bosses.luau`): when it arrives, the normal enemies on the map are cleared (no tips). The arena ring is 38 studs wide in radius.
+
+| HP | Speed | Contact damage | Tips | Summons | Pulse |
+|---|---|---|---|---|---|
+| 5000 | 5 | 25, at most once a second | 50 | 4 Moldy Bread every 7 s | every 6 s, 1.2 s warning ring, 16 stud radius, 20 damage |
+
 ### 3.6 Run timeline (Chapter 1, starting values)
 | Time | What happens |
 |---|---|
@@ -238,7 +244,7 @@ All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with ga
 
 **Spawn rate per phase** (spawn groups per second, tune in `Chapters.luau`; most enemies spawn alone, Fruit Flies in groups of 6): 0.6 until 2:00, 1 until 5:00, 1.4 until 9:00, 2 until 10:00. Normal spawns stop at 10:00.
 
-**Phase 1:** only the Phase 1 enemies (Moldy Bread, Fruit Flies, Meatball, set in `RunRules.EnemyPool`) spawn from this timeline. Elites, the mini-boss and the dinner rush wait for later. Until the Microwave Monster is in (#11), surviving to 10:00 wins the run.
+**Phase 1:** only the Phase 1 enemies (Moldy Bread, Fruit Flies, Meatball, set in `RunRules.EnemyPool`) spawn from this timeline. Elites, the mini-boss and the dinner rush wait for later. At 10:00 the Microwave Monster arrives; defeating it wins the run.
 
 ### 3.7 Chapters (maps)
 - Chapters unlock in order. Beat a chapter's final boss to unlock the next one.

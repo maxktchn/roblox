@@ -105,6 +105,18 @@ function ConfigCheck.run(): { string }
 		end
 	end
 
+	for id, boss in Bosses do
+		if boss.Fight and not Enemies[boss.Fight.SummonEnemy] then
+			fail(`Boss {id}: unknown SummonEnemy "{boss.Fight.SummonEnemy}"`)
+		end
+		if boss.Fight and not boss.Body then
+			fail(`Boss {id}: has a Fight but no Body`)
+		end
+		if boss.Body and Enemies[id] then
+			fail(`{id} is both a boss and an enemy`)
+		end
+	end
+
 	for _, id in RunRules.EnemyPool do
 		if not Enemies[id] then
 			fail(`RunRules.EnemyPool: unknown enemy "{id}"`)

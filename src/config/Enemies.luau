@@ -13,6 +13,8 @@
 --   "Charge" picks a direction toward the chef and rolls straight; re-aims after it
 --            overshoots the chef or reaches a wall
 -- GroupSize: how many spawn together in one cluster (1 if left out)
+-- HurtCooldown: seconds before the chef can be hurt again after this enemy's hit
+--               (RunRules.ChefHurtCooldown if left out; the boss hits harder but slower)
 
 export type Enemy = {
 	Name: string,
@@ -28,6 +30,7 @@ export type Enemy = {
 	Color: Color3,
 	Movement: "Chase" | "Charge",
 	GroupSize: number?,
+	HurtCooldown: number?,
 }
 
 local Enemies: { [string]: Enemy } = {

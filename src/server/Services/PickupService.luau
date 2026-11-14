@@ -16,7 +16,6 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local Enemies = require(ReplicatedStorage.Config.Enemies)
 local EnemyService = require(script.Parent.EnemyService)
 local RunManager = require(script.Parent.RunManager)
 local RunRules = require(ReplicatedStorage.Config.RunRules)
@@ -188,7 +187,7 @@ end
 function PickupService:start()
 	-- Every defeated enemy drops a tip worth its config's Tips value.
 	EnemyService.onEnemyKilled(function(_enemyId, enemyType, position)
-		local config = Enemies[enemyType]
+		local config = EnemyService.getConfigForType(enemyType) -- bosses drop tips too
 		if config then
 			PickupService.dropTip(position, config.Tips)
 		end

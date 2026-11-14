@@ -17,6 +17,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local Bosses = require(ReplicatedStorage.Config.Bosses)
 local Enemies = require(ReplicatedStorage.Config.Enemies)
 local RunManager = require(script.Parent.RunManager)
 local RunRules = require(ReplicatedStorage.Config.RunRules)
@@ -61,6 +62,10 @@ local spawnBudget = 0 -- fractional spawns carried over between frames
 local arenaCenter: Vector3? = nil
 local arenaHalfSize: Vector3? = nil
 
+-- During a boss fight, every enemy is also kept inside this circle (the ring of counters, #11).
+local bossArenaCenter: Vector3? = nil
+local bossArenaRadius = 0
+
 local random = Random.new()
 
 -- Reused every frame for BulkMoveTo, so moving the swarm doesn't create new tables each frame.
@@ -93,12 +98,21 @@ local function isInsideArena(position: Vector3): boolean
 end
 
 local function clampToArena(position: Vector3): Vector3
-	if not (arenaCenter and arenaHalfSize) then
-		return position
+	local result = position
+	if arenaCenter and arenaHalfSize then
+		local x = math.clamp(result.X, arenaCenter.X - arenaHalfSize.X, arenaCenter.X + arenaHalfSize.X)
+		local z = math.clamp(result.Z, arenaCenter.Z - arenaHalfSize.Z, arenaCenter.Z + arenaHalfSize.Z)
+		result = Vector3.new(x, result.Y, z)
 	end
-	local x = math.clamp(position.X, arenaCenter.X - arenaHalfSize.X, arenaCenter.X + arenaHalfSize.X)
-	local z = math.clamp(position.Z, arenaCenter.Z - arenaHalfSize.Z, arenaCenter.Z + arenaHalfSize.Z)
-	return Vector3.new(x, position.Y, z)
+	-- Boss fight: pull anything outside the ring back onto its edge.
+	if bossArenaCenter then
+		local offset = Vector3.new(result.X - bossArenaCenter.X, 0, result.Z - bossArenaCenter.Z)
+		if offset.Magnitude > bossArenaRadius then
+			local edge = bossArenaCenter + offset.Unit * bossArenaRadius
+			result = Vector3.new(edge.X, result.Y, edge.Z)
+		end
+	end
+	return result
 end
 
 -- A random point on the spawn ring around the chef that is inside the arena.
@@ -155,18 +169,15 @@ local function kill(enemy: EnemyRecord)
 	fireKilled(enemy.id, enemy.enemyType, enemy.position)
 end
 
--- Create one enemy of `enemyType` standing on the floor at `position` (only X and Z are used).
--- Returns its id, or nil if the alive cap is reached or the type is unknown.
-function EnemyService.spawn(enemyType: string, position: Vector3): EnemyId?
-	local config = Enemies[enemyType]
-	if not config then
-		warn(`[EnemyService] unknown enemy type "{enemyType}"`)
-		return nil
-	end
-	if aliveCount >= RunRules.MaxAliveEnemies then
-		return nil
-	end
+-- The config for an enemy type: a normal enemy from Enemies.luau, or a boss's Body from
+-- Bosses.luau. nil if the type is unknown. Use this instead of Enemies[...] so bosses work too.
+function EnemyService.getConfigForType(enemyType: string): Enemies.Enemy?
+	local boss = Bosses[enemyType]
+	return Enemies[enemyType] or (boss and boss.Body)
+end
 
+-- Create one enemy standing on the floor at `position` (only X and Z are used).
+local function spawnWithConfig(enemyType: string, config: Enemies.Enemy, position: Vector3): EnemyId
 	-- Stand on the floor (floor top is at the arena center's height, 0 by default).
 	local floorY = if arenaCenter then arenaCenter.Y else 0
 	local standing = Vector3.new(position.X, floorY + config.Size.Y / 2, position.Z)
@@ -195,6 +206,48 @@ function EnemyService.spawn(enemyType: string, position: Vector3): EnemyId?
 	alive[enemy.id] = enemy
 	aliveCount += 1
 	return enemy.id
+end
+
+-- Create one enemy of `enemyType` (an id from Enemies.luau) standing on the floor at `position`
+-- (only X and Z are used). Returns its id, or nil if the alive cap is reached or the type is unknown.
+function EnemyService.spawn(enemyType: string, position: Vector3): EnemyId?
+	local config = Enemies[enemyType]
+	if not config then
+		warn(`[EnemyService] unknown enemy type "{enemyType}"`)
+		return nil
+	end
+	if aliveCount >= RunRules.MaxAliveEnemies then
+		return nil
+	end
+	return spawnWithConfig(enemyType, config, clampToArena(position))
+end
+
+-- Create a boss (an id from Bosses.luau that has a Body). Bosses ignore the alive cap.
+-- Returns its id, or nil if the boss has no Body.
+function EnemyService.spawnBoss(bossType: string, position: Vector3): EnemyId?
+	local boss = Bosses[bossType]
+	if not (boss and boss.Body) then
+		warn(`[EnemyService] boss "{bossType}" has no Body in Bosses.luau`)
+		return nil
+	end
+	return spawnWithConfig(bossType, boss.Body, clampToArena(position))
+end
+
+-- Remove every live enemy without a kill: no tips, no kill count, no callbacks.
+-- Used when the final boss arrives and clears the kitchen.
+function EnemyService.clearAll()
+	for id, enemy in alive do
+		alive[id] = nil
+		enemy.part.CFrame = PARK_CFRAME
+		table.insert(pools[enemy.enemyType], enemy.part)
+	end
+	aliveCount = 0
+end
+
+-- Keep every enemy inside a circle (the boss ring), or pass nil to lift the limit.
+function EnemyService.setBossArena(center: Vector3?, radius: number)
+	bossArenaCenter = center
+	bossArenaRadius = radius
 end
 
 -- Choose which enemy types the spawner creates, and how many groups per second
@@ -244,6 +297,35 @@ end
 function EnemyService.getEnemyType(enemyId: EnemyId): string?
 	local enemy = alive[enemyId]
 	return enemy and enemy.enemyType
+end
+
+-- An enemy's part (what the player sees), or nil if it is dead. BossService decorates the boss's part.
+function EnemyService.getEnemyPart(enemyId: EnemyId): BasePart?
+	local enemy = alive[enemyId]
+	return enemy and enemy.part
+end
+
+-- An enemy's current HP and max HP, or nil if it is dead (boss HP bar).
+function EnemyService.getEnemyHp(enemyId: EnemyId): (number?, number?)
+	local enemy = alive[enemyId]
+	if not enemy then
+		return nil, nil
+	end
+	return enemy.hp, enemy.config.Hp
+end
+
+-- The widest enemy or boss, in studs. ContactService uses it to know how far to look.
+function EnemyService.getMaxEnemyWidth(): number
+	local widest = 0
+	for _, config in Enemies do
+		widest = math.max(widest, config.Size.X)
+	end
+	for _, boss in Bosses do
+		if boss.Body then
+			widest = math.max(widest, boss.Body.Size.X)
+		end
+	end
+	return widest
 end
 
 -- Deal damage to one enemy. Does nothing if the enemy is already dead.
@@ -442,10 +524,15 @@ function EnemyService:init()
 	enemyFolder.Name = "Enemies"
 	enemyFolder.Parent = workspace
 
-	for enemyType, config in Enemies do
+	for enemyType in Enemies do
 		pools[enemyType] = {}
-		cellSize = math.max(cellSize, config.Size.X)
 	end
+	for bossType, boss in Bosses do
+		if boss.Body then
+			pools[bossType] = {}
+		end
+	end
+	cellSize = math.max(cellSize, EnemyService.getMaxEnemyWidth())
 
 	-- The map stores its playable area as attributes (Workspace.Map, issue #5).
 	local map = workspace:FindFirstChild("Map")
