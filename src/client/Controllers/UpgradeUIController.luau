@@ -105,7 +105,7 @@ local function makeCard(parent: Instance, index: number): CardView
 	stroke.Parent = button
 	-- Keep a tall ticket shape whatever the screen size.
 	local aspect = Instance.new("UIAspectRatioConstraint")
-	aspect.AspectRatio = 0.7
+	aspect.AspectRatio = 0.8 -- wide enough for readable text on a small phone (#42)
 	aspect.Parent = button
 	button.Parent = parent
 
@@ -186,8 +186,10 @@ local function buildScreen()
 	row.Name = "Cards"
 	row.BackgroundTransparency = 1
 	row.AnchorPoint = Vector2.new(0.5, 0.5)
-	row.Position = UDim2.fromScale(0.5, 0.5)
-	row.Size = UDim2.fromScale(0.94, 0.62)
+	-- Sized so that on a small phone (about 640x360) the cards still leave a gap above the
+	-- reroll button and below the title.
+	row.Position = UDim2.fromScale(0.5, 0.48)
+	row.Size = UDim2.fromScale(0.94, 0.6)
 	row.Parent = backdrop
 	local layout = Instance.new("UIListLayout")
 	layout.FillDirection = Enum.FillDirection.Horizontal
