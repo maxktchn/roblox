@@ -34,6 +34,7 @@ local tips = 0 -- tips in the current bar
 local level = 1 -- the player's run level (starts at 1)
 local pendingLevelUps = 0 -- full bars waiting for their "Order Up!"
 local currentOffer: { Card }? = nil -- the cards on screen right now, or nil
+local rerollsLeft = RunRules.RerollsPerRun -- shown on the reroll button; spent in #18
 
 local offerCards: RemoteEvent
 
@@ -176,7 +177,8 @@ local function offerNext()
 	pendingLevelUps -= 1
 	local cards = drawCards()
 	currentOffer = cards
-	offerCards:FireClient(player, cards)
+	RunManager.setPaused(true) -- the run stands still until a card is picked
+	offerCards:FireClient(player, cards, rerollsLeft)
 end
 
 -- Do what a card says.
@@ -216,6 +218,9 @@ function UpgradeService.chooseCard(index: number): boolean
 	applyCard(card)
 	currentOffer = nil
 	offerNext()
+	if not currentOffer then
+		RunManager.setPaused(false) -- no more cards waiting: back to the kitchen
+	end
 	return true
 end
 
@@ -235,6 +240,8 @@ function UpgradeService.reset()
 	level = 1
 	pendingLevelUps = 0
 	currentOffer = nil
+	rerollsLeft = RunRules.RerollsPerRun
+	RunManager.setPaused(false)
 end
 
 function UpgradeService:init() end

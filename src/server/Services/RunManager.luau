@@ -6,6 +6,19 @@
 
 local RunManager = {}
 
+local paused = false
+
+-- Pause or resume the run. UpgradeService pauses while "Order Up!" cards are on screen.
+-- While paused: the timer, enemies (#6, #8) and weapons must all stand still.
+function RunManager.setPaused(isPaused: boolean)
+	paused = isPaused
+end
+
+-- True while the run is paused. Anything that moves or counts down each frame checks this.
+function RunManager.isPaused(): boolean
+	return paused
+end
+
 -- Hurt the player (enemy contact, boss pulses). Armor (StatsService.getStat("Armor")) is
 -- applied here, so pass raw damage.
 -- Does nothing once the player is dead. HP 0 ends the run as lost.
