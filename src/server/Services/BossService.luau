@@ -350,7 +350,7 @@ local function update(deltaTime: number)
 			task.delay(0.15, hidePulse) -- a short red flash, purely visual
 			local root = getChefRoot()
 			if root and (flat(root.Position) - flat(bossPosition)).Magnitude <= fight.PulseRadius + CHEF_RADIUS then
-				RunManager.damagePlayer(fight.PulseDamage)
+				RunManager.damagePlayer(fight.PulseDamage, "BossPulse")
 			end
 		end
 	else

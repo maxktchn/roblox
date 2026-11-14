@@ -192,16 +192,30 @@ function RunManager.winRun()
 	endRun("Won")
 end
 
+-- Called after every hit on the chef: the HP actually lost, and what hit them (or nil).
+export type DamagedCallback = (hpLost: number, source: string?) -> ()
+local damagedCallbacks: { DamagedCallback } = {}
+
+-- Run `callback` after every hit on the chef (RunReportService counts damage per source).
+function RunManager.onPlayerDamaged(callback: DamagedCallback)
+	table.insert(damagedCallbacks, callback)
+end
+
 -- Hurt the player (enemy contact, boss pulses). Armor (StatsService.getStat("Armor")) is
 -- applied here, so pass raw damage. Every hit does at least 1.
+-- `source` says what hit them (an enemy id like "FruitFlies", or "BossPulse"), for the run report.
 -- Does nothing once the player is dead. HP 0 ends the run as lost.
-function RunManager.damagePlayer(amount: number)
+function RunManager.damagePlayer(amount: number, source: string?)
 	if runOver or amount <= 0 then
 		return
 	end
 	refreshMaxHp()
 	local afterArmor = math.max(amount - StatsService.getStat("Armor"), 1)
+	local hpLost = math.min(afterArmor, hp)
 	hp = math.max(hp - afterArmor, 0)
+	for _, callback in damagedCallbacks do
+		task.spawn(callback, hpLost, source)
+	end
 	if hp <= 0 then
 		loseRun()
 	else

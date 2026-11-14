@@ -14,6 +14,7 @@ local NAMES = {
 	"WeaponFx", -- server -> client: a weapon just attacked, draw its effect (visual only)
 	"RequestRestart", -- client -> server: "Play again" on the run-over banner (only while the run is over)
 	"DevAction", -- client -> server: (action, arg) from the DEV panel; devs only, validated (DevCommandService)
+	"RunReport", -- server -> client: (text) end-of-run report for tuning; devs only (RunReportService)
 	"DevMessage", -- server -> client: (text) reply shown on the DEV panel; devs only
 	"HitFx", -- server -> client: { HitFx } recent hits, for enemy flashes and damage numbers (visual only)
 }

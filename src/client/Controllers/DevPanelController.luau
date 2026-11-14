@@ -5,6 +5,7 @@
 -- and does the work (DevCommandService), then replies with DevMessage, shown at the top.
 --
 -- A small "DEV" tab on the left edge opens and closes the panel. It starts closed.
+-- When a run ends, the server's run report (RunReportService) pops up on the right.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -36,6 +37,8 @@ local panel: Frame
 local list: ScrollingFrame
 local status: TextLabel
 local godButton: TextButton
+local reportBox: Frame
+local reportText: TextLabel
 local nextOrder = 0 -- keeps sections in the order they are added
 local built = false
 
@@ -242,16 +245,93 @@ local function updateGodButton()
 end
 
 -- Build and show the panel once the server says this player is a dev.
+-- The end-of-run report: a box on the right with a close button. Hidden until a report arrives.
+local function buildReportBox()
+	reportBox = Instance.new("Frame")
+	reportBox.Name = "RunReport"
+	reportBox.AnchorPoint = Vector2.new(1, 0.5)
+	reportBox.Position = UDim2.new(1, -8, 0.5, 0)
+	reportBox.Size = UDim2.new(0, 380, 0.75, 0)
+	reportBox.BackgroundColor3 = COLORS.panel
+	reportBox.BackgroundTransparency = 0.1
+	reportBox.Visible = false
+	corner(reportBox, 12)
+	local maxSize = Instance.new("UISizeConstraint")
+	maxSize.MaxSize = Vector2.new(380, 480)
+	maxSize.Parent = reportBox
+	reportBox.Parent = gui
+
+	local title = Instance.new("TextLabel")
+	title.Position = UDim2.fromOffset(12, 6)
+	title.Size = UDim2.new(1, -60, 0, 28)
+	title.BackgroundTransparency = 1
+	title.Font = Enum.Font.FredokaOne
+	title.TextSize = 18
+	title.TextColor3 = COLORS.text
+	title.TextXAlignment = Enum.TextXAlignment.Left
+	title.Text = "Run report (also in Output)"
+	title.Parent = reportBox
+
+	local close = Instance.new("TextButton")
+	close.AnchorPoint = Vector2.new(1, 0)
+	close.Position = UDim2.new(1, -8, 0, 6)
+	close.Size = UDim2.fromOffset(36, 28)
+	close.BackgroundColor3 = COLORS.danger
+	close.Font = Enum.Font.FredokaOne
+	close.TextSize = 18
+	close.TextColor3 = COLORS.text
+	close.Text = "X"
+	corner(close, 6)
+	close.Activated:Connect(function()
+		reportBox.Visible = false
+	end)
+	close.Parent = reportBox
+
+	local scroll = Instance.new("ScrollingFrame")
+	scroll.Position = UDim2.fromOffset(12, 40)
+	scroll.Size = UDim2.new(1, -16, 1, -48)
+	scroll.BackgroundTransparency = 1
+	scroll.BorderSizePixel = 0
+	scroll.ScrollBarThickness = 4
+	scroll.CanvasSize = UDim2.new()
+	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	scroll.Parent = reportBox
+
+	reportText = Instance.new("TextLabel")
+	reportText.Size = UDim2.new(1, -8, 0, 0)
+	reportText.AutomaticSize = Enum.AutomaticSize.Y
+	reportText.BackgroundTransparency = 1
+	reportText.Font = Enum.Font.GothamMedium
+	reportText.TextSize = 14
+	reportText.TextColor3 = COLORS.text
+	reportText.TextWrapped = true
+	reportText.TextXAlignment = Enum.TextXAlignment.Left
+	reportText.TextYAlignment = Enum.TextYAlignment.Top
+	reportText.Parent = scroll
+end
+
 local function showIfDev()
 	if built or not player:GetAttribute("IsDev") then
 		return
 	end
 	built = true
 	buildPanel()
+	buildReportBox()
 	updateGodButton()
 	player:GetAttributeChangedSignal("DevGod"):Connect(updateGodButton)
 	Remotes.get("DevMessage").OnClientEvent:Connect(function(text: string)
 		status.Text = text
+	end)
+	-- One blank line between the report's sections, so it's easier to read.
+	Remotes.get("RunReport").OnClientEvent:Connect(function(text: string)
+		reportText.Text = (string.gsub(text, "\n", "\n\n"))
+		reportBox.Visible = true
+	end)
+	-- A new run hides the old report.
+	player:GetAttributeChangedSignal("RunState"):Connect(function()
+		if player:GetAttribute("RunState") == "Playing" then
+			reportBox.Visible = false
+		end
 	end)
 	gui.Parent = player:WaitForChild("PlayerGui")
 end

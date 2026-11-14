@@ -49,6 +49,7 @@ local function update(deltaTime: number)
 
 	-- Find the strongest enemy touching the chef.
 	local strongest = 0
+	local strongestType: string? = nil -- which enemy it was, for the run report
 	local cooldown = RunRules.ChefHurtCooldown
 	for _, enemyId in EnemyService.getEnemiesInRadius(chefPosition, searchRadius) do
 		local enemyType = EnemyService.getEnemyType(enemyId)
@@ -59,6 +60,7 @@ local function update(deltaTime: number)
 			local distance = Vector3.new(position.X - chefPosition.X, 0, position.Z - chefPosition.Z).Magnitude
 			if distance <= touchDistance and config.Damage > strongest then
 				strongest = config.Damage
+				strongestType = enemyType
 				-- Hard hitters (the boss) can set their own, longer wait between hits.
 				cooldown = config.HurtCooldown or RunRules.ChefHurtCooldown
 			end
@@ -66,7 +68,7 @@ local function update(deltaTime: number)
 	end
 
 	if strongest > 0 then
-		RunManager.damagePlayer(strongest)
+		RunManager.damagePlayer(strongest, strongestType)
 		hurtCooldown = cooldown
 	end
 end
