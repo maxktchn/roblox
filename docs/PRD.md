@@ -105,7 +105,7 @@ The restaurant's food has gone rotten and come alive. You're the chef, and you h
 ### 2.6 Pickups in the arena
 | Pickup | Effect |
 |---|---|
-| Tips | XP (small, medium, large values) |
+| Tips | XP (small, medium, large values). Dropped by every defeated enemy; tips within 8 studs (Fridge Magnet adds to this) fly to the chef at 45 studs/s. At most 250 lie on the floor; extra value is added to the oldest one. |
 | Pie | Heals 30% max HP |
 | Tip Jar | Pulls every tip on the map to the player |
 | Fire Extinguisher | Clears all normal enemies on screen |
@@ -199,17 +199,17 @@ All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with ga
 
 **Elites:** Larger, glowing versions of normal enemies with more HP. They always drop a Lunchbox.
 
-**Starting stats** (tune in `Enemies.luau`). Speed is in studs per second; the chef walks at 16. Damage is contact damage before armor.
+**Starting stats** (tune in `Enemies.luau`). Speed is in studs per second; the chef walks at 16. Damage is contact damage before armor. Tips is the tip (XP) value it drops.
 
-| Enemy | HP | Speed | Damage |
-|---|---|---|---|
-| Moldy Bread | 10 | 8 | 5 |
-| Fruit Flies | 3 | 17 | 2 |
-| Rotten Tomato | 15 | 7 | 6 |
-| Meatball | 25 | 20 | 10 |
-| Sour Lemon | 12 | 9 | 6 |
-| Spaghetti Monster | 30 | 6 | 4 |
-| Burnt Toast | 80 | 4 | 12 |
+| Enemy | HP | Speed | Damage | Tips |
+|---|---|---|---|---|
+| Moldy Bread | 10 | 8 | 5 | 2 |
+| Fruit Flies | 3 | 17 | 2 | 1 |
+| Rotten Tomato | 15 | 7 | 6 | 3 |
+| Meatball | 25 | 20 | 10 | 4 |
+| Sour Lemon | 12 | 9 | 6 | 3 |
+| Spaghetti Monster | 30 | 6 | 4 | 4 |
+| Burnt Toast | 80 | 4 | 12 | 8 |
 
 **Movement (Phase 1):** Fruit Flies spawn in groups of 6. Meatballs roll straight at where the chef was, and turn to aim again after overshooting by 25 studs or hitting a wall. Everything else walks straight at the chef. Enemies push each other apart so the swarm spreads into a crowd instead of stacking on one spot.
 
