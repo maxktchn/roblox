@@ -58,8 +58,10 @@ local function update(deltaTime: number)
 		if config and position then
 			local touchDistance = CHEF_RADIUS + config.Size.X / 2 + RunRules.ContactReach
 			local distance = Vector3.new(position.X - chefPosition.X, 0, position.Z - chefPosition.Z).Magnitude
-			if distance <= touchDistance and config.Damage > strongest then
-				strongest = config.Damage
+			-- Damage grows with run time (PRD §3.4), so read the enemy's own value, not the config's.
+			local damage = EnemyService.getEnemyDamage(enemyId) or config.Damage
+			if distance <= touchDistance and damage > strongest then
+				strongest = damage
 				strongestType = enemyType
 				-- Hard hitters (the boss) can set their own, longer wait between hits.
 				cooldown = config.HurtCooldown or RunRules.ChefHurtCooldown

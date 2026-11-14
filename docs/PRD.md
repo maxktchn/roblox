@@ -217,6 +217,8 @@ All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with ga
 
 **Movement (Phase 1):** Fruit Flies spawn in groups of 6. Meatballs roll straight at where the chef was, and turn to aim again after overshooting by 25 studs or hitting a wall. Everything else walks straight at the chef. Enemies push each other apart so the swarm spreads into a crowd instead of stacking on one spot.
 
+**Scaling over the run:** enemies get tougher the longer the run goes, so a strong build still meets resistance late. Every minute of run time (paused time doesn't count), new enemies get **+15% HP** and **+5% contact damage**, compounding. That's x2.0 HP at 5:00 and x4.0 at 10:00, and x1.6 damage at 10:00. This is well below the player's growth (about 10-20x damage from Lv 1 knife to a maxed build), so the player still pulls ahead. Speed and tips don't scale. The boss doesn't scale either (its numbers are in 3.5), but its minions do. Tune in `RunRules.luau` (`EnemyHpGrowthPerMinute`, `EnemyDamageGrowthPerMinute`).
+
 ### 3.5 Bosses
 | Boss | When | Mechanics | MVP |
 |---|---|---|---|

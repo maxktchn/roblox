@@ -36,6 +36,8 @@ type EnemyRecord = {
 	config: Enemies.Enemy,
 	part: BasePart,
 	hp: number,
+	maxHp: number, -- HP it spawned with (after run-time scaling)
+	damage: number, -- contact damage (after run-time scaling)
 	position: Vector3,
 	direction: Vector3, -- flat unit vector it is moving/facing along
 }
@@ -176,8 +178,20 @@ function EnemyService.getConfigForType(enemyType: string): Enemies.Enemy?
 	return Enemies[enemyType] or (boss and boss.Body)
 end
 
+-- How much tougher enemies spawning right now are: HP and damage multipliers from the run clock
+-- (PRD §3.4). Compounding: (1 + growth) ^ minutes.
+function EnemyService.getScaling(): (number, number)
+	local minutes = RunManager.getRunSeconds() / 60
+	return (1 + RunRules.EnemyHpGrowthPerMinute) ^ minutes, (1 + RunRules.EnemyDamageGrowthPerMinute) ^ minutes
+end
+
 -- Create one enemy standing on the floor at `position` (only X and Z are used).
-local function spawnWithConfig(enemyType: string, config: Enemies.Enemy, position: Vector3): EnemyId
+-- `scaled` = apply run-time scaling (normal enemies and minions yes, bosses no).
+local function spawnWithConfig(enemyType: string, config: Enemies.Enemy, position: Vector3, scaled: boolean): EnemyId
+	local hpScale, damageScale = 1, 1
+	if scaled then
+		hpScale, damageScale = EnemyService.getScaling()
+	end
 	-- Stand on the floor (floor top is at the arena center's height, 0 by default).
 	local floorY = if arenaCenter then arenaCenter.Y else 0
 	local standing = Vector3.new(position.X, floorY + config.Size.Y / 2, position.Z)
@@ -198,7 +212,9 @@ local function spawnWithConfig(enemyType: string, config: Enemies.Enemy, positio
 		enemyType = enemyType,
 		config = config,
 		part = takePart(enemyType, config),
-		hp = config.Hp,
+		hp = config.Hp * hpScale,
+		maxHp = config.Hp * hpScale,
+		damage = config.Damage * damageScale,
 		position = standing,
 		direction = direction,
 	}
@@ -219,7 +235,7 @@ function EnemyService.spawn(enemyType: string, position: Vector3): EnemyId?
 	if aliveCount >= RunRules.MaxAliveEnemies then
 		return nil
 	end
-	return spawnWithConfig(enemyType, config, clampToArena(position))
+	return spawnWithConfig(enemyType, config, clampToArena(position), true)
 end
 
 -- Create a boss (an id from Bosses.luau that has a Body). Bosses ignore the alive cap.
@@ -230,7 +246,7 @@ function EnemyService.spawnBoss(bossType: string, position: Vector3): EnemyId?
 		warn(`[EnemyService] boss "{bossType}" has no Body in Bosses.luau`)
 		return nil
 	end
-	return spawnWithConfig(bossType, boss.Body, clampToArena(position))
+	return spawnWithConfig(bossType, boss.Body, clampToArena(position), false)
 end
 
 -- Remove every live enemy without a kill: no tips, no kill count, no callbacks.
@@ -329,7 +345,13 @@ function EnemyService.getEnemyHp(enemyId: EnemyId): (number?, number?)
 	if not enemy then
 		return nil, nil
 	end
-	return enemy.hp, enemy.config.Hp
+	return enemy.hp, enemy.maxHp
+end
+
+-- An enemy's contact damage (its config's Damage, scaled by when it spawned), or nil if it is dead.
+function EnemyService.getEnemyDamage(enemyId: EnemyId): number?
+	local enemy = alive[enemyId]
+	return enemy and enemy.damage
 end
 
 -- The widest enemy or boss, in studs. ContactService uses it to know how far to look.
