@@ -34,6 +34,7 @@ local COLORS = {
 	button = Color3.fromRGB(214, 84, 40),
 	disabled = Color3.fromRGB(150, 140, 130),
 	gold = Color3.fromRGB(230, 175, 30), -- recipe cards (PRD §7.3)
+	bossPower = Color3.fromRGB(255, 140, 40), -- boss power cards (PRD §3.8)
 }
 
 -- Small label at the top of each card, and the colour of its icon circle.
@@ -43,6 +44,7 @@ local KINDS: { [string]: { label: string, color: Color3 } } = {
 	Ingredient = { label = "INGREDIENT", color = Color3.fromRGB(46, 160, 67) },
 	Recipe = { label = "SECRET RECIPE", color = Color3.fromRGB(230, 175, 30) },
 	Filler = { label = "ON THE HOUSE", color = Color3.fromRGB(190, 120, 200) },
+	BossPower = { label = "BOSS POWER", color = Color3.fromRGB(255, 140, 40) },
 }
 
 -- The parts of one card we change for each offer.
@@ -224,10 +226,12 @@ local function showCard(view: CardView, card: Card)
 	view.name.Text = card.Name
 	view.description.Text = card.Description
 
-	-- Recipe cards get a thick gold border (PRD §7.3); every other card a thin ink one.
+	-- Recipe cards get a thick gold border (PRD §7.3) and boss powers a thick orange one
+	-- (PRD §3.8); every other card a thin ink one.
 	local isRecipe = card.Kind == "Recipe"
-	view.stroke.Color = if isRecipe then COLORS.gold else COLORS.ink
-	view.stroke.Thickness = if isRecipe then 7 else 3
+	local isBossPower = card.Kind == "BossPower"
+	view.stroke.Color = if isRecipe then COLORS.gold elseif isBossPower then COLORS.bossPower else COLORS.ink
+	view.stroke.Thickness = if isRecipe or isBossPower then 7 else 3
 
 	if card.Kind == "Filler" then
 		view.badge.Visible = false
@@ -235,6 +239,10 @@ local function showCard(view: CardView, card: Card)
 		view.badge.Visible = true
 		view.badge.Text = "RECIPE"
 		view.badge.BackgroundColor3 = COLORS.gold
+	elseif isBossPower and card.FromLevel == 0 then
+		view.badge.Visible = true
+		view.badge.Text = "BOSS POWER"
+		view.badge.BackgroundColor3 = COLORS.bossPower
 	elseif card.FromLevel == 0 then
 		view.badge.Visible = true
 		view.badge.Text = "NEW"

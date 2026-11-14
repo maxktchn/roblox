@@ -24,6 +24,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local BossPowers = require(ReplicatedStorage.Config.BossPowers)
 local DevAccess = require(script.Parent.Parent.DevAccess)
 local EnemyService = require(script.Parent.EnemyService)
 local Gadgets = require(ReplicatedStorage.Config.Gadgets)
@@ -76,7 +77,7 @@ local function give(player: Player, id: string)
 		return
 	end
 
-	local weapon: any = Starters[id] or Gadgets[id] or Recipes[id]
+	local weapon: any = Starters[id] or Gadgets[id] or Recipes[id] or BossPowers[id]
 	if not (weapon and weapon.Levels) then
 		reply(player, `{id} isn't playable yet`)
 		return
@@ -124,7 +125,10 @@ end
 
 ACTIONS.Give = function(player, arg)
 	-- Only config ids are accepted: anything else is ignored.
-	if type(arg) == "string" and (Ingredients[arg] or Starters[arg] or Gadgets[arg] or Recipes[arg]) then
+	if
+		type(arg) == "string"
+		and (Ingredients[arg] or Starters[arg] or Gadgets[arg] or Recipes[arg] or BossPowers[arg])
+	then
 		give(player, arg)
 	end
 end

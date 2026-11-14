@@ -10,6 +10,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local BossPowers = require(ReplicatedStorage.Config.BossPowers)
 local Gadgets = require(ReplicatedStorage.Config.Gadgets)
 local Ingredients = require(ReplicatedStorage.Config.Ingredients)
 local Recipes = require(ReplicatedStorage.Config.Recipes)
@@ -238,6 +239,12 @@ local function buildPanel()
 	end
 	for _, id in sortedByName(recipeIds, Recipes) do
 		makeButton(give, Recipes[id].Name, COLORS.recipe, function()
+			send("Give", id)
+		end)
+	end
+	-- Boss powers: given even if not unlocked yet (testing).
+	for _, id in sortedByName(RunRules.UpgradePool.BossPowers, BossPowers) do
+		makeButton(give, BossPowers[id].Name, COLORS.danger, function()
 			send("Give", id)
 		end)
 	end

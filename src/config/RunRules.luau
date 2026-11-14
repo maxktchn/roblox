@@ -48,8 +48,9 @@ return {
 		-- Boss powers only show up once their boss has been defeated (PRD §3.8).
 		BossPowers = { "MicrowavePulse" },
 	},
-	-- Chance (0 to 1) that an unlocked boss power the player doesn't own yet is offered in a
-	-- given "Order Up!". Makes its NEW card rarer than a gadget's; its upgrades appear normally.
+	-- Chance (0 to 1) that an unlocked boss power the player doesn't own yet joins the cards a
+	-- given "Order Up!" draws from. Makes its NEW card rarer than a gadget's (at 0.35 it shows
+	-- up about a third as often); its upgrades appear normally.
 	BossPowerNewCardChance = 0.35,
 
 	-- Pickups (PRD §2.6)

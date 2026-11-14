@@ -70,6 +70,7 @@ The restaurant's food has gone rotten and come alive. You're the chef, and you h
   - Kitchen Gadgets (new or upgrades to owned ones)
   - Ingredients (new or upgrades to owned ones)
   - Recipe cards (when the conditions are met, see 2.5)
+  - Boss power cards, once their boss has been beaten (rarer when new, see 3.8)
 - Starter upgrades **do not** get a guaranteed slot. They compete in the same pool.
 - **Rerolls:** Players get **2 rerolls per run**. A reroll replaces all 3 cards with a new draw. Talents can add more (see 4.5).
 - Items already at max level are removed from the pool. Once all 6 shared slots are full, new gadgets and ingredients are removed too, and only upgrades to owned items can appear.
@@ -268,7 +269,7 @@ Beating a chapter's final boss takes its **power**: an ability the player keeps 
 
 - **Unlock:** defeating the boss unlocks its power for good (the first time only; dying in the fight unlocks nothing). The win screen says "New power unlocked: <name>".
 - **In a run:** once unlocked, the power can show up as an "Order Up!" card, marked **BOSS POWER**. It works like a gadget: it uses one of the 6 shared slots and levels 1 to 5.
-- **Rarity:** its NEW card is rarer than a gadget's. Each "Order Up!" has a **35%** chance to include it (while you don't own it and have a free slot). Once owned, its upgrade cards appear like any gadget's.
+- **Rarity:** its NEW card is rarer than a gadget's. For each "Order Up!" it has a **35%** chance to join the cards being drawn from (while you don't own it and have a free slot), so it shows up about a third as often as a gadget's NEW card (roughly 1 offer in 8 with the Phase 1 pool). Once owned, its upgrade cards appear like any gadget's.
 - **Strength:** at Lv 1 about as strong as a normal gadget; at Lv 5 stronger than a maxed gadget.
 - **No recipes.** Boss powers never evolve.
 - **Never sold.** Only beating the boss unlocks a power (see 5.1).
@@ -438,6 +439,7 @@ For now the lobby is a set of **menu screens inside the run place** (see 8.1), s
 - 3 large ticket-style cards, easy to tap on a phone
 - Shows "NEW" or "Lv X → Lv Y" on each card
 - Recipe cards have a special gold border
+- Boss power cards have an orange border and a "BOSS POWER" badge when new
 - Reroll button under the cards, showing how many rerolls are left
 
 ### 7.4 Mobile requirements
