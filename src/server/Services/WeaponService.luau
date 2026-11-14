@@ -18,6 +18,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local BossPowers = require(ReplicatedStorage.Config.BossPowers)
 local EnemyService = require(script.Parent.EnemyService)
 local Gadgets = require(ReplicatedStorage.Config.Gadgets)
 local Recipes = require(ReplicatedStorage.Config.Recipes)
@@ -94,7 +95,7 @@ end
 
 -- A weapon's config entry, from Starters, Gadgets or Recipes.
 local function getWeaponConfig(weaponId: string): (WeaponTypes.Shape?, { WeaponLevel }?)
-	local config: any = Starters[weaponId] or Gadgets[weaponId] or Recipes[weaponId]
+	local config: any = Starters[weaponId] or Gadgets[weaponId] or Recipes[weaponId] or BossPowers[weaponId]
 	if not config then
 		return nil, nil
 	end
@@ -370,11 +371,47 @@ local function updatePull(stats: WeaponLevel, root: BasePart, deltaTime: number)
 	end
 end
 
+-- PULSE (Microwave Pulse, a boss power): a ring that grows from where it was fired.
+type Pulse = {
+	weaponId: string,
+	origin: Vector3, -- where the chef stood when it fired; the ring doesn't follow them
+	radius: number, -- how far the ring has grown so far
+	stats: WeaponLevel,
+	alreadyHit: { [number]: boolean }, -- each enemy is hit at most once per pulse
+}
+local pulses: { Pulse } = {}
+
+local function attackPulse(weaponId: string, stats: WeaponLevel, root: BasePart)
+	table.insert(pulses, { weaponId = weaponId, origin = root.Position, radius = 0, stats = stats, alreadyHit = {} })
+	sendFx(weaponId, root.Position, stats.Range, stats.Speed or 30)
+end
+
+-- Every frame: grow each ring; every enemy whose edge it reaches is hit once and knocked back.
+local function updatePulses(deltaTime: number)
+	-- Walk backwards so removing a finished pulse doesn't skip the next one.
+	for i = #pulses, 1, -1 do
+		local pulse = pulses[i]
+		local stats = pulse.stats
+		pulse.radius = math.min(pulse.radius + (stats.Speed or 30) * deltaTime, stats.Range)
+		for _, enemyId in getEnemiesInReach(pulse.origin, pulse.radius) do
+			if not pulse.alreadyHit[enemyId] then
+				pulse.alreadyHit[enemyId] = true
+				hit(enemyId, stats, pulse.weaponId)
+				EnemyService.push(enemyId, pulse.origin, stats.Knockback or 0)
+			end
+		end
+		if pulse.radius >= stats.Range then
+			table.remove(pulses, i)
+		end
+	end
+end
+
 -- Shapes that attack on a cooldown. (Orbit is always on, so it's handled separately.)
 local ATTACKS: { [string]: (string, WeaponLevel, BasePart) -> () } = {
 	Arc = attackArc,
 	Aura = attackAura,
 	Projectile = attackProjectile,
+	Pulse = attackPulse,
 }
 
 local function update(deltaTime: number)
@@ -382,6 +419,7 @@ local function update(deltaTime: number)
 		return -- "Order Up!" is on screen: cooldowns, shots and burns all freeze
 	end
 	updateShots(deltaTime)
+	updatePulses(deltaTime)
 	updateBurns(deltaTime)
 	flushHitFx(deltaTime)
 
@@ -458,6 +496,7 @@ function WeaponService.reset()
 		sendFx(shot.weaponId, "End", shot.id)
 	end
 	table.clear(shots)
+	table.clear(pulses)
 	table.clear(pendingHits)
 	table.clear(damageByWeapon)
 	levels[RunRules.Starter] = 1

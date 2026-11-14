@@ -6,6 +6,7 @@
 --   Arc        - a blade sweeps across the slice        (WeaponFx: facing, range, arcDegrees)
 --   Aura       - a ring pulses around the chef           (WeaponFx: range)
 --   Projectile - a shot flies out                        (WeaponFx: "Launch"/"End", ...)
+--   Pulse      - a ring grows from where it was fired    (WeaponFx: origin, range, speed)
 --   Orbit      - objects circle the chef all the time. No messages: we read the weapon's
 --                level from the player's "Weapon_<id>" attribute and use the shared server
 --                clock, so they appear exactly where the server checks for hits.
@@ -16,6 +17,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local BossPowers = require(ReplicatedStorage.Config.BossPowers)
 local Gadgets = require(ReplicatedStorage.Config.Gadgets)
 local Recipes = require(ReplicatedStorage.Config.Recipes)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
@@ -35,7 +37,7 @@ local folder: Folder -- holds every effect part
 type WeaponConfig = { Shape: WeaponTypes.Shape?, Levels: { WeaponTypes.WeaponLevel }?, FxColor: Color3? }
 
 local function getConfig(weaponId: string): WeaponConfig?
-	return (Starters[weaponId] or Gadgets[weaponId] or Recipes[weaponId]) :: any
+	return (Starters[weaponId] or Gadgets[weaponId] or Recipes[weaponId] or BossPowers[weaponId]) :: any
 end
 
 -- Every weapon (gadget or recipe) with the Orbit shape, found once at load.
@@ -221,6 +223,27 @@ local function updateOrbits()
 	end
 end
 
+-- PULSE: a flat ring grows from where it was fired out to `range` at `speed`, fading as it goes.
+-- It stays where it was fired (it doesn't follow the chef), matching the server's hits.
+local function drawPulse(weaponId: string, color: Color3, origin: Vector3, range: number, speed: number)
+	local part = getPart(weaponId, color)
+	part.Shape = Enum.PartType.Cylinder
+	local duration = range / speed
+	animate(weaponId, function(elapsed)
+		if elapsed > duration then
+			part.Transparency = 1
+			return false
+		end
+		local progress = elapsed / duration
+		local radius = math.max(range * progress, 0.5)
+		-- A cylinder's length runs along X, so turn it on its side to lie flat.
+		part.Size = Vector3.new(0.2, radius * 2, radius * 2)
+		part.CFrame = CFrame.new(origin - Vector3.new(0, 2.5, 0)) * CFrame.Angles(0, 0, math.rad(90))
+		part.Transparency = 0.35 + 0.65 * progress
+		return true
+	end)
+end
+
 local function onWeaponFx(weaponId: string, ...: any)
 	local config = getConfig(weaponId)
 	if not config or not config.Shape then
@@ -231,6 +254,8 @@ local function onWeaponFx(weaponId: string, ...: any)
 		drawArc(weaponId, color, ...)
 	elseif config.Shape == "Aura" then
 		drawAura(weaponId, color, ...)
+	elseif config.Shape == "Pulse" then
+		drawPulse(weaponId, color, ...)
 	elseif config.Shape == "Projectile" then
 		local action, shotId = ...
 		if action == "Launch" then
