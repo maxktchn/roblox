@@ -8,6 +8,10 @@
 --   damage = baseDamage * (1 + StatsService.getStat("Damage"))
 -- Flat stats (Armor) are added as-is:  hit = rawDamage - StatsService.getStat("Armor")
 
+--
+-- Owned levels are also copied onto the player as "Ingredient_<id>" attributes for the HUD.
+
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Ingredients = require(ReplicatedStorage.Config.Ingredients)
@@ -16,6 +20,16 @@ local StatsService = {}
 
 -- Ingredient id -> level (1 to 5). Missing = not owned.
 local ingredientLevels: { [string]: number } = {}
+
+-- Copy owned ingredient levels onto the run's player (nil = not owned).
+local function syncAttributes()
+	local player = Players:GetPlayers()[1]
+	if player then
+		for id in Ingredients do
+			player:SetAttribute(`Ingredient_{id}`, ingredientLevels[id])
+		end
+	end
+end
 
 -- Set an ingredient's level (UpgradeService calls this when a card is taken, #16).
 -- Level 0 removes it.
@@ -26,6 +40,7 @@ function StatsService.setIngredientLevel(ingredientId: string, level: number)
 	else
 		ingredientLevels[ingredientId] = nil
 	end
+	syncAttributes()
 end
 
 -- Current level of an ingredient, or nil if the player doesn't own it.
@@ -49,6 +64,11 @@ end
 -- Forget everything (start of a new run).
 function StatsService.reset()
 	table.clear(ingredientLevels)
+	syncAttributes()
+end
+
+function StatsService:start()
+	Players.PlayerAdded:Connect(syncAttributes)
 end
 
 return StatsService

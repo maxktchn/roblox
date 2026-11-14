@@ -264,6 +264,16 @@ local function offerNext()
 	sendOffer()
 end
 
+-- Copy the tip bar onto the player as attributes for the HUD: "Level", "Tips", "TipsNeeded".
+local function syncProgress()
+	local player = getRunPlayer()
+	if player then
+		player:SetAttribute("Level", level)
+		player:SetAttribute("Tips", tips)
+		player:SetAttribute("TipsNeeded", tipsNeeded(level))
+	end
+end
+
 -- Do what a card says.
 local function applyCard(card: Card)
 	if card.Kind == "Starter" or card.Kind == "Gadget" then
@@ -290,6 +300,7 @@ function UpgradeService.addTips(amount: number)
 		level += 1
 		pendingLevelUps += 1
 	end
+	syncProgress()
 	offerNext()
 end
 
@@ -344,6 +355,7 @@ function UpgradeService.reset()
 	currentOffer = nil
 	rerollsLeft = RunRules.RerollsPerRun
 	RunManager.setPaused(false)
+	syncProgress()
 end
 
 function UpgradeService:init() end
@@ -356,6 +368,8 @@ end
 
 function UpgradeService:start()
 	offerCards = Remotes.get("OfferCards")
+	syncProgress()
+	Players.PlayerAdded:Connect(syncProgress)
 
 	-- ChooseCard(index): only from the run's player, only while an offer is open,
 	-- only a whole number pointing at one of the offered cards.
