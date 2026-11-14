@@ -15,6 +15,9 @@ return {
 
 	-- Combat (PRD §3.3): Salt adds crit chance; a crit multiplies one hit's damage.
 	CritDamageMultiplier = 2,
+	BurnTickSeconds = 0.5, -- burns (Pepper Shaker) deal their damage in ticks this far apart
+	OrbitHitRadius = 2.5, -- how close an enemy must be to an orbiting fork to be hit
+	ProjectileHitRadius = 2, -- how close an enemy must be to a flying shot to be hit
 
 	-- Loadout (PRD §2.4)
 	StarterMaxLevel = 5,
