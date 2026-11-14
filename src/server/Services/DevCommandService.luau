@@ -13,6 +13,7 @@
 --   "Heal"             full HP
 --   "God"              turn "can't die" on or off (HP refills every frame)
 --   "Wipe"             remove every enemy (no tips, no kills)
+--   "Restart"          start a fresh run right now, even mid-run (RestartService)
 -- Replies go back with DevMessage(text) and show on the panel.
 --
 -- The player gets the attribute "IsDev" = true so the client knows to show the panel,
@@ -28,6 +29,7 @@ local Gadgets = require(ReplicatedStorage.Config.Gadgets)
 local Ingredients = require(ReplicatedStorage.Config.Ingredients)
 local Recipes = require(ReplicatedStorage.Config.Recipes)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local RestartService = require(script.Parent.RestartService)
 local RunManager = require(script.Parent.RunManager)
 local RunRules = require(ReplicatedStorage.Config.RunRules)
 local Starters = require(ReplicatedStorage.Config.Starters)
@@ -134,6 +136,11 @@ ACTIONS.God = function(player)
 	godMode = not godMode
 	player:SetAttribute("DevGod", godMode)
 	reply(player, if godMode then "God mode ON" else "God mode OFF")
+end
+
+ACTIONS.Restart = function(player)
+	RestartService.restart()
+	reply(player, "New run started")
 end
 
 ACTIONS.Wipe = function(player)
