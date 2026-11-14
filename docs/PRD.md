@@ -184,12 +184,14 @@ All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with ga
 | Enemy | HP | Speed | Damage |
 |---|---|---|---|
 | Moldy Bread | 10 | 8 | 5 |
-| Fruit Flies | 3 | 18 | 2 |
+| Fruit Flies | 3 | 17 | 2 |
 | Rotten Tomato | 15 | 7 | 6 |
 | Meatball | 25 | 20 | 10 |
 | Sour Lemon | 12 | 9 | 6 |
 | Spaghetti Monster | 30 | 6 | 4 |
 | Burnt Toast | 80 | 4 | 12 |
+
+**Movement (Phase 1):** Fruit Flies spawn in groups of 6. Meatballs roll straight at where the chef was, and turn to aim again after overshooting by 25 studs or hitting a wall. Everything else walks straight at the chef. Enemies push each other apart so the swarm spreads into a crowd instead of stacking on one spot.
 
 ### 3.5 Bosses
 | Boss | When | Mechanics | MVP |
