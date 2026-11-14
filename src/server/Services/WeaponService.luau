@@ -97,13 +97,20 @@ function WeaponService.setWeaponLevel(weaponId: string, level: number)
 	levels[weaponId] = level
 end
 
+-- Forget all weapons and give back the starter at Lv 1 (start of a new run).
+function WeaponService.reset()
+	table.clear(levels)
+	table.clear(cooldowns)
+	levels[RunRules.Starter] = 1
+end
+
 -- Current level of a weapon, or nil if the player doesn't own it.
 function WeaponService.getWeaponLevel(weaponId: string): number?
 	return levels[weaponId]
 end
 
 function WeaponService:init()
-	levels[RunRules.Starter] = 1
+	WeaponService.reset()
 end
 
 function WeaponService:start()
