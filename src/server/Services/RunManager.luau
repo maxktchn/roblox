@@ -132,7 +132,7 @@ function RunManager.getRunSeconds(): number
 	return runSeconds
 end
 
--- Jump the run clock to `seconds` (testing and tuning only, e.g. to try the 9:00 wave
+-- Jump the run clock to `seconds` (testing and tuning only, e.g. to try the final wave
 -- straight away). The phase for that time is announced on the next frame.
 function RunManager.setRunSeconds(seconds: number)
 	runSeconds = math.max(seconds, 0)
@@ -258,7 +258,7 @@ end
 -- Every frame
 --------------------------------------------------------------------------------
 
--- Count the run timer up, move the timeline along, and end the shift at 10:00.
+-- Count the run timer up, move the timeline along, and end the shift at RunLengthSeconds (6:00).
 local function update(deltaTime: number)
 	if paused or runOver then
 		return -- "Order Up!" on screen, or the run is over: the clock stands still
@@ -283,7 +283,7 @@ local function update(deltaTime: number)
 	end
 
 	if runSeconds >= RunRules.RunLengthSeconds and not finalBossStarted then
-		-- 10:00: normal spawns have stopped (the timeline is over); the final boss arrives.
+		-- End of the run: normal spawns have stopped (the timeline is over); the final boss arrives.
 		finalBossStarted = true
 		if #finalBossCallbacks == 0 then
 			RunManager.winRun() -- no boss fight in this game: surviving the shift wins

@@ -28,8 +28,8 @@ local WeaponService = require(script.Parent.WeaponService)
 
 local RunReportService = {}
 
--- Show "level at" these run times in the report.
-local CHECKPOINTS = { 60, 120, 300, 600 }
+-- Show "level at" these run times: 1:00, 2:00, halfway and the end of the run.
+local CHECKPOINTS = { 60, 120, RunRules.RunLengthSeconds // 2, RunRules.RunLengthSeconds }
 
 type Event = { seconds: number, text: string }
 
@@ -103,7 +103,7 @@ local function buildReport(result: string): string
 	local level = player and player:GetAttribute("Level") or 1
 	local kills = player and player:GetAttribute("Kills") or 0
 
-	-- "Lv 3 at 1:00, Lv 5 at 2:00, not reached 5:00, ..."
+	-- "Lv 3 at 1:00, Lv 5 at 2:00, not reached 3:00, ..."
 	local checkpoints = {}
 	for _, seconds in CHECKPOINTS do
 		if seconds <= endSeconds then

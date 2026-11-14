@@ -2,8 +2,10 @@
 -- Rules for a single run. Starting values from PRD §2 and §8.3; tune here, then update docs/PRD.md.
 
 return {
-	RunLengthSeconds = 600, -- final boss at 10:00
-	MiniBossAtSeconds = 300, -- mini-boss at 5:00
+	-- 6 minutes: short enough for Roblox attention spans (paused time doesn't count, so a run
+	-- takes about 7 minutes of real time). The timeline in Chapters.luau must end here.
+	RunLengthSeconds = 360, -- final boss at 6:00
+	MiniBossAtSeconds = 180, -- mini-boss at 3:00
 
 	-- Camera (PRD §2.2): fixed 3/4 overhead view
 	CameraPitchDegrees = 55, -- angle looking down; 90 = straight down
@@ -38,9 +40,9 @@ return {
 
 	-- "Order Up!" (PRD §2.3)
 	-- Tips needed to fill the bar: FirstLevelTips for level 1 -> 2, then ExtraTipsPerLevel more each level.
-	-- So 5, 8, 11, 14... Leftover tips carry over to the next bar.
-	FirstLevelTips = 5,
-	ExtraTipsPerLevel = 3,
+	-- So 4, 6, 8, 10... (faster than before, for 6-minute runs). Leftover tips carry over.
+	FirstLevelTips = 4,
+	ExtraTipsPerLevel = 2,
 	CardsPerLevelUp = 3,
 	RerollsPerRun = 2,
 
@@ -73,12 +75,12 @@ return {
 	MaxAliveEnemies = 150,
 
 	-- Enemy scaling over the run (PRD §3.4). Enemies get tougher every minute of run time
-	-- (paused time doesn't count), compounding: HP x(1 + growth) per minute. With 0.15 that is
-	-- x2.0 at 5:00 and x4.0 at 10:00; damage with 0.05 is x1.6 at 10:00. Each enemy keeps the
+	-- (paused time doesn't count), compounding: HP x(1 + growth) per minute. With 0.26 that is
+	-- x2.0 at 3:00 and x4.0 at 6:00; damage with 0.085 is x1.6 at 6:00. Each enemy keeps the
 	-- strength it spawned with. Speed never scales (Fruit Flies are already faster than the chef),
 	-- and bosses don't scale (their numbers are tuned in Bosses.luau); their minions do.
-	EnemyHpGrowthPerMinute = 0.15,
-	EnemyDamageGrowthPerMinute = 0.05,
+	EnemyHpGrowthPerMinute = 0.26,
+	EnemyDamageGrowthPerMinute = 0.085,
 
 	-- Enemy spawning (PRD §2.1, §8.3). How many spawn per second is set per timeline phase in Chapters.luau.
 	-- Which enemies can spawn at all. Phase 1 picks (PRD §9); the timeline skips anything not listed.

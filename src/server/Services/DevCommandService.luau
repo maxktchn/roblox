@@ -1,5 +1,5 @@
 --!strict
--- Developer playtest tools, so you don't have to play 10 minutes to reach the boss.
+-- Developer playtest tools, so you don't have to play a whole run to reach the boss.
 -- The client shows a DEV panel of buttons (DevPanelController) only to devs; each button
 -- sends DevAction(action, arg). The server checks the sender with DevAccess (Studio, the
 -- experience's owner, or DevTools.DevUserIds) and validates every argument, so a normal

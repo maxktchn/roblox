@@ -20,9 +20,9 @@ return {
 	-- as fast as maxed weapons clear it.
 	StressSpawnsPerSecond = 20,
 
-	-- Where the run clock is held while stress testing: inside the final phase (9:00 to 10:00),
+	-- Where the run clock is held while stress testing: inside the final phase (5:25 to 6:00),
 	-- so all Phase 1 enemies spawn and the boss never arrives.
-	StressRunSeconds = 545,
+	StressRunSeconds = 340,
 
 	-- Length of the measured test: the readout shows a summary after this many seconds.
 	StressMeasureSeconds = 60,

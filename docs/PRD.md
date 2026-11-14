@@ -11,7 +11,7 @@
 ## 1. Overview
 
 ### 1.1 Pitch
-The restaurant's food has gone rotten and come alive. You're the chef, and you have to survive the dinner shift. Each run lasts about 10 minutes and ends in a boss fight. You start with only your signature tool, collect tips to level up, and pick 1 of 3 upgrades each time to build a combo of kitchen weapons that can clear the screen.
+The restaurant's food has gone rotten and come alive. You're the chef, and you have to survive the dinner shift. Each run lasts about 6 minutes and ends in a boss fight. You start with only your signature tool, collect tips to level up, and pick 1 of 3 upgrades each time to build a combo of kitchen weapons that can clear the screen.
 
 ### 1.2 Genre and references
 - **Genre:** Survivors-style roguelike with permanent progression between runs
@@ -52,8 +52,8 @@ The restaurant's food has gone rotten and come alive. You're the chef, and you h
 3. Enemies spawn in waves and get harder over time
 4. Defeated enemies drop **tips** (XP)
 5. When the tip bar fills: **"Order Up!"** The game pauses and shows 3 upgrade cards. The player picks 1.
-6. At **5:00**, a mini-boss appears
-7. At **10:00**, the final boss appears in a closed arena
+6. At **3:00**, a mini-boss appears
+7. At **6:00**, the final boss appears in a closed arena
 8. Beat the final boss to **clear the chapter**. If HP reaches 0, the player can revive once, or the run ends.
 9. Results screen shows rewards earned
 
@@ -78,7 +78,7 @@ The restaurant's food has gone rotten and come alive. You're the chef, and you h
 - **Rerolls:** Players get **2 rerolls per run**. A reroll replaces all 3 cards with a new draw. Talents can add more (see 4.5).
 - Items already at max level are removed from the pool. Once all 6 shared slots are full, new gadgets and ingredients are removed too, and only upgrades to owned items can appear.
 - If the pool runs out completely, show filler cards: **Pie** (heal 30% HP) or **Tip Jar** (bonus gold). Phase 1 has no gold, so it shows only Pie.
-- **Tip bar:** 5 tips fill the first bar, and each bar after needs 3 more than the last (5, 8, 11, 14…). Leftover tips carry over. If several bars fill at once, the "Order Up!" screens come one after another.
+- **Tip bar:** 4 tips fill the first bar, and each bar after needs 2 more than the last (4, 6, 8, 10…). Leftover tips carry over. If several bars fill at once, the "Order Up!" screens come one after another.
 
 ### 2.4 Loadout limits
 | Slot type | Max | Max level each |
@@ -126,7 +126,7 @@ Rewards scale with how long the player survived and how far they got:
 - **Account XP**
 - **Gear materials** (see 4.4)
 - **Chance at a gear drop** (higher on chapter clear)
-- **First-clear rewards:** Gems and a gear chest the first time a player reaches 5:00 and the first time they clear the chapter
+- **First-clear rewards:** Gems and a gear chest the first time a player reaches 3:00 and the first time they clear the chapter
 - **Boss power:** defeating a chapter's final boss for the first time unlocks its power (see 3.8)
 
 ---
@@ -223,13 +223,13 @@ All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with ga
 
 **Movement (Phase 1):** Fruit Flies spawn in groups of 6. Meatballs roll straight at where the chef was, and turn to aim again after overshooting by 25 studs or hitting a wall. Everything else walks straight at the chef. Enemies push each other apart so the swarm spreads into a crowd instead of stacking on one spot.
 
-**Scaling over the run:** enemies get tougher the longer the run goes, so a strong build still meets resistance late. Every minute of run time (paused time doesn't count), new enemies get **+15% HP** and **+5% contact damage**, compounding. That's x2.0 HP at 5:00 and x4.0 at 10:00, and x1.6 damage at 10:00. This is well below the player's growth (about 10-20x damage from Lv 1 knife to a maxed build), so the player still pulls ahead. Speed and tips don't scale. The boss doesn't scale either (its numbers are in 3.5), but its minions do. Tune in `RunRules.luau` (`EnemyHpGrowthPerMinute`, `EnemyDamageGrowthPerMinute`).
+**Scaling over the run:** enemies get tougher the longer the run goes, so a strong build still meets resistance late. Every minute of run time (paused time doesn't count), new enemies get **+26% HP** and **+8.5% contact damage**, compounding. That's x2.0 HP at 3:00 and x4.0 at 6:00, and x1.6 damage at 6:00. This is well below the player's growth (about 10-20x damage from Lv 1 knife to a maxed build), so the player still pulls ahead. Speed and tips don't scale. The boss doesn't scale either (its numbers are in 3.5), but its minions do. Tune in `RunRules.luau` (`EnemyHpGrowthPerMinute`, `EnemyDamageGrowthPerMinute`).
 
 ### 3.5 Bosses
 | Boss | When | Mechanics | Power (see 3.8) | MVP |
 |---|---|---|---|---|
-| The Big Cheese | 5:00 mini-boss (Chapter 1) | Splits into smaller cheeses when damaged | None (mini-boss) | Yes |
-| Microwave Monster | 10:00 final boss (Chapter 1) | Summons minions and sends out damage pulses | **Microwave Pulse** | Yes |
+| The Big Cheese | 3:00 mini-boss (Chapter 1) | Splits into smaller cheeses when damaged | None (mini-boss) | Yes |
+| Microwave Monster | 6:00 final boss (Chapter 1) | Summons minions and sends out damage pulses | **Microwave Pulse** | Yes |
 | Doughzilla | Final boss (Chapter 2, Bakery) | Giant dough that grows bigger by absorbing flour clouds | TBD | No |
 | Kraken Roll | Final boss (Chapter 3, Sushi Bar) | Sushi kraken that grabs the player from the conveyor belts | TBD | No |
 | Pantry Rat King | Final boss (Chapter 4, Walk-in Freezer) | TBD | TBD | No |
@@ -240,26 +240,26 @@ All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with ga
 
 | HP | Speed | Contact damage | Tips | Summons | Pulse |
 |---|---|---|---|---|---|
-| 5000 | 5 | 25, at most once a second | 50 | 4 Moldy Bread every 7 s | every 6 s, 1.2 s warning ring, 16 stud radius, 20 damage |
+| 3500 | 5 | 25, at most once a second | 50 | 4 Moldy Bread every 7 s | every 6 s, 1.2 s warning ring, 16 stud radius, 20 damage |
 
 ### 3.6 Run timeline (Chapter 1, starting values)
 | Time | What happens |
 |---|---|
-| 0:00 to 1:00 | Moldy Bread only (warm-up: time to level up before the fast Fruit Flies) |
-| 1:00 to 2:00 | Add Fruit Flies |
-| 2:00 to 5:00 | Add Rotten Tomatoes and Meatballs. First elite at 3:00. |
-| 5:00 | The Big Cheese (mini-boss) |
-| 5:00 to 9:00 | Add Sour Lemons. Larger waves and a "dinner rush" swarm event at 7:30. |
-| 9:00 to 10:00 | Final heavy wave |
-| 10:00 | Microwave Monster in the closed arena |
+| 0:00 to 0:40 | Moldy Bread only (warm-up: time to level up before the fast Fruit Flies) |
+| 0:40 to 1:15 | Add Fruit Flies |
+| 1:15 to 3:00 | Add Rotten Tomatoes and Meatballs. First elite at 1:50. |
+| 3:00 | The Big Cheese (mini-boss) |
+| 3:00 to 5:25 | Add Sour Lemons. Larger waves and a "dinner rush" swarm event at 4:30. |
+| 5:25 to 6:00 | Final heavy wave |
+| 6:00 | Microwave Monster in the closed arena |
 
-**Spawn rate per phase** (spawn groups per second, tune in `Chapters.luau`; most enemies spawn alone, Fruit Flies in groups of 6): 0.6 until 2:00 (Moldy Bread only until 1:00), 1 until 5:00, 1.4 until 9:00, 2 until 10:00. Normal spawns stop at 10:00.
+**Spawn rate per phase** (spawn groups per second, tune in `Chapters.luau`; most enemies spawn alone, Fruit Flies in groups of 6): 0.6 until 1:15 (Moldy Bread only until 0:40), 1 until 3:00, 1.4 until 5:25, 2 until 6:00. Normal spawns stop at 6:00.
 
-**Phase 1:** only the Phase 1 enemies (Moldy Bread, Fruit Flies, Meatball, set in `RunRules.EnemyPool`) spawn from this timeline. Elites, the mini-boss and the dinner rush wait for later. At 10:00 the Microwave Monster arrives; defeating it wins the run.
+**Phase 1:** only the Phase 1 enemies (Moldy Bread, Fruit Flies, Meatball, set in `RunRules.EnemyPool`) spawn from this timeline. Elites, the mini-boss and the dinner rush wait for later. At 6:00 the Microwave Monster arrives; defeating it wins the run.
 
 ### 3.7 Chapters (maps)
 - Chapters unlock in order. Beat a chapter's final boss to unlock the next one.
-- Each run is about 10 minutes plus the boss fight.
+- Each run is about 6 minutes plus the boss fight (about 7 minutes of real time, since card picks pause the clock).
 
 | # | Map | Notes | MVP |
 |---|---|---|---|
@@ -525,11 +525,11 @@ StarterPlayerScripts/
   - **Gadgets:** Pepper Shaker (cone), Blender (aura), Spinning Forks (orbit), Toaster (projectile). Four different attack shapes that the other gadgets reuse later.
   - **Ingredients:** Salt, Hot Sauce, Beef Jerky, Fridge Magnet. Together these make 4 recipes testable: Sushi Master Blade, Ghost Pepper Blaster, Fondue Ring, Smoothie Vortex. (Toaster has no recipe in Phase 1, since Buttered Barrage needs Butter.)
   - **Enemies:** Moldy Bread, Fruit Flies, Meatball (movement only, no puddles or ranged attacks)
-  - **Boss:** Microwave Monster at 10:00. The Big Cheese mini-boss waits for Phase 2.
+  - **Boss:** Microwave Monster at 6:00. The Big Cheese mini-boss waits for Phase 2.
 - Tips, "Order Up!" cards, and recipes working
 - No saving, no lobby, no progression
 - **Boss powers prototype:** Microwave Pulse, unlocked by beating the Microwave Monster until the server closes (no saving yet)
-- **Done when:** A full 10-minute run is fun and runs smoothly on a mid-range phone
+- **Done when:** A full 6-minute run is fun and runs smoothly on a mid-range phone
 
 ### Phase 2: MVP
 - **Build order:**

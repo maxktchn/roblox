@@ -1,5 +1,6 @@
 --!strict
--- The final boss fight (PRD §3.5, issue #11): the Microwave Monster at 10:00.
+-- The final boss fight (PRD §3.5, issue #11): the Microwave Monster at the end of the run
+-- (RunRules.RunLengthSeconds, 6:00).
 --
 -- When RunManager says the timeline is over (RunManager.onFinalBoss):
 --   1. Every normal enemy is cleared and a ring of counters rises around the chef.
@@ -259,7 +260,7 @@ local function showPulse(center: Vector3, radius: number, color: Color3)
 	pulsePart.Color = color
 end
 
--- 10:00: clear the kitchen, close the ring, bring out the boss.
+-- End of the run: clear the kitchen, close the ring, bring out the boss.
 local function startFight()
 	local bossType = Chapters[RunManager.getChapter()].FinalBoss
 	local boss = Bosses[bossType]
