@@ -9,7 +9,10 @@
 --   weapon levels (starter + gadgets) -> WeaponService
 --   ingredient levels                 -> StatsService
 --   tips, level, the current offer    -> here
--- Not done here yet: ChooseCard/RequestReroll remotes and rerolls (#18), recipe cards (#20).
+-- Not done here yet: recipe cards (#20).
+--
+-- Security (PRD §8.4): the client only ever sends ChooseCard(index) and RequestReroll().
+-- Both are checked below; anything unexpected is ignored, never trusted.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -34,7 +37,7 @@ local tips = 0 -- tips in the current bar
 local level = 1 -- the player's run level (starts at 1)
 local pendingLevelUps = 0 -- full bars waiting for their "Order Up!"
 local currentOffer: { Card }? = nil -- the cards on screen right now, or nil
-local rerollsLeft = RunRules.RerollsPerRun -- shown on the reroll button; spent in #18
+local rerollsLeft = RunRules.RerollsPerRun -- rerolls the player can still use this run
 
 local offerCards: RemoteEvent
 
@@ -165,20 +168,31 @@ local function drawCards(): { Card }
 	return cards
 end
 
+-- The run's one player (PRD §8.1), or nil before they join.
+local function getRunPlayer(): Player?
+	return Players:GetPlayers()[1]
+end
+
+-- (Re)send the open offer to the client, so its screen shows exactly what the server has.
+local function sendOffer()
+	local player = getRunPlayer()
+	if player and currentOffer then
+		offerCards:FireClient(player, currentOffer, rerollsLeft)
+	end
+end
+
 -- If a level-up is waiting and nothing is on screen, draw and send the next offer.
 local function offerNext()
 	if currentOffer or pendingLevelUps == 0 then
 		return
 	end
-	local player = Players:GetPlayers()[1]
-	if not player then
+	if not getRunPlayer() then
 		return -- no one to show it to yet; tried again on the next tip or choice
 	end
 	pendingLevelUps -= 1
-	local cards = drawCards()
-	currentOffer = cards
+	currentOffer = drawCards()
 	RunManager.setPaused(true) -- the run stands still until a card is picked
-	offerCards:FireClient(player, cards, rerollsLeft)
+	sendOffer()
 end
 
 -- Do what a card says.
@@ -207,8 +221,24 @@ function UpgradeService.addTips(amount: number)
 	offerNext()
 end
 
+-- Replace the open offer with a fresh draw, using up one reroll. Returns true if it worked.
+function UpgradeService.reroll(): boolean
+	if not currentOffer or rerollsLeft <= 0 then
+		return false
+	end
+	rerollsLeft -= 1
+	currentOffer = drawCards()
+	sendOffer()
+	return true
+end
+
+-- How many rerolls are left this run.
+function UpgradeService.getRerollsLeft(): number
+	return rerollsLeft
+end
+
 -- Take card number `index` (1 to 3) from the current offer. Returns true if it was applied.
--- The ChooseCard remote (#18) validates the player's input and then calls this.
+-- The ChooseCard remote handler below validates the player's input before calling this.
 function UpgradeService.chooseCard(index: number): boolean
 	local offer = currentOffer
 	local card = offer and offer[index]
@@ -246,8 +276,39 @@ end
 
 function UpgradeService:init() end
 
+-- True if `value` is a whole number from 1 to `max`. Rejects strings, tables, nil,
+-- 1.5, NaN (NaN is the only value not equal to itself) and infinity.
+local function isCardIndex(value: unknown, max: number): boolean
+	return type(value) == "number" and value == value and value % 1 == 0 and value >= 1 and value <= max
+end
+
 function UpgradeService:start()
 	offerCards = Remotes.get("OfferCards")
+
+	-- ChooseCard(index): only from the run's player, only while an offer is open,
+	-- only a whole number pointing at one of the offered cards.
+	Remotes.get("ChooseCard").OnServerEvent:Connect(function(player: Player, index: unknown)
+		if player ~= getRunPlayer() or not currentOffer then
+			return -- not our player, or nothing to choose (e.g. a double tap): ignore
+		end
+		if isCardIndex(index, #currentOffer) then
+			UpgradeService.chooseCard(index :: number)
+		else
+			-- Bad input while cards are open: the client already hid its screen,
+			-- so send the same cards again rather than leave the player stuck.
+			sendOffer()
+		end
+	end)
+
+	-- RequestReroll(): no arguments are read. Works only with an offer open and rerolls left.
+	Remotes.get("RequestReroll").OnServerEvent:Connect(function(player: Player)
+		if player ~= getRunPlayer() or not currentOffer then
+			return
+		end
+		if not UpgradeService.reroll() then
+			sendOffer() -- no rerolls left: resend so the client's button shows the real count
+		end
+	end)
 end
 
 return UpgradeService
