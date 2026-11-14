@@ -17,6 +17,7 @@ local RunService = game:GetService("RunService")
 
 local EnemyService = require(script.Parent.EnemyService)
 local Gadgets = require(ReplicatedStorage.Config.Gadgets)
+local Recipes = require(ReplicatedStorage.Config.Recipes)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local RunManager = require(script.Parent.RunManager)
 local RunRules = require(ReplicatedStorage.Config.RunRules)
@@ -73,9 +74,9 @@ local function getChef(): BasePart?
 	return nil
 end
 
--- A weapon's config entry, from Starters or Gadgets.
+-- A weapon's config entry, from Starters, Gadgets or Recipes.
 local function getWeaponConfig(weaponId: string): (WeaponTypes.Shape?, { WeaponLevel }?)
-	local config: any = Starters[weaponId] or Gadgets[weaponId]
+	local config: any = Starters[weaponId] or Gadgets[weaponId] or Recipes[weaponId]
 	if not config then
 		return nil, nil
 	end
@@ -90,11 +91,12 @@ local function sendFx(weaponId: string, ...: any)
 	end
 end
 
--- Final damage for one hit: base damage + Hot Sauce bonus, and a crit roll (Salt).
+-- Final damage for one hit: base damage + Hot Sauce bonus, and a crit roll (Salt, plus
+-- the weapon's own CritBonus if it has one, e.g. Sushi Master Blade).
 -- Rolled separately for every enemy hit, so a big swing can mix crits and normal hits.
-local function rollDamage(baseDamage: number): number
+local function rollDamage(baseDamage: number, critBonus: number?): number
 	local damage = baseDamage * (1 + StatsService.getStat("Damage"))
-	if math.random() < StatsService.getStat("CritChance") then
+	if math.random() < StatsService.getStat("CritChance") + (critBonus or 0) then
 		damage *= RunRules.CritDamageMultiplier
 	end
 	return damage
@@ -102,7 +104,7 @@ end
 
 -- Hit one enemy with a weapon: damage now, plus a burn if the weapon has one.
 local function hit(enemyId: number, stats: WeaponLevel)
-	EnemyService.damage(enemyId, rollDamage(stats.Damage))
+	EnemyService.damage(enemyId, rollDamage(stats.Damage, stats.CritBonus))
 	if stats.BurnDps and stats.BurnSeconds and EnemyService.getEnemyPosition(enemyId) then
 		local burn = burns[enemyId]
 		if burn then
@@ -311,12 +313,30 @@ local function syncAttributes()
 	for id in Gadgets do
 		player:SetAttribute(`Weapon_{id}`, levels[id])
 	end
+	for id in Recipes do
+		player:SetAttribute(`Weapon_{id}`, levels[id])
+	end
 end
 
 -- Set a weapon's level (UpgradeService calls this when a card is taken).
 function WeaponService.setWeaponLevel(weaponId: string, level: number)
 	levels[weaponId] = level
 	syncAttributes()
+end
+
+-- Swap one weapon for another in the same slot (a recipe replacing its weapon, PRD §2.5).
+-- The new weapon starts at Lv 1 and attacks straight away.
+function WeaponService.replaceWeapon(oldId: string, newId: string)
+	levels[oldId] = nil
+	cooldowns[oldId] = nil
+	orbitHitTimes[oldId] = nil
+	levels[newId] = 1
+	syncAttributes()
+end
+
+-- Every owned weapon id -> level. A copy, so changing it changes nothing here.
+function WeaponService.getOwnedWeapons(): { [string]: number }
+	return table.clone(levels)
 end
 
 -- Forget all weapons and give back the starter at Lv 1 (start of a new run).

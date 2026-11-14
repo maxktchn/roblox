@@ -17,6 +17,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Gadgets = require(ReplicatedStorage.Config.Gadgets)
+local Recipes = require(ReplicatedStorage.Config.Recipes)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Starters = require(ReplicatedStorage.Config.Starters)
 local WeaponTypes = require(ReplicatedStorage.Shared.WeaponTypes)
@@ -34,7 +35,20 @@ local folder: Folder -- holds every effect part
 type WeaponConfig = { Shape: WeaponTypes.Shape?, Levels: { WeaponTypes.WeaponLevel }?, FxColor: Color3? }
 
 local function getConfig(weaponId: string): WeaponConfig?
-	return (Starters[weaponId] or Gadgets[weaponId]) :: any
+	return (Starters[weaponId] or Gadgets[weaponId] or Recipes[weaponId]) :: any
+end
+
+-- Every weapon (gadget or recipe) with the Orbit shape, found once at load.
+local orbitWeapons: { [string]: WeaponConfig } = {}
+for id, config in Gadgets do
+	if config.Shape == "Orbit" and config.Levels then
+		orbitWeapons[id] = config :: any
+	end
+end
+for id, config in Recipes do
+	if config.Shape == "Orbit" and config.Levels then
+		orbitWeapons[id] = config :: any
+	end
 end
 
 local function getRoot(): BasePart?
@@ -177,12 +191,9 @@ end
 local function updateOrbits()
 	local root = getRoot()
 	local now = workspace:GetServerTimeNow()
-	for weaponId, config in Gadgets do
-		if config.Shape ~= "Orbit" or not config.Levels then
-			continue
-		end
+	for weaponId, config in orbitWeapons do
 		local level = player:GetAttribute(`Weapon_{weaponId}`)
-		local stats = if type(level) == "number" then config.Levels[level] else nil
+		local stats = if type(level) == "number" and config.Levels then config.Levels[level] else nil
 		local count = if stats and root then stats.Count or 1 else 0
 		local maxCount = 8 -- more than any level uses
 		for i = 0, maxCount - 1 do

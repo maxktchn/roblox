@@ -95,6 +95,16 @@ function ConfigCheck.run(): { string }
 		end
 	end
 
+	-- Every recipe the current pool can reach must be playable (one level of numbers).
+	for id, recipe in Recipes do
+		local weaponReachable = recipe.Weapon == RunRules.Starter
+			or table.find(RunRules.UpgradePool.Gadgets, recipe.Weapon) ~= nil
+		local ingredientReachable = table.find(RunRules.UpgradePool.Ingredients, recipe.Ingredient) ~= nil
+		if weaponReachable and ingredientReachable then
+			checkWeapon(id, recipe, 1)
+		end
+	end
+
 	for id, chapter in Chapters do
 		if not Bosses[chapter.FinalBoss] then
 			fail(`Chapter {id}: unknown final boss "{chapter.FinalBoss}"`)
