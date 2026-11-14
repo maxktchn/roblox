@@ -11,6 +11,11 @@
 -- Owned weapon levels are also copied onto the player as attributes ("Weapon_<id>" = level),
 -- so the client can draw always-on effects (orbiting forks) and the HUD can show icons (#21).
 --
+-- Aimed weapons (the starter and its recipe, `Aimed = true` in config) swing toward the
+-- player's aim instead of the way the chef faces (PRD §2.2, #60). The client sends its aim on
+-- the unreliable AimDirection remote; it's validated and rate-limited here, and only the
+-- latest one is kept. The server still decides timing, reach and every hit.
+--
 -- Every hit is also recorded and sent to the client in small batches (HitFx), so it can
 -- flash the enemy and float a damage number (#43). Visual only.
 
@@ -64,6 +69,11 @@ local kills = 0 -- enemies defeated this run (shown on the HUD)
 local damageByWeapon: { [string]: number } = {}
 
 local weaponFx: RemoteEvent
+
+-- The player's latest aim (flat unit vector), or nil until they aim in this run.
+local aim: Vector3? = nil
+local aimWindowStart = 0 -- start of the current one-second window for the rate limit
+local aimMessagesInWindow = 0
 local hitFx: RemoteEvent
 
 -- Hit feedback (#43). Hits are collected here and sent together every HIT_FX_INTERVAL
@@ -216,12 +226,22 @@ local function getEnemiesInReach(origin: Vector3, reach: number): { number }
 	return found
 end
 
+-- Which way a weapon attacks: the player's aim for an Aimed weapon (once they've aimed),
+-- otherwise the way the chef faces, flattened so looking up or down doesn't matter.
+local function getAttackDirection(weaponId: string, root: BasePart): Vector3
+	local config: any = Starters[weaponId] or Recipes[weaponId]
+	if config and config.Aimed and aim then
+		return aim
+	end
+	local look = root.CFrame.LookVector
+	return Vector3.new(look.X, 0, look.Z).Unit
+end
+
 -- ARC: hit every enemy inside a slice of circle in front of the chef.
 local function attackArc(weaponId: string, stats: WeaponLevel, root: BasePart)
 	local origin = root.Position
-	-- Facing direction, flattened so looking slightly up/down doesn't matter.
-	local look = root.CFrame.LookVector
-	local facing = Vector3.new(look.X, 0, look.Z).Unit
+	-- The aim for aimed weapons (the starter), otherwise the way the chef faces.
+	local facing = getAttackDirection(weaponId, root)
 	local arcDegrees = stats.ArcDegrees or 90
 	-- An enemy is inside the arc if the angle to it is at most half the arc width.
 	-- Comparing dot products avoids computing angles: dot >= cos(half arc).
@@ -502,6 +522,7 @@ function WeaponService.reset()
 	table.clear(pulses)
 	table.clear(pendingHits)
 	table.clear(damageByWeapon)
+	aim = nil -- a new run: the knife uses facing until the player aims again
 	levels[RunRules.Starter] = 1
 	kills = 0
 	local player = getRunPlayer()
@@ -514,6 +535,11 @@ end
 -- Damage each weapon has dealt this run (weapon id -> damage), for the run report.
 function WeaponService.getDamageByWeapon(): { [string]: number }
 	return table.clone(damageByWeapon)
+end
+
+-- The player's latest validated aim direction, or nil before they aim (for tests).
+function WeaponService.getAim(): Vector3?
+	return aim
 end
 
 -- Current level of a weapon, or nil if the player doesn't own it.
@@ -533,6 +559,54 @@ function WeaponService:start()
 	syncAttributes()
 	Players.PlayerAdded:Connect(syncAttributes)
 	RunService.Heartbeat:Connect(update)
+
+	-- AimDirection(x, z): only from the run's player, at most AimMessagesPerSecond a second,
+	-- and only a real flat direction (numbers, not NaN or infinite, not zero length).
+	-- Anything else is ignored and the previous aim stays.
+	Remotes.getUnreliable("AimDirection").OnServerEvent:Connect(function(player: Player, x: unknown, z: unknown)
+		if player ~= getRunPlayer() then
+			return
+		end
+		local now = os.clock()
+		if now - aimWindowStart >= 1 then
+			aimWindowStart = now
+			aimMessagesInWindow = 0
+		end
+		aimMessagesInWindow += 1
+		if aimMessagesInWindow > RunRules.AimMessagesPerSecond then
+			return -- too many this second
+		end
+		if type(x) ~= "number" or type(z) ~= "number" then
+			return
+		end
+		local direction = Vector3.new(x, 0, z)
+		local length = direction.Magnitude
+		-- NaN is the only value not equal to itself; huge values make the length infinite.
+		if length ~= length or length == math.huge or length < 0.01 then
+			return
+		end
+		aim = direction / length
+	end)
+
+	-- No jumping (PRD §2.2): it does nothing in this game, and on phones the right thumb aims.
+	local function noJump(character: Model)
+		local humanoid = character:WaitForChild("Humanoid", 10)
+		if humanoid and humanoid:IsA("Humanoid") then
+			humanoid.UseJumpPower = false
+			humanoid.JumpHeight = 0
+			humanoid.JumpPower = 0
+		end
+	end
+	local function watchPlayer(player: Player)
+		if player.Character then
+			task.spawn(noJump, player.Character)
+		end
+		player.CharacterAdded:Connect(noJump)
+	end
+	for _, player in Players:GetPlayers() do
+		watchPlayer(player)
+	end
+	Players.PlayerAdded:Connect(watchPlayer)
 
 	-- Kill count for the HUD, as the player's "Kills" attribute. Counted here because this
 	-- service already listens to EnemyService (RunManager can't: EnemyService requires it).

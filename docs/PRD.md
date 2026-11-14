@@ -22,7 +22,7 @@ The restaurant's food has gone rotten and come alive. You're the chef, and you h
 - Players who enjoy collecting and upgrading gear between runs
 
 ### 1.4 Core pillars
-1. **Easy to learn, fun to master:** Players only move, and attacks fire on their own. The depth comes from choosing upgrades.
+1. **Easy to learn, fun to master:** Players move and aim their signature tool; attacks fire on their own. The depth comes from choosing upgrades.
 2. **Every run moves you forward:** Even a lost run earns gold, account XP, and materials.
 3. **Funny kitchen theme:** Every weapon, enemy, and upgrade should make sense as kitchen gear or food.
 4. **Mobile first:** If it doesn't play well on a phone, it doesn't ship.
@@ -132,6 +132,7 @@ Rewards scale with how long the player survived and how far they got:
 
 ### 3.1 Signature Tools (starters)
 - Starters are the **Utensil** gear slot. The Utensil you have equipped is your starter weapon.
+- Starters (and their recipes) are **aimed**: they swing on their own toward where the player aims (see 2.2). Gadgets and boss powers are not aimed.
 - A starter can only be used in a run if you started with it. It **never** appears as a random upgrade.
 - There are three ways to unlock a starter:
   - **Free:** Chef's Knife, so every player has a starter
@@ -474,7 +475,7 @@ This is the biggest technical risk. Rules:
 
 ### 8.4 Security (server authority)
 - The server decides all damage, drops, XP, rewards, and purchases
-- The client only sends movement and level-up card choices
+- The client only sends movement, level-up card choices, and an aim direction for the starter (validated and rate-limited, at most 20 a second). The server still decides every hit.
 - The server checks that every card choice was actually one of the 3 offered
 - All currency changes happen on the server only
 
