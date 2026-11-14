@@ -24,7 +24,8 @@ Then in Studio open the dev place, open the Rojo plugin, and click **Connect**. 
 
 - **Code lives in this repo.** Only edit scripts in files, never in Studio — Rojo overwrites Studio edits in synced folders.
 - **The world lives in the place.** Maps, models, lighting and hand-built UI are built in Studio and saved with Studio's version history. Rojo ignores `Workspace`.
-- Once the dev place exists, put its place ID in `servePlaceIds` in `default.project.json` so Rojo can't sync into the wrong place.
+- Connect Rojo to your own local `dev.rbxl` (File → Download a Copy of the shared place), not the shared Team Create place. Only sync `main` into the shared place, one person at a time.
+- Don't add `servePlaceIds` to `default.project.json`: local `.rbxl` copies have place ID 0, and Rojo would refuse to connect to them (an empty list blocks every place).
 
 ## Checks (CI runs these on every PR)
 
