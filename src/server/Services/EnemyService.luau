@@ -10,6 +10,8 @@
 --   * Parts are never destroyed during a run. A dead enemy's part is parked under the map
 --     and put back in its type's pool; the next spawn of that type reuses it.
 --   * Hits are plain distance checks against the records, not physics touches.
+--   * Every frame each record's position is updated by its config's Movement, then every
+--     part is moved at once with a single workspace:BulkMoveTo call.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -17,6 +19,7 @@ local RunService = game:GetService("RunService")
 
 local Chapters = require(ReplicatedStorage.Config.Chapters)
 local Enemies = require(ReplicatedStorage.Config.Enemies)
+local RunManager = require(script.Parent.RunManager)
 local RunRules = require(ReplicatedStorage.Config.RunRules)
 
 local EnemyService = {}
@@ -34,10 +37,13 @@ type EnemyRecord = {
 	part: BasePart,
 	hp: number,
 	position: Vector3,
+	direction: Vector3, -- flat unit vector it is moving/facing along
 }
 
 -- Where unused parts wait: far below the floor, out of sight.
 local PARK_CFRAME = CFrame.new(0, -200, 0)
+-- Roughly how wide the chef is, so chasing enemies stop at the chef's edge instead of inside them.
+local CHEF_RADIUS = 1.5
 
 local killedCallbacks: { KilledCallback } = {}
 local alive: { [EnemyId]: EnemyRecord } = {}
@@ -57,6 +63,16 @@ local arenaCenter: Vector3? = nil
 local arenaHalfSize: Vector3? = nil
 
 local random = Random.new()
+
+-- Reused every frame for BulkMoveTo, so moving the swarm doesn't create new tables each frame.
+local moveParts: { BasePart } = {}
+local moveCFrames: { CFrame } = {}
+
+-- Separation grid: the floor is split into square cells, and each enemy only checks the
+-- enemies in its own cell and the 8 around it, instead of all 150. Cells are as wide as
+-- the widest enemy (set in init), so anything close enough to overlap is always in reach.
+local cellSize = 4
+local grid: { [number]: { EnemyRecord } } = {}
 
 -- The chef's position, or nil while there is no chef.
 local function getChefPosition(): Vector3?
@@ -156,6 +172,16 @@ function EnemyService.spawn(enemyType: string, position: Vector3): EnemyId?
 	local floorY = if arenaCenter then arenaCenter.Y else 0
 	local standing = Vector3.new(position.X, floorY + config.Size.Y / 2, position.Z)
 
+	-- Start out facing the chef (or "north" if there is no chef yet).
+	local direction = Vector3.new(0, 0, -1)
+	local chefPosition = getChefPosition()
+	if chefPosition then
+		local toChef = Vector3.new(chefPosition.X - standing.X, 0, chefPosition.Z - standing.Z)
+		if toChef.Magnitude > 0.01 then
+			direction = toChef.Unit
+		end
+	end
+
 	lastId += 1
 	local enemy: EnemyRecord = {
 		id = lastId,
@@ -164,14 +190,16 @@ function EnemyService.spawn(enemyType: string, position: Vector3): EnemyId?
 		part = takePart(enemyType, config),
 		hp = config.Hp,
 		position = standing,
+		direction = direction,
 	}
-	enemy.part.CFrame = CFrame.new(standing)
+	enemy.part.CFrame = CFrame.lookAt(standing, standing + direction)
 	alive[enemy.id] = enemy
 	aliveCount += 1
 	return enemy.id
 end
 
--- Choose which enemy types the spawner creates, and how many per second.
+-- Choose which enemy types the spawner creates, and how many groups per second
+-- (a group is GroupSize enemies, or just one for most types).
 -- RunManager calls this when the timeline moves to a new phase (#6). An empty list stops spawning.
 function EnemyService.setSpawning(enemyTypes: { string }, perSecond: number)
 	spawnTypes = {}
@@ -230,13 +258,154 @@ function EnemyService.onEnemyKilled(callback: KilledCallback)
 	table.insert(killedCallbacks, callback)
 end
 
--- Every frame: spawn enemies at the current rate. Movement comes in #8.
-local function update(deltaTime: number)
-	local chefPosition = getChefPosition()
-	if not chefPosition or #spawnTypes == 0 then
-		return
+-- Work out where one enemy goes this frame, based on its config's Movement.
+-- Updates enemy.position and enemy.direction.
+local function moveEnemy(enemy: EnemyRecord, deltaTime: number, chefPosition: Vector3)
+	local config = enemy.config
+	local toChef = Vector3.new(chefPosition.X - enemy.position.X, 0, chefPosition.Z - enemy.position.Z)
+	local distance = toChef.Magnitude
+	local step = config.Speed * deltaTime
+
+	if config.Movement == "Chase" then
+		-- Face the chef every frame and walk straight at them.
+		if distance > 0.01 then
+			enemy.direction = toChef / distance
+		end
+		-- Stop at the chef's edge instead of walking inside them.
+		local stopDistance = CHEF_RADIUS + config.Size.X / 2
+		step = math.min(step, math.max(distance - stopDistance, 0))
+	elseif config.Movement == "Charge" then
+		-- Keep rolling the same way. Once it has rolled past the chef (moving away)
+		-- by more than ChargeOvershootDistance, aim at the chef again.
+		local movingAway = enemy.direction:Dot(toChef) < 0
+		if movingAway and distance > RunRules.ChargeOvershootDistance then
+			enemy.direction = toChef / distance
+		end
 	end
 
+	local wanted = enemy.position + enemy.direction * step
+	local allowed = clampToArena(wanted)
+	-- A charger that runs into a wall aims at the chef again instead of sliding along it.
+	if config.Movement == "Charge" and allowed ~= wanted and distance > 0.01 then
+		enemy.direction = toChef / distance
+	end
+	enemy.position = allowed
+end
+
+-- One number per grid cell, so cells can be table keys. Works for cells -5000 to 5000.
+local function cellKey(cellX: number, cellZ: number): number
+	return (cellX + 5000) * 10000 + (cellZ + 5000)
+end
+
+-- Push overlapping enemies apart so the swarm spreads into a crowd instead of one stack.
+local function separateEnemies(deltaTime: number, chefPosition: Vector3)
+	-- Put every enemy into its grid cell.
+	table.clear(grid)
+	for _, enemy in alive do
+		local key = cellKey(math.floor(enemy.position.X / cellSize), math.floor(enemy.position.Z / cellSize))
+		local cell = grid[key]
+		if cell then
+			table.insert(cell, enemy)
+		else
+			grid[key] = { enemy }
+		end
+	end
+
+	for _, enemy in alive do
+		local cellX = math.floor(enemy.position.X / cellSize)
+		local cellZ = math.floor(enemy.position.Z / cellSize)
+		local push = Vector3.zero
+
+		for dx = -1, 1 do
+			for dz = -1, 1 do
+				local cell = grid[cellKey(cellX + dx, cellZ + dz)]
+				if cell then
+					for _, other in cell do
+						if other ~= enemy then
+							local away =
+								Vector3.new(enemy.position.X - other.position.X, 0, enemy.position.Z - other.position.Z)
+							local distance = away.Magnitude
+							-- Two enemies touch when their centers are closer than half of each one's width.
+							local minDistance = (enemy.config.Size.X + other.config.Size.X) / 2
+							if distance < minDistance then
+								if distance < 0.01 then
+									-- Exactly on top of each other: pick a direction from the id so they split.
+									away = Vector3.new(math.cos(enemy.id), 0, math.sin(enemy.id))
+									distance = 0.01
+								end
+								push += away / distance * (minDistance - distance)
+							end
+						end
+					end
+				end
+			end
+		end
+
+		if push ~= Vector3.zero then
+			push *= RunRules.EnemySeparationStrength
+			-- In a dense pile the pushes from many neighbours add up. Limit the shove so an
+			-- enemy is never pushed faster than its own speed (it would look like it got flung).
+			local maxPush = enemy.config.Speed * deltaTime
+			if push.Magnitude > maxPush then
+				push = push.Unit * maxPush
+			end
+			enemy.position = clampToArena(enemy.position + push)
+		end
+
+		-- The crowd behind must not shove a chaser inside the chef: keep it at the chef's edge.
+		-- (Chargers are allowed to roll through the chef.)
+		if enemy.config.Movement == "Chase" then
+			local fromChef = Vector3.new(enemy.position.X - chefPosition.X, 0, enemy.position.Z - chefPosition.Z)
+			local stopDistance = CHEF_RADIUS + enemy.config.Size.X / 2
+			local distance = fromChef.Magnitude
+			if distance < stopDistance and distance > 0.01 then
+				local edge = chefPosition + fromChef / distance * stopDistance
+				enemy.position = Vector3.new(edge.X, enemy.position.Y, edge.Z)
+			end
+		end
+	end
+end
+
+-- Move every live enemy, spread them apart, then move all their parts with one BulkMoveTo call (PRD §8.3).
+local function moveEnemies(deltaTime: number, chefPosition: Vector3)
+	for _, enemy in alive do
+		moveEnemy(enemy, deltaTime, chefPosition)
+	end
+	separateEnemies(deltaTime, chefPosition)
+
+	table.clear(moveParts)
+	table.clear(moveCFrames)
+	for _, enemy in alive do
+		table.insert(moveParts, enemy.part)
+		table.insert(moveCFrames, CFrame.lookAt(enemy.position, enemy.position + enemy.direction))
+	end
+	if #moveParts > 0 then
+		-- FireCFrameChanged skips the extra Position/Orientation change events nobody listens to.
+		workspace:BulkMoveTo(moveParts, moveCFrames, Enum.BulkMoveMode.FireCFrameChanged)
+	end
+end
+
+-- Spawn one group of `enemyType` around `center`: GroupSize enemies clustered together
+-- (most enemies have no GroupSize, so a group is just one enemy).
+local function spawnGroup(enemyType: string, center: Vector3)
+	local count = Enemies[enemyType].GroupSize or 1
+	for _ = 1, count do
+		local offset = Vector3.zero
+		if count > 1 then
+			local spread = RunRules.EnemyGroupSpread
+			offset = Vector3.new(random:NextNumber(-spread, spread), 0, random:NextNumber(-spread, spread))
+		end
+		if not EnemyService.spawn(enemyType, clampToArena(center + offset)) then
+			return -- alive cap reached
+		end
+	end
+end
+
+-- Spawn groups at the current rate (spawnsPerSecond counts groups, not single enemies).
+local function spawnOverTime(deltaTime: number, chefPosition: Vector3)
+	if #spawnTypes == 0 then
+		return
+	end
 	spawnBudget += deltaTime * spawnsPerSecond
 	while spawnBudget >= 1 do
 		spawnBudget -= 1
@@ -245,8 +414,21 @@ local function update(deltaTime: number)
 			break
 		end
 		local enemyType = spawnTypes[random:NextInteger(1, #spawnTypes)]
-		EnemyService.spawn(enemyType, pickSpawnPoint(chefPosition))
+		spawnGroup(enemyType, pickSpawnPoint(chefPosition))
 	end
+end
+
+-- Every frame: move the enemies that are alive, then spawn new ones.
+local function update(deltaTime: number)
+	if RunManager.isPaused() then
+		return -- "Order Up!" is on screen: enemies freeze and nothing new spawns
+	end
+	local chefPosition = getChefPosition()
+	if not chefPosition then
+		return -- no chef (loading or respawning): everything waits
+	end
+	moveEnemies(deltaTime, chefPosition)
+	spawnOverTime(deltaTime, chefPosition)
 end
 
 function EnemyService:init()
@@ -254,8 +436,9 @@ function EnemyService:init()
 	enemyFolder.Name = "Enemies"
 	enemyFolder.Parent = workspace
 
-	for enemyType in Enemies do
+	for enemyType, config in Enemies do
 		pools[enemyType] = {}
+		cellSize = math.max(cellSize, config.Size.X)
 	end
 
 	-- The map stores its playable area as attributes (Workspace.Map, issue #5).

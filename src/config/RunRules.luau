@@ -54,4 +54,11 @@ return {
 	-- With the camera above (pitch 55, distance 45, FOV 50) the farthest visible ground,
 	-- a corner of a wide phone screen, is about 85 studs away. Retune if the camera changes.
 	EnemySpawnRadius = 90,
+	EnemyGroupSpread = 4, -- studs; how far apart a group (e.g. Fruit Flies) spawns around its center
+
+	-- Enemy movement (PRD §3.4)
+	ChargeOvershootDistance = 25, -- studs a charger rolls past the chef before it turns and aims again
+	-- How hard overlapping enemies push apart each frame: 0 = not at all, 1 = fully separated at once.
+	-- Lower is smoother but lets the swarm squash together more.
+	EnemySeparationStrength = 0.5,
 }
