@@ -13,7 +13,6 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local Enemies = require(ReplicatedStorage.Config.Enemies)
 local EnemyService = require(script.Parent.EnemyService)
 local RunManager = require(script.Parent.RunManager)
 local RunRules = require(ReplicatedStorage.Config.RunRules)
@@ -50,30 +49,31 @@ local function update(deltaTime: number)
 
 	-- Find the strongest enemy touching the chef.
 	local strongest = 0
+	local cooldown = RunRules.ChefHurtCooldown
 	for _, enemyId in EnemyService.getEnemiesInRadius(chefPosition, searchRadius) do
 		local enemyType = EnemyService.getEnemyType(enemyId)
 		local position = EnemyService.getEnemyPosition(enemyId)
-		local config = enemyType and Enemies[enemyType]
+		local config = enemyType and EnemyService.getConfigForType(enemyType) -- bosses too
 		if config and position then
 			local touchDistance = CHEF_RADIUS + config.Size.X / 2 + RunRules.ContactReach
 			local distance = Vector3.new(position.X - chefPosition.X, 0, position.Z - chefPosition.Z).Magnitude
-			if distance <= touchDistance then
-				strongest = math.max(strongest, config.Damage)
+			if distance <= touchDistance and config.Damage > strongest then
+				strongest = config.Damage
+				-- Hard hitters (the boss) can set their own, longer wait between hits.
+				cooldown = config.HurtCooldown or RunRules.ChefHurtCooldown
 			end
 		end
 	end
 
 	if strongest > 0 then
 		RunManager.damagePlayer(strongest)
-		hurtCooldown = RunRules.ChefHurtCooldown
+		hurtCooldown = cooldown
 	end
 end
 
 function ContactService:init()
-	-- The widest enemy decides how far around the chef we need to look.
-	for _, config in Enemies do
-		searchRadius = math.max(searchRadius, CHEF_RADIUS + config.Size.X / 2 + RunRules.ContactReach)
-	end
+	-- The widest enemy (or boss) decides how far around the chef we need to look.
+	searchRadius = CHEF_RADIUS + EnemyService.getMaxEnemyWidth() / 2 + RunRules.ContactReach
 end
 
 function ContactService:start()

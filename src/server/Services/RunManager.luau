@@ -10,7 +10,7 @@
 -- Player attributes set here (read by the HUD):
 --   "Hp", "MaxHp"  the chef's HP (#9)
 --   "RunSeconds"   run timer in whole seconds (#6)
---   "RunState"     "Playing", "Lost" (#9) or "Won" (#6; the boss replaces this in #11)
+--   "RunState"     "Playing", "Lost" (#9) or "Won" (final boss defeated, #11)
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -68,6 +68,9 @@ local phaseIndex = 0
 local currentEnemyTypes: { string } = {}
 local currentSpawnsPerSecond = 0
 local phaseCallbacks: { PhaseCallback } = {}
+-- Final boss (#11): who to tell at the end of the timeline, and whether we already did.
+local finalBossCallbacks: { () -> () } = {}
+local finalBossStarted = false
 
 local function getTimeline(): { Chapters.Phase }
 	return Chapters[CHAPTER].Timeline or {}
@@ -111,6 +114,17 @@ function RunManager.onPhaseChanged(callback: PhaseCallback)
 	if phaseIndex > 0 then
 		task.spawn(callback, table.clone(currentEnemyTypes), currentSpawnsPerSecond)
 	end
+end
+
+-- Which chapter this run is in (a key of Chapters.luau).
+function RunManager.getChapter(): string
+	return CHAPTER
+end
+
+-- Run `callback` once, when the timeline ends at RunRules.RunLengthSeconds: time for the
+-- final boss (BossService, #11). The clock keeps running during the boss fight.
+function RunManager.onFinalBoss(callback: () -> ())
+	table.insert(finalBossCallbacks, callback)
 end
 
 -- Seconds since the run started (paused time doesn't count).
@@ -173,8 +187,7 @@ local function loseRun()
 	endRun("Lost")
 end
 
--- The run is won: the chapter is cleared. The final boss calls this when defeated (#11).
--- Until the boss exists, surviving to RunRules.RunLengthSeconds wins.
+-- The run is won: the chapter is cleared. BossService calls this when the final boss dies (#11).
 function RunManager.winRun()
 	endRun("Won")
 end
@@ -223,6 +236,7 @@ function RunManager.reset()
 	runSeconds = 0
 	shownSeconds = -1
 	phaseIndex = 0
+	finalBossStarted = false
 	syncAttributes()
 end
 
@@ -254,9 +268,15 @@ local function update(deltaTime: number)
 		setPhase(index)
 	end
 
-	if runSeconds >= RunRules.RunLengthSeconds then
-		-- 10:00: this is where the final boss arrives (#11). Until then, surviving the shift wins.
-		RunManager.winRun()
+	if runSeconds >= RunRules.RunLengthSeconds and not finalBossStarted then
+		-- 10:00: normal spawns have stopped (the timeline is over); the final boss arrives.
+		finalBossStarted = true
+		if #finalBossCallbacks == 0 then
+			RunManager.winRun() -- no boss fight in this game: surviving the shift wins
+		end
+		for _, callback in finalBossCallbacks do
+			task.spawn(callback)
+		end
 	end
 end
 
