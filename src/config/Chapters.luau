@@ -30,7 +30,10 @@ local Chapters: { [string]: Chapter } = {
 		MiniBoss = "BigCheese",
 		FinalBoss = "MicrowaveMonster",
 		Timeline = {
-			{ From = 0, To = 120, Enemies = { "MoldyBread", "FruitFlies" }, SpawnsPerSecond = 0.6 },
+			-- First minute: slow Moldy Bread only, so the player can level up a couple of times
+			-- before the fast Fruit Flies (faster than the chef) arrive.
+			{ From = 0, To = 60, Enemies = { "MoldyBread" }, SpawnsPerSecond = 0.6 },
+			{ From = 60, To = 120, Enemies = { "MoldyBread", "FruitFlies" }, SpawnsPerSecond = 0.6 },
 			{
 				From = 120,
 				To = 300,
