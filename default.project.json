@@ -1,6 +1,5 @@
 {
   "name": "KitchenChaos",
-  "servePlaceIds": [],
   "globIgnorePaths": ["**/.DS_Store"],
   "tree": {
     "$className": "DataModel",
