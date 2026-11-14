@@ -105,6 +105,12 @@ function ConfigCheck.run(): { string }
 		end
 	end
 
+	for _, id in RunRules.EnemyPool do
+		if not Enemies[id] then
+			fail(`RunRules.EnemyPool: unknown enemy "{id}"`)
+		end
+	end
+
 	for id, chapter in Chapters do
 		if not Bosses[chapter.FinalBoss] then
 			fail(`Chapter {id}: unknown final boss "{chapter.FinalBoss}"`)
@@ -113,12 +119,27 @@ function ConfigCheck.run(): { string }
 			fail(`Chapter {id}: unknown mini-boss "{chapter.MiniBoss}"`)
 		end
 		if chapter.Timeline then
-			for _, phase in chapter.Timeline do
+			-- Phases must run back to back from 0:00 to the end of the shift, with no gaps.
+			local expectedFrom = 0
+			for index, phase in chapter.Timeline do
 				for _, enemyId in phase.Enemies do
 					if not Enemies[enemyId] then
 						fail(`Chapter {id}: unknown enemy "{enemyId}"`)
 					end
 				end
+				if phase.From ~= expectedFrom then
+					fail(`Chapter {id}: phase {index} starts at {phase.From}, expected {expectedFrom}`)
+				end
+				if phase.To <= phase.From then
+					fail(`Chapter {id}: phase {index} ends before it starts`)
+				end
+				if phase.SpawnsPerSecond < 0 then
+					fail(`Chapter {id}: phase {index} has a negative SpawnsPerSecond`)
+				end
+				expectedFrom = phase.To
+			end
+			if #chapter.Timeline > 0 and expectedFrom ~= RunRules.RunLengthSeconds then
+				fail(`Chapter {id}: timeline ends at {expectedFrom}, RunLengthSeconds is {RunRules.RunLengthSeconds}`)
 			end
 		end
 	end

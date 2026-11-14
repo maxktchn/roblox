@@ -62,8 +62,10 @@ return {
 	-- Performance (PRD §8.3)
 	MaxAliveEnemies = 150,
 
-	-- Enemy spawning (PRD §2.1, §8.3)
-	EnemySpawnsPerSecond = 2, -- RunManager changes this over the timeline (#6)
+	-- Enemy spawning (PRD §2.1, §8.3). How many spawn per second is set per timeline phase in Chapters.luau.
+	-- Which enemies can spawn at all. Phase 1 picks (PRD §9); the timeline skips anything not listed.
+	-- Add ids here to put more enemies in the game. Checked by ConfigCheck.
+	EnemyPool = { "MoldyBread", "FruitFlies", "Meatball" },
 	-- Enemies appear on a ring this far from the chef, just outside the camera view.
 	-- With the camera above (pitch 55, distance 45, FOV 50) the farthest visible ground,
 	-- a corner of a wide phone screen, is about 85 studs away. Retune if the camera changes.

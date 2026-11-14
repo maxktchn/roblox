@@ -1,11 +1,14 @@
 --!strict
 -- Chapters and run timelines (PRD §3.6, §3.7). Chapters unlock in order.
 -- Timeline times are in seconds. Elite timing and wave sizes are tuned in Phase 1.
+-- SpawnsPerSecond counts spawn groups: most enemies spawn alone, Fruit Flies in a group
+-- of GroupSize (Enemies.luau). RunManager only spawns enemies listed in RunRules.EnemyPool.
 
 export type Phase = {
 	From: number,
 	To: number,
 	Enemies: { string },
+	SpawnsPerSecond: number,
 	Note: string?,
 }
 
@@ -27,23 +30,26 @@ local Chapters: { [string]: Chapter } = {
 		MiniBoss = "BigCheese",
 		FinalBoss = "MicrowaveMonster",
 		Timeline = {
-			{ From = 0, To = 120, Enemies = { "MoldyBread", "FruitFlies" } },
+			{ From = 0, To = 120, Enemies = { "MoldyBread", "FruitFlies" }, SpawnsPerSecond = 0.6 },
 			{
 				From = 120,
 				To = 300,
 				Enemies = { "MoldyBread", "FruitFlies", "RottenTomato", "Meatball" },
+				SpawnsPerSecond = 1,
 				Note = "First elite at 3:00",
 			},
 			{
 				From = 300,
 				To = 540,
 				Enemies = { "MoldyBread", "FruitFlies", "RottenTomato", "Meatball", "SourLemon" },
+				SpawnsPerSecond = 1.4,
 				Note = "Larger waves; dinner rush swarm at 7:30",
 			},
 			{
 				From = 540,
 				To = 600,
 				Enemies = { "MoldyBread", "FruitFlies", "RottenTomato", "Meatball", "SourLemon" },
+				SpawnsPerSecond = 2,
 				Note = "Final heavy wave",
 			},
 		},

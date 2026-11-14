@@ -7,7 +7,7 @@
 --   "Weapon_<id>", "Ingredient_<id>" WeaponService / StatsService (owned item icons)
 --   "RunSeconds"                    RunManager, run timer in whole seconds (#6)
 --   "Hp", "MaxHp"                   RunManager, the chef's HP (#9)
---   "RunState"                      RunManager: "Playing" or "Lost" (shows the run-over banner)
+--   "RunState"                      RunManager: "Playing", "Lost" or "Won" (shows the run-over banner)
 -- If Hp/MaxHp are missing the HP bar shows the Humanoid's health instead, and the
 -- timer shows "--:--" until RunSeconds exists.
 -- Pause button: not in Phase 1 yet (the run already pauses during "Order Up!").
@@ -53,6 +53,7 @@ local iconRow: Frame
 local hpBillboard: BillboardGui
 local hpFill: Frame
 local runOverPanel: Frame
+local runOverTitle: TextLabel
 local runOverStats: TextLabel
 
 -- Helper: a text label in the game font.
@@ -162,7 +163,7 @@ local function buildScreen()
 	corner(hpFill, UDim.new(0, 4))
 	hpFill.Parent = hpBack
 
-	-- Shown in the middle of the screen when the run is lost.
+	-- Shown in the middle of the screen when the run is over (won or lost).
 	runOverPanel = Instance.new("Frame")
 	runOverPanel.Name = "RunOver"
 	runOverPanel.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -173,11 +174,9 @@ local function buildScreen()
 	runOverPanel.Visible = false
 	corner(runOverPanel, UDim.new(0, 16))
 	runOverPanel.Parent = gui
-	local title = makeLabel(runOverPanel, "Title", 48)
-	title.Text = "SHIFT OVER"
-	title.TextColor3 = COLORS.hpLow
-	title.Size = UDim2.new(1, 0, 0, 70)
-	title.Position = UDim2.fromOffset(0, 14)
+	runOverTitle = makeLabel(runOverPanel, "Title", 48)
+	runOverTitle.Size = UDim2.new(1, 0, 0, 70)
+	runOverTitle.Position = UDim2.fromOffset(0, 14)
 	runOverStats = makeLabel(runOverPanel, "Stats", 22)
 	runOverStats.Size = UDim2.new(1, 0, 0, 40)
 	runOverStats.Position = UDim2.fromOffset(0, 88)
@@ -185,9 +184,17 @@ end
 
 -- The run-over banner, with how far the player got.
 local function updateRunState()
-	local lost = player:GetAttribute("RunState") == "Lost"
-	runOverPanel.Visible = lost
-	if lost then
+	local state = player:GetAttribute("RunState")
+	local over = state == "Lost" or state == "Won"
+	runOverPanel.Visible = over
+	if over then
+		if state == "Won" then
+			runOverTitle.Text = "SHIFT SURVIVED!"
+			runOverTitle.TextColor3 = COLORS.tips
+		else
+			runOverTitle.Text = "SHIFT OVER"
+			runOverTitle.TextColor3 = COLORS.hpLow
+		end
 		runOverStats.Text =
 			`Reached Lv {player:GetAttribute("Level") or 1} · Defeated {player:GetAttribute("Kills") or 0}`
 	end
