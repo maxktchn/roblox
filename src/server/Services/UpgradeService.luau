@@ -42,6 +42,7 @@ local currentOffer: { Card }? = nil -- the cards on screen right now, or nil
 local rerollsLeft = RunRules.RerollsPerRun -- rerolls the player can still use this run
 
 local offerCards: RemoteEvent
+local closeCards: RemoteEvent
 
 -- Tips needed to go from `fromLevel` to the next level (5, 8, 11, ...).
 local function tipsNeeded(fromLevel: number): number
@@ -250,6 +251,19 @@ local function sendOffer()
 	end
 end
 
+-- Throw away the open offer without applying a card, and tell the client to hide its cards
+-- (otherwise its screen would stay up and the chef stay frozen).
+local function cancelOffer()
+	if not currentOffer then
+		return
+	end
+	currentOffer = nil
+	local player = getRunPlayer()
+	if player then
+		closeCards:FireClient(player)
+	end
+end
+
 -- If a level-up is waiting and nothing is on screen, draw and send the next offer.
 local function offerNext()
 	if currentOffer or pendingLevelUps == 0 or RunManager.isRunOver() then
@@ -323,6 +337,9 @@ end
 -- Take card number `index` (1 to 3) from the current offer. Returns true if it was applied.
 -- The ChooseCard remote handler below validates the player's input before calling this.
 function UpgradeService.chooseCard(index: number): boolean
+	if RunManager.isRunOver() then
+		return false -- the shift has ended: no more upgrades
+	end
 	local offer = currentOffer
 	local card = offer and offer[index]
 	if not card then
@@ -352,7 +369,7 @@ function UpgradeService.reset()
 	tips = 0
 	level = 1
 	pendingLevelUps = 0
-	currentOffer = nil
+	cancelOffer()
 	rerollsLeft = RunRules.RerollsPerRun
 	RunManager.setPaused(false)
 	syncProgress()
@@ -368,6 +385,7 @@ end
 
 function UpgradeService:start()
 	offerCards = Remotes.get("OfferCards")
+	closeCards = Remotes.get("CloseCards")
 	syncProgress()
 	Players.PlayerAdded:Connect(syncProgress)
 
