@@ -137,7 +137,13 @@ over a 22-stud circle with knockback (clearly stronger).
 - **§2.8 Run rewards:** defeating a chapter's final boss for the first time unlocks its power.
 - **§5 Monetization:** boss powers are never sold.
 - **§8.1 / §7.1:** the lobby is a **menu screen in the run place** (no separate Lobby place or
-  teleports for now; can be split later).
+  teleports for now). Servers hold 1 player, so run code keeps handling one player.
+  - **Why:** much easier to build and test (teleports don't work in Studio playtests), simpler
+    saving (no save/load handoff between servers), one place to keep in sync, instant "Play again".
+  - **Cost accepted:** no shared social lobby for now.
+  - **Revisit when co-op is designed** (post-launch): co-op needs players matched into a shared
+    run, which is when a separate Lobby place and teleports come back. Build the lobby as its own
+    screen code so it can move to a separate place later.
 - **§9 Roadmap:**
   - Phase 1 gains Microwave Pulse (unlocked per server) as a prototype of boss powers.
   - Phase 2 order: **saving first, then boss powers saving properly, then chapter and starter
