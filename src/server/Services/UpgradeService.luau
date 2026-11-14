@@ -18,6 +18,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local BossPowers = require(ReplicatedStorage.Config.BossPowers)
 local Card = require(ReplicatedStorage.Shared.Card)
 local Gadgets = require(ReplicatedStorage.Config.Gadgets)
 local Ingredients = require(ReplicatedStorage.Config.Ingredients)
@@ -27,6 +28,7 @@ local RunManager = require(script.Parent.RunManager)
 local RunRules = require(ReplicatedStorage.Config.RunRules)
 local Starters = require(ReplicatedStorage.Config.Starters)
 local StatsService = require(script.Parent.StatsService)
+local UnlockService = require(script.Parent.UnlockService)
 local WeaponService = require(script.Parent.WeaponService)
 
 type Card = Card.Card
@@ -96,7 +98,8 @@ local function slotsUsed(): number
 	local used = 0
 	for ownedId in WeaponService.getOwnedWeapons() do
 		local recipe = Recipes[ownedId]
-		if Gadgets[ownedId] or (recipe and Gadgets[recipe.Weapon]) then
+		-- Gadgets, gadget recipes and boss powers each take a shared slot (the starter doesn't).
+		if Gadgets[ownedId] or (recipe and Gadgets[recipe.Weapon]) or BossPowers[ownedId] then
 			used += 1
 		end
 	end
@@ -162,6 +165,29 @@ local function buildPool(): { Card }
 				FromLevel = from,
 				ToLevel = from + 1,
 				Description = Ingredients[id].Description,
+			})
+		end
+	end
+
+	-- Boss powers (PRD §3.8): only once unlocked. Owned ones level up like gadgets; the NEW card
+	-- of one you don't own is rarer: it only joins this draw if a BossPowerNewCardChance roll wins.
+	for _, id in RunRules.UpgradePool.BossPowers do
+		local power = BossPowers[id]
+		local owned = WeaponService.getWeaponLevel(id)
+		local canOffer = if owned
+			then owned < RunRules.SharedItemMaxLevel
+			else slotsFree and UnlockService.isUnlocked(id) and random:NextNumber() < RunRules.BossPowerNewCardChance
+		if canOffer then
+			local from = owned or 0
+			table.insert(pool, {
+				Kind = "BossPower",
+				Id = id,
+				Name = power.Name,
+				FromLevel = from,
+				ToLevel = from + 1,
+				Description = if from == 0
+					then power.Behavior
+					else describeChange(power.Levels[from], power.Levels[from + 1]),
 			})
 		end
 	end
@@ -290,7 +316,7 @@ end
 
 -- Do what a card says.
 local function applyCard(card: Card)
-	if card.Kind == "Starter" or card.Kind == "Gadget" then
+	if card.Kind == "Starter" or card.Kind == "Gadget" or card.Kind == "BossPower" then
 		WeaponService.setWeaponLevel(card.Id, card.ToLevel)
 	elseif card.Kind == "Ingredient" then
 		StatsService.setIngredientLevel(card.Id, card.ToLevel)

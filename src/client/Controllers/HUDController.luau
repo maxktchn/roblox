@@ -16,6 +16,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local BossPowers = require(ReplicatedStorage.Config.BossPowers)
 local Gadgets = require(ReplicatedStorage.Config.Gadgets)
 local Ingredients = require(ReplicatedStorage.Config.Ingredients)
 local Recipes = require(ReplicatedStorage.Config.Recipes)
@@ -41,6 +42,7 @@ local ICON_COLORS = {
 	Gadget = Color3.fromRGB(52, 120, 200),
 	Recipe = Color3.fromRGB(230, 175, 30),
 	Ingredient = Color3.fromRGB(46, 160, 67),
+	BossPower = Color3.fromRGB(255, 140, 40),
 }
 
 local ICON_SIZE = 38 -- pixels
@@ -292,6 +294,8 @@ local function describeItem(kind: string, id: string): (string?, string, number)
 		return "Recipe", Recipes[id].Name, if Starters[Recipes[id].Weapon] then 1 else 2
 	elseif Gadgets[id] then
 		return "Gadget", Gadgets[id].Name, 2
+	elseif BossPowers[id] then
+		return "BossPower", BossPowers[id].Name, 2
 	end
 	return nil, id, 9
 end

@@ -12,6 +12,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local BossPowers = require(ReplicatedStorage.Config.BossPowers)
 local Bosses = require(ReplicatedStorage.Config.Bosses)
 local DevAccess = require(script.Parent.Parent.DevAccess)
 local Enemies = require(ReplicatedStorage.Config.Enemies)
@@ -51,7 +52,13 @@ end
 
 -- Display name for any config id (weapon, ingredient, enemy, boss).
 local function nameOf(id: string): string
-	local config: any = Starters[id] or Gadgets[id] or Recipes[id] or Ingredients[id] or Enemies[id] or Bosses[id]
+	local config: any = Starters[id]
+		or Gadgets[id]
+		or Recipes[id]
+		or BossPowers[id]
+		or Ingredients[id]
+		or Enemies[id]
+		or Bosses[id]
 	if id == "BossPulse" then
 		return "Boss pulse"
 	end

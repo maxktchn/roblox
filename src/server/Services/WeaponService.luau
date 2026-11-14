@@ -463,6 +463,9 @@ local function syncAttributes()
 	for id in Recipes do
 		player:SetAttribute(`Weapon_{id}`, levels[id])
 	end
+	for id in BossPowers do
+		player:SetAttribute(`Weapon_{id}`, levels[id])
+	end
 end
 
 -- Set a weapon's level (UpgradeService calls this when a card is taken).
