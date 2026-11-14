@@ -236,6 +236,10 @@ All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with ga
 | 9:00 to 10:00 | Final heavy wave |
 | 10:00 | Microwave Monster in the closed arena |
 
+**Spawn rate per phase** (spawn groups per second, tune in `Chapters.luau`; most enemies spawn alone, Fruit Flies in groups of 6): 0.6 until 2:00, 1 until 5:00, 1.4 until 9:00, 2 until 10:00. Normal spawns stop at 10:00.
+
+**Phase 1:** only the Phase 1 enemies (Moldy Bread, Fruit Flies, Meatball, set in `RunRules.EnemyPool`) spawn from this timeline. Elites, the mini-boss and the dinner rush wait for later. Until the Microwave Monster is in (#11), surviving to 10:00 wins the run.
+
 ### 3.7 Chapters (maps)
 - Chapters unlock in order. Beat a chapter's final boss to unlock the next one.
 - Each run is about 10 minutes plus the boss fight.
@@ -425,7 +429,7 @@ This is the biggest technical risk. Rules:
 - **Object pooling:** Reuse enemy, projectile, and tip objects instead of creating and destroying them
 - Use simple distance checks for hits instead of Roblox physics touches
 - Limit how many enemies can be alive at once (starting cap: 150, tune after testing)
-- Spawn enemies on a ring just outside the camera view (starting radius: 90 studs), at a base rate of 2 per second that the timeline raises
+- Spawn enemies on a ring just outside the camera view (starting radius: 90 studs), at a rate set per timeline phase (see 3.6)
 - **Phase 1 must prove** the cap runs smoothly on a mid-range phone
 
 ### 8.4 Security (server authority)

@@ -17,7 +17,6 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local Chapters = require(ReplicatedStorage.Config.Chapters)
 local Enemies = require(ReplicatedStorage.Config.Enemies)
 local RunManager = require(script.Parent.RunManager)
 local RunRules = require(ReplicatedStorage.Config.RunRules)
@@ -461,11 +460,8 @@ function EnemyService:init()
 end
 
 function EnemyService:start()
-	-- Until RunManager drives the timeline (#6), spawn the first phase's enemies at the base rate.
-	local firstPhase = Chapters.DinerKitchen.Timeline and Chapters.DinerKitchen.Timeline[1]
-	if firstPhase then
-		EnemyService.setSpawning(firstPhase.Enemies, RunRules.EnemySpawnsPerSecond)
-	end
+	-- RunManager owns the timeline and says what may spawn, and how fast, whenever it changes (#6).
+	RunManager.onPhaseChanged(EnemyService.setSpawning)
 	RunService.Heartbeat:Connect(update)
 end
 

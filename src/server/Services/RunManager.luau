@@ -9,15 +9,25 @@
 --
 -- Player attributes set here (read by the HUD):
 --   "Hp", "MaxHp"  the chef's HP (#9)
---   "RunState"     "Playing" or "Lost" (#9); "Won" comes with the boss (#11)
+--   "RunSeconds"   run timer in whole seconds (#6)
+--   "RunState"     "Playing", "Lost" (#9) or "Won" (#6; the boss replaces this in #11)
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
+local Chapters = require(ReplicatedStorage.Config.Chapters)
 local RunRules = require(ReplicatedStorage.Config.RunRules)
 local StatsService = require(script.Parent.StatsService)
 
 local RunManager = {}
+
+-- Called when the timeline moves to a new phase: which enemy types may spawn now,
+-- and how many spawn groups per second. An empty list means "stop spawning".
+export type PhaseCallback = (enemyTypes: { string }, spawnsPerSecond: number) -> ()
+
+-- Phase 1 has one chapter (PRD §9). The lobby picks the chapter from Phase 2 on.
+local CHAPTER = "DinerKitchen"
 
 --------------------------------------------------------------------------------
 -- Pause
@@ -25,6 +35,7 @@ local RunManager = {}
 
 local paused = false
 local runOver = false
+local result: "Won" | "Lost" | nil = nil
 
 -- Pause or resume the run. UpgradeService pauses while "Order Up!" cards are on screen.
 -- While paused: the timer, enemies (#6, #8) and weapons must all stand still.
@@ -41,9 +52,76 @@ function RunManager.isPaused(): boolean
 	return paused
 end
 
--- True once the run has ended (for now only by the chef's HP reaching 0).
+-- True once the run has ended, won or lost.
 function RunManager.isRunOver(): boolean
 	return runOver
+end
+
+--------------------------------------------------------------------------------
+-- Run timer and timeline (#6)
+--------------------------------------------------------------------------------
+
+local runSeconds = 0 -- counts up while the run is playing; stands still while paused
+local shownSeconds = -1 -- last whole second written to the HUD attribute
+-- Which timeline phase is active: 0 = run not started yet, #timeline + 1 = past the end.
+local phaseIndex = 0
+local currentEnemyTypes: { string } = {}
+local currentSpawnsPerSecond = 0
+local phaseCallbacks: { PhaseCallback } = {}
+
+local function getTimeline(): { Chapters.Phase }
+	return Chapters[CHAPTER].Timeline or {}
+end
+
+-- Which phase `seconds` falls in (#timeline + 1 once the timeline has ended).
+local function findPhase(seconds: number): number
+	local timeline = getTimeline()
+	for index, phase in timeline do
+		if seconds >= phase.From and seconds < phase.To then
+			return index
+		end
+	end
+	return #timeline + 1
+end
+
+-- Switch to a phase and tell every listener what may spawn now.
+-- Only enemies in RunRules.EnemyPool spawn (Phase 1 has 3 of the 5 in the timeline).
+local function setPhase(index: number)
+	phaseIndex = index
+	local phase = getTimeline()[index]
+	currentEnemyTypes = {}
+	currentSpawnsPerSecond = 0
+	if phase then
+		for _, enemyType in phase.Enemies do
+			if table.find(RunRules.EnemyPool, enemyType) then
+				table.insert(currentEnemyTypes, enemyType)
+			end
+		end
+		currentSpawnsPerSecond = phase.SpawnsPerSecond
+	end
+	for _, callback in phaseCallbacks do
+		task.spawn(callback, table.clone(currentEnemyTypes), currentSpawnsPerSecond)
+	end
+end
+
+-- Run `callback` every time the timeline moves to a new phase (EnemyService uses this).
+-- If a phase is already active, the callback also runs straight away with it.
+function RunManager.onPhaseChanged(callback: PhaseCallback)
+	table.insert(phaseCallbacks, callback)
+	if phaseIndex > 0 then
+		task.spawn(callback, table.clone(currentEnemyTypes), currentSpawnsPerSecond)
+	end
+end
+
+-- Seconds since the run started (paused time doesn't count).
+function RunManager.getRunSeconds(): number
+	return runSeconds
+end
+
+-- Jump the run clock to `seconds` (testing and tuning only, e.g. to try the 9:00 wave
+-- straight away). The phase for that time is announced on the next frame.
+function RunManager.setRunSeconds(seconds: number)
+	runSeconds = math.max(seconds, 0)
 end
 
 --------------------------------------------------------------------------------
@@ -74,15 +152,31 @@ local function syncAttributes()
 	if player then
 		player:SetAttribute("Hp", math.ceil(hp))
 		player:SetAttribute("MaxHp", math.ceil(lastMaxHp))
-		player:SetAttribute("RunState", if runOver then "Lost" else "Playing")
+		player:SetAttribute("RunSeconds", math.floor(runSeconds))
+		player:SetAttribute("RunState", result or "Playing")
 	end
 end
 
--- The run is lost: freeze everything and tell the client. (Revives come in Phase 3, PRD §2.7.)
-local function loseRun()
+-- End the run with a result: freeze everything and tell the client.
+local function endRun(runResult: "Won" | "Lost")
+	if runOver then
+		return
+	end
 	runOver = true
+	result = runResult
 	paused = true
 	syncAttributes()
+end
+
+-- The run is lost. (Revives come in Phase 3, PRD §2.7.)
+local function loseRun()
+	endRun("Lost")
+end
+
+-- The run is won: the chapter is cleared. The final boss calls this when defeated (#11).
+-- Until the boss exists, surviving to RunRules.RunLengthSeconds wins.
+function RunManager.winRun()
+	endRun("Won")
 end
 
 -- Hurt the player (enemy contact, boss pulses). Armor (StatsService.getStat("Armor")) is
@@ -118,13 +212,52 @@ function RunManager.getHp(): (number, number)
 	return hp, lastMaxHp
 end
 
--- Start a fresh run: full HP, not paused, not over.
+-- Start a fresh run: full HP, timer at 0:00, not paused, not over.
+-- The first phase is announced again on the next frame.
 function RunManager.reset()
 	runOver = false
+	result = nil
 	paused = false
 	lastMaxHp = getMaxHp()
 	hp = lastMaxHp
+	runSeconds = 0
+	shownSeconds = -1
+	phaseIndex = 0
 	syncAttributes()
+end
+
+--------------------------------------------------------------------------------
+-- Every frame
+--------------------------------------------------------------------------------
+
+-- Count the run timer up, move the timeline along, and end the shift at 10:00.
+local function update(deltaTime: number)
+	if paused or runOver then
+		return -- "Order Up!" on screen, or the run is over: the clock stands still
+	end
+	local player = Players:GetPlayers()[1]
+	if not (player and player.Character) then
+		return -- the clock starts once the chef is in the kitchen
+	end
+
+	runSeconds += deltaTime
+
+	-- The HUD only needs whole seconds, so only write the attribute when the number changes.
+	local whole = math.floor(runSeconds)
+	if whole ~= shownSeconds then
+		shownSeconds = whole
+		player:SetAttribute("RunSeconds", whole)
+	end
+
+	local index = findPhase(runSeconds)
+	if index ~= phaseIndex then
+		setPhase(index)
+	end
+
+	if runSeconds >= RunRules.RunLengthSeconds then
+		-- 10:00: this is where the final boss arrives (#11). Until then, surviving the shift wins.
+		RunManager.winRun()
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -136,6 +269,7 @@ function RunManager:init() end
 function RunManager:start()
 	syncAttributes()
 	Players.PlayerAdded:Connect(syncAttributes)
+	RunService.Heartbeat:Connect(update)
 end
 
 return RunManager
