@@ -7,6 +7,11 @@
 -- Damage: contact damage to the chef, before armor
 -- Size:   size of the enemy's part, in studs
 -- Shape:  "Block" or "Ball" (one simple part each, so the swarm stays cheap on phones)
+-- Movement: how it moves, handled in EnemyService (one code path per movement, not per enemy):
+--   "Chase"  walks straight at the chef every frame
+--   "Charge" picks a direction toward the chef and rolls straight; re-aims after it
+--            overshoots the chef or reaches a wall
+-- GroupSize: how many spawn together in one cluster (1 if left out)
 
 export type Enemy = {
 	Name: string,
@@ -19,6 +24,8 @@ export type Enemy = {
 	Size: Vector3,
 	Shape: "Block" | "Ball",
 	Color: Color3,
+	Movement: "Chase" | "Charge",
+	GroupSize: number?,
 }
 
 local Enemies: { [string]: Enemy } = {
@@ -33,6 +40,7 @@ local Enemies: { [string]: Enemy } = {
 		Size = Vector3.new(3, 3.5, 1.2),
 		Shape = "Block",
 		Color = Color3.fromRGB(150, 170, 90),
+		Movement = "Chase",
 	},
 	FruitFlies = {
 		Name = "Fruit Flies",
@@ -40,11 +48,13 @@ local Enemies: { [string]: Enemy } = {
 		Behavior = "Fast, low HP, spawn in large groups",
 		Mvp = true,
 		Hp = 3,
-		Speed = 18,
+		Speed = 17, -- just faster than the chef (16): can't simply be outrun
 		Damage = 2,
 		Size = Vector3.new(1.5, 1.5, 1.5),
 		Shape = "Ball",
 		Color = Color3.fromRGB(60, 50, 70),
+		Movement = "Chase",
+		GroupSize = 6,
 	},
 	RottenTomato = {
 		Name = "Rotten Tomato",
@@ -57,6 +67,7 @@ local Enemies: { [string]: Enemy } = {
 		Size = Vector3.new(3, 3, 3),
 		Shape = "Ball",
 		Color = Color3.fromRGB(170, 60, 50),
+		Movement = "Chase",
 	},
 	Meatball = {
 		Name = "Meatball",
@@ -69,6 +80,7 @@ local Enemies: { [string]: Enemy } = {
 		Size = Vector3.new(3.5, 3.5, 3.5),
 		Shape = "Ball",
 		Color = Color3.fromRGB(120, 70, 45),
+		Movement = "Charge",
 	},
 	SourLemon = {
 		Name = "Sour Lemon",
@@ -81,6 +93,7 @@ local Enemies: { [string]: Enemy } = {
 		Size = Vector3.new(2.8, 2.8, 2.8),
 		Shape = "Ball",
 		Color = Color3.fromRGB(245, 220, 60),
+		Movement = "Chase",
 	},
 	SpaghettiMonster = {
 		Name = "Spaghetti Monster",
@@ -93,6 +106,7 @@ local Enemies: { [string]: Enemy } = {
 		Size = Vector3.new(4, 4, 4),
 		Shape = "Ball",
 		Color = Color3.fromRGB(240, 200, 110),
+		Movement = "Chase",
 	},
 	BurntToast = {
 		Name = "Burnt Toast",
@@ -105,6 +119,7 @@ local Enemies: { [string]: Enemy } = {
 		Size = Vector3.new(4, 4.5, 1.6),
 		Shape = "Block",
 		Color = Color3.fromRGB(60, 40, 30),
+		Movement = "Chase",
 	},
 }
 
