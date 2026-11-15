@@ -14,13 +14,17 @@ export type Gadget = {
 	Shape: WeaponTypes.Shape?,
 	Levels: { WeaponTypes.WeaponLevel }?,
 	FxColor: Color3?, -- colour of its effect
+	-- Arc only: attack toward the nearest enemy instead of the way the chef walks (which is
+	-- usually away from the enemies). Falls back to the chef's facing when nothing is near.
+	AimAtNearest: boolean?,
 }
 
 local Gadgets: { [string]: Gadget } = {
 	PepperShaker = {
 		Name = "Pepper Shaker",
-		Behavior = "Cone spray that burns",
+		Behavior = "Sprays a burning cone at the nearest enemy",
 		Shape = "Arc",
+		AimAtNearest = true,
 		FxColor = Color3.fromRGB(230, 60, 30),
 		Levels = {
 			{ Damage = 4, Cooldown = 1.2, Range = 9, ArcDegrees = 75, BurnDps = 3, BurnSeconds = 2 },

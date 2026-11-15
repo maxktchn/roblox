@@ -157,7 +157,7 @@ Rewards scale with how long the player survived and how far they got:
 ### 3.2 Kitchen Gadgets (shared pool)
 | Gadget | Behavior | Recipe |
 |---|---|---|
-| Pepper Shaker | Cone spray that burns | + Hot Sauce = **Ghost Pepper Blaster** |
+| Pepper Shaker | Sprays a burning cone at the nearest enemy | + Hot Sauce = **Ghost Pepper Blaster** |
 | Egg Grenade | Lobbed, splash damage | + Bread = **Breakfast Bomb** (cluster splash) |
 | Pizza Cutter | Disc that bounces between enemies | + Coffee = **Pizza Party** (multiple discs) |
 | Blender | Damage zone around you | + Fridge Magnet = **Smoothie Vortex** (pulls enemies in) |
@@ -175,7 +175,7 @@ All 7 gadgets are in the MVP.
 | Spinning Forks | Orbit | 2 forks on a 7-stud circle, 180°/s, 4 damage, each enemy hit at most every 0.6 s | 4 forks, 8 studs, 240°/s, 8 damage |
 | Toaster | Projectile | 1 toast every 1.4 s at the nearest enemy within 40 studs, 8 damage, 45 studs/s | 4 toasts every 1.2 s, 14 damage |
 
-Burns tick every 0.5 s and get the Hot Sauce bonus but can't crit. A fork hits enemies within 2.5 studs of it; a toast hits the first enemy within 2 studs.
+The Pepper Shaker (and Ghost Pepper Blaster) sprays toward the nearest enemy within its range plus 4 studs, or the way the chef faces if nothing is that close. Burns tick every 0.5 s and get the Hot Sauce bonus but can't crit. A fork hits enemies within 2.5 studs of it; a toast hits the first enemy within 2 studs.
 
 ### 3.3 Ingredients (passives)
 | Ingredient | Effect per level |

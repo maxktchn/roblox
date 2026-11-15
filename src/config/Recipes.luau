@@ -21,6 +21,7 @@ export type Recipe = {
 	Levels: { WeaponTypes.WeaponLevel }?,
 	FxColor: Color3?,
 	Aimed: boolean?, -- a starter's recipe stays aimed like the starter (PRD §3.1)
+	AimAtNearest: boolean?, -- sprays at the nearest enemy, like its gadget (see Gadgets.luau)
 }
 
 local Recipes: { [string]: Recipe } = {
@@ -55,6 +56,7 @@ local Recipes: { [string]: Recipe } = {
 		Ingredient = "HotSauce",
 		Description = "A huge cone of burning spice",
 		Shape = "Arc",
+		AimAtNearest = true,
 		FxColor = Color3.fromRGB(190, 80, 255),
 		Levels = {
 			{ Damage = 7, Cooldown = 0.7, Range = 13, ArcDegrees = 120, BurnDps = 8, BurnSeconds = 3 },
