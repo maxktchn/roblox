@@ -73,7 +73,11 @@ return {
 	TipPickupRange = 8, -- studs; tips this close start flying to the chef. Fridge Magnet adds % on top.
 	TipFlySpeed = 45, -- studs per second while a tip flies to the chef
 	MaxTipsOnGround = 250, -- above this, new tips are added to the oldest tip instead (keeps phones fast)
-	PieHealFraction = 0.3,
+	-- Pies (#82): bigger enemies sometimes drop one (Enemies.luau PieDropChance). Walk over it to heal.
+	-- A pie stays on the floor while the chef is at full HP, so it can be saved for later.
+	PieHealFraction = 0.2, -- of max HP
+	PiePickupDistance = 2.5, -- studs from the chef's centre to the pie
+	MaxPiesOnGround = 15, -- past this, new pies aren't dropped
 	LunchboxUpgradesMin = 1,
 	LunchboxUpgradesMax = 3,
 

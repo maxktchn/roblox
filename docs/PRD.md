@@ -77,7 +77,7 @@ The restaurant's food has gone rotten and come alive. You're the chef, and you h
 - Starter upgrades **do not** get a guaranteed slot. They compete in the same pool.
 - **Rerolls:** Players get **2 rerolls per run**. A reroll replaces all 3 cards with a new draw. Talents can add more (see 4.5).
 - Items already at max level are removed from the pool. Once all 6 shared slots are full, new gadgets and ingredients are removed too, and only upgrades to owned items can appear.
-- If the pool runs out completely, show filler cards: **Pie** (heal 30% HP) or **Tip Jar** (bonus gold). Phase 1 has no gold, so it shows only Pie.
+- If the pool runs out completely, show a filler card: **Tip Jar** (bonus gold). Phase 1 has no gold, so once everything is maxed, level-ups show no cards. There is no healing card: healing comes only from pies on the floor (2.6).
 - **Tip bar:** 5 tips fill the first bar, and each bar after needs 5 more than the last (5, 10, 15, 20…), so a run reaches about Lv 20 by the boss. Leftover tips carry over. If several bars fill at once, the "Order Up!" screens come one after another.
 
 ### 2.4 Loadout limits
@@ -110,7 +110,7 @@ The restaurant's food has gone rotten and come alive. You're the chef, and you h
 | Pickup | Effect |
 |---|---|
 | Tips | XP (small, medium, large values). Dropped by every defeated enemy; tips within 8 studs (Fridge Magnet adds to this) fly to the chef at 45 studs/s. At most 250 lie on the floor; extra value is added to the oldest one. |
-| Pie | Heals 30% max HP |
+| Pie | Heals 20% max HP. Moldy Bread, Meatballs and other bigger enemies have a 10% chance to drop one (Fruit Flies never do), about 15–20 a run. Walk over it to eat it (2.5 studs); it stays on the floor while you're at full HP. At most 15 on the floor. |
 | Tip Jar | Pulls every tip on the map to the player |
 | Fire Extinguisher | Clears all normal enemies on screen |
 | Lunchbox | Dropped by elites and bosses. Gives 1 to 3 free upgrades. |

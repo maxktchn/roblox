@@ -19,6 +19,7 @@ local Enemies = require(ReplicatedStorage.Config.Enemies)
 local EnemyService = require(script.Parent.EnemyService)
 local Gadgets = require(ReplicatedStorage.Config.Gadgets)
 local Ingredients = require(ReplicatedStorage.Config.Ingredients)
+local PickupService = require(script.Parent.PickupService)
 local Recipes = require(ReplicatedStorage.Config.Recipes)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local RunManager = require(script.Parent.RunManager)
@@ -135,6 +136,7 @@ local function buildReport(result: string): string
 		`Kills: {breakdown(killsByType)}`,
 		`Damage dealt: {breakdown(WeaponService.getDamageByWeapon())}`,
 		`Damage taken: {breakdown(damageTakenBy)}`,
+		`Pies eaten: {PickupService.getPiesEaten()}`,
 	}
 	return table.concat(lines, "\n")
 end

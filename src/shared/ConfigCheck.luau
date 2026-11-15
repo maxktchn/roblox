@@ -177,6 +177,12 @@ function ConfigCheck.run(): { string }
 		end
 	end
 
+	for id, enemy in Enemies do
+		if enemy.PieDropChance and (enemy.PieDropChance < 0 or enemy.PieDropChance > 1) then
+			fail(`Enemy {id}: PieDropChance must be between 0 and 1`)
+		end
+	end
+
 	for _, id in RunRules.EnemyPool do
 		if not Enemies[id] then
 			fail(`RunRules.EnemyPool: unknown enemy "{id}"`)
