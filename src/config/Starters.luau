@@ -36,8 +36,8 @@ local Starters: { [string]: Starter } = {
 			{ Damage = 10, Cooldown = 0.8, Range = 10, ArcDegrees = 90 },
 			{ Damage = 13, Cooldown = 0.8, Range = 10, ArcDegrees = 90 },
 			{ Damage = 13, Cooldown = 0.65, Range = 11, ArcDegrees = 100 },
-			{ Damage = 18, Cooldown = 0.65, Range = 12, ArcDegrees = 100 },
-			{ Damage = 24, Cooldown = 0.55, Range = 12, ArcDegrees = 120 },
+			{ Damage = 16, Cooldown = 0.65, Range = 12, ArcDegrees = 100 },
+			{ Damage = 20, Cooldown = 0.55, Range = 12, ArcDegrees = 120 },
 		},
 	},
 	FryingPan = {

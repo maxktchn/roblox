@@ -110,7 +110,7 @@ The restaurant's food has gone rotten and come alive. You're the chef, and you h
 | Pickup | Effect |
 |---|---|
 | Tips | XP (small, medium, large values). Dropped by every defeated enemy; tips within 8 studs (Fridge Magnet adds to this) fly to the chef at 45 studs/s. At most 250 lie on the floor; extra value is added to the oldest one. |
-| Pie | Heals 20% max HP. Moldy Bread, Meatballs and other bigger enemies have a 10% chance to drop one (Fruit Flies never do), about 15–20 a run. Walk over it to eat it (2.5 studs); it stays on the floor while you're at full HP. At most 15 on the floor. |
+| Pie | Heals 20% max HP. Moldy Bread, Meatballs and other bigger enemies have a 5% chance to drop one (Fruit Flies never do), about 15 a run. Walk over it to eat it (2.5 studs); it stays on the floor while you're at full HP. At most 15 on the floor. |
 | Tip Jar | Pulls every tip on the map to the player |
 | Fire Extinguisher | Clears all normal enemies on screen |
 | Lunchbox | Dropped by elites and bosses. Gives 1 to 3 free upgrades. |
@@ -152,7 +152,7 @@ Rewards scale with how long the player survived and how far they got:
 | Whisk | Spinning flurry at close range | Chest drop | + Coffee = **Hurricane Whisk** | No |
 | Ladle | Lobs soup that leaves damaging puddles | Chest drop | + Beef Jerky = **Stew Cauldron** | No |
 
-**Chef's Knife starting values** (Lv 1 → Lv 5): damage 10 / 13 / 13 / 18 / 24, cooldown 0.8 / 0.8 / 0.65 / 0.65 / 0.55 s, range 10 / 10 / 11 / 12 / 12 studs, arc 90° / 90° / 100° / 100° / 120°.
+**Chef's Knife starting values** (Lv 1 → Lv 5): damage 10 / 13 / 13 / 16 / 20, cooldown 0.8 / 0.8 / 0.65 / 0.65 / 0.55 s, range 10 / 10 / 11 / 12 / 12 studs, arc 90° / 90° / 100° / 100° / 120°.
 
 ### 3.2 Kitchen Gadgets (shared pool)
 | Gadget | Behavior | Recipe |
