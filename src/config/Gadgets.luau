@@ -14,20 +14,24 @@ export type Gadget = {
 	Shape: WeaponTypes.Shape?,
 	Levels: { WeaponTypes.WeaponLevel }?,
 	FxColor: Color3?, -- colour of its effect
+	-- Arc only: attack toward the nearest enemy instead of the way the chef walks (which is
+	-- usually away from the enemies). Falls back to the chef's facing when nothing is near.
+	AimAtNearest: boolean?,
 }
 
 local Gadgets: { [string]: Gadget } = {
 	PepperShaker = {
 		Name = "Pepper Shaker",
-		Behavior = "Cone spray that burns",
+		Behavior = "Sprays a burning cone at the nearest enemy",
 		Shape = "Arc",
+		AimAtNearest = true,
 		FxColor = Color3.fromRGB(230, 60, 30),
 		Levels = {
-			{ Damage = 4, Cooldown = 1.2, Range = 9, ArcDegrees = 60, BurnDps = 3, BurnSeconds = 2 },
-			{ Damage = 5, Cooldown = 1.2, Range = 9, ArcDegrees = 60, BurnDps = 4, BurnSeconds = 2 },
-			{ Damage = 5, Cooldown = 1.2, Range = 10, ArcDegrees = 75, BurnDps = 4, BurnSeconds = 2 },
-			{ Damage = 7, Cooldown = 1.2, Range = 10, ArcDegrees = 75, BurnDps = 6, BurnSeconds = 2 },
-			{ Damage = 7, Cooldown = 0.9, Range = 10, ArcDegrees = 90, BurnDps = 6, BurnSeconds = 3 },
+			{ Damage = 4, Cooldown = 1.2, Range = 9, ArcDegrees = 75, BurnDps = 3, BurnSeconds = 2 },
+			{ Damage = 5, Cooldown = 1.2, Range = 9, ArcDegrees = 75, BurnDps = 4, BurnSeconds = 2 },
+			{ Damage = 5, Cooldown = 1.2, Range = 10, ArcDegrees = 90, BurnDps = 4, BurnSeconds = 2 },
+			{ Damage = 7, Cooldown = 1.2, Range = 10, ArcDegrees = 90, BurnDps = 6, BurnSeconds = 2 },
+			{ Damage = 7, Cooldown = 0.9, Range = 10, ArcDegrees = 105, BurnDps = 6, BurnSeconds = 3 },
 		},
 	},
 	EggGrenade = { Name = "Egg Grenade", Behavior = "Lobbed, splash damage" },
@@ -38,11 +42,11 @@ local Gadgets: { [string]: Gadget } = {
 		Shape = "Aura",
 		FxColor = Color3.fromRGB(120, 200, 255),
 		Levels = {
+			{ Damage = 2, Cooldown = 0.5, Range = 6 },
 			{ Damage = 3, Cooldown = 0.5, Range = 6 },
-			{ Damage = 4, Cooldown = 0.5, Range = 6 },
+			{ Damage = 3, Cooldown = 0.5, Range = 7.5 },
 			{ Damage = 4, Cooldown = 0.5, Range = 7.5 },
-			{ Damage = 6, Cooldown = 0.5, Range = 7.5 },
-			{ Damage = 6, Cooldown = 0.4, Range = 9 },
+			{ Damage = 4, Cooldown = 0.4, Range = 9 },
 		},
 	},
 	SpinningForks = {
@@ -51,11 +55,11 @@ local Gadgets: { [string]: Gadget } = {
 		Shape = "Orbit",
 		FxColor = Color3.fromRGB(200, 200, 210),
 		Levels = {
-			{ Damage = 6, Cooldown = 0.6, Range = 7, Count = 2, Speed = 180 },
-			{ Damage = 6, Cooldown = 0.6, Range = 7, Count = 3, Speed = 180 },
-			{ Damage = 8, Cooldown = 0.6, Range = 7, Count = 3, Speed = 180 },
-			{ Damage = 8, Cooldown = 0.6, Range = 8, Count = 4, Speed = 180 },
-			{ Damage = 11, Cooldown = 0.6, Range = 8, Count = 4, Speed = 240 },
+			{ Damage = 4, Cooldown = 0.6, Range = 7, Count = 2, Speed = 180 },
+			{ Damage = 4, Cooldown = 0.6, Range = 7, Count = 3, Speed = 180 },
+			{ Damage = 5, Cooldown = 0.6, Range = 7, Count = 3, Speed = 180 },
+			{ Damage = 5, Cooldown = 0.6, Range = 8, Count = 4, Speed = 180 },
+			{ Damage = 8, Cooldown = 0.6, Range = 8, Count = 4, Speed = 240 },
 		},
 	},
 	Toaster = {
@@ -64,11 +68,11 @@ local Gadgets: { [string]: Gadget } = {
 		Shape = "Projectile",
 		FxColor = Color3.fromRGB(210, 150, 70),
 		Levels = {
-			{ Damage = 9, Cooldown = 1.4, Range = 40, Count = 1, Speed = 45 },
-			{ Damage = 9, Cooldown = 1.4, Range = 40, Count = 2, Speed = 45 },
-			{ Damage = 12, Cooldown = 1.4, Range = 40, Count = 2, Speed = 45 },
-			{ Damage = 12, Cooldown = 1.2, Range = 40, Count = 3, Speed = 45 },
-			{ Damage = 16, Cooldown = 1.2, Range = 40, Count = 4, Speed = 45 },
+			{ Damage = 8, Cooldown = 1.4, Range = 40, Count = 1, Speed = 45 },
+			{ Damage = 8, Cooldown = 1.4, Range = 40, Count = 2, Speed = 45 },
+			{ Damage = 10, Cooldown = 1.4, Range = 40, Count = 2, Speed = 45 },
+			{ Damage = 10, Cooldown = 1.2, Range = 40, Count = 3, Speed = 45 },
+			{ Damage = 14, Cooldown = 1.2, Range = 40, Count = 4, Speed = 45 },
 		},
 	},
 	SqueezeBottle = { Name = "Squeeze Bottle", Behavior = "Drops a ketchup trail that slows enemies" },

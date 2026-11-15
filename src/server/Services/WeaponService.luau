@@ -237,12 +237,36 @@ local function getEnemiesInReach(origin: Vector3, reach: number): { number }
 	return found
 end
 
--- Which way a weapon attacks: the player's aim for an Aimed weapon (once they've aimed),
--- otherwise the way the chef faces, flattened so looking up or down doesn't matter.
-local function getAttackDirection(weaponId: string, root: BasePart): Vector3
-	local config: any = Starters[weaponId] or Recipes[weaponId]
+-- How far past its Range an AimAtNearest weapon looks for a target, so it turns toward an
+-- enemy that is about to step into reach instead of spraying at nothing.
+local NEAREST_SEARCH_EXTRA = 4
+
+-- Which way a weapon attacks:
+--   * Aimed weapons (the starter): the player's aim, once they've aimed.
+--   * AimAtNearest weapons (Pepper Shaker): the nearest enemy, if one is close.
+--   * Otherwise the way the chef faces, flattened so looking up or down doesn't matter.
+local function getAttackDirection(weaponId: string, root: BasePart, range: number): Vector3
+	local config: any = Starters[weaponId] or Gadgets[weaponId] or Recipes[weaponId]
 	if config and config.Aimed and aim then
 		return aim
+	end
+	if config and config.AimAtNearest then
+		local nearestDirection: Vector3? = nil
+		local nearestDistance = math.huge
+		for _, enemyId in getEnemiesInReach(root.Position, range + NEAREST_SEARCH_EXTRA) do
+			local position = EnemyService.getEnemyPosition(enemyId)
+			if position then
+				local offset = Vector3.new(position.X - root.Position.X, 0, position.Z - root.Position.Z)
+				local distance = offset.Magnitude
+				if distance > 0.01 and distance < nearestDistance then
+					nearestDistance = distance
+					nearestDirection = offset.Unit
+				end
+			end
+		end
+		if nearestDirection then
+			return nearestDirection
+		end
 	end
 	local look = root.CFrame.LookVector
 	return Vector3.new(look.X, 0, look.Z).Unit
@@ -285,8 +309,8 @@ local function checkSwing(swing: Swing, origin: Vector3)
 end
 
 local function attackArc(weaponId: string, stats: WeaponLevel, root: BasePart)
-	-- The aim for aimed weapons (the starter), otherwise the way the chef faces.
-	local facing = getAttackDirection(weaponId, root)
+	-- The aim (starter), the nearest enemy (Pepper Shaker), or the way the chef faces.
+	local facing = getAttackDirection(weaponId, root, stats.Range)
 	local swing: Swing = {
 		weaponId = weaponId,
 		stats = stats,

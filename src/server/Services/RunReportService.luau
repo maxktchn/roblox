@@ -7,6 +7,7 @@
 -- weapon dealt (WeaponService) and:
 --   * prints the report in the Output window (copy it into #22 from there), and
 --   * sends it to devs with the RunReport remote, shown on screen by DevPanelController.
+-- The playtest bot (PlaytestBotService) reads it with getLastReport().
 -- RestartService calls RunReportService.reset() when a new run starts.
 
 local Players = game:GetService("Players")
@@ -19,6 +20,7 @@ local Enemies = require(ReplicatedStorage.Config.Enemies)
 local EnemyService = require(script.Parent.EnemyService)
 local Gadgets = require(ReplicatedStorage.Config.Gadgets)
 local Ingredients = require(ReplicatedStorage.Config.Ingredients)
+local PickupService = require(script.Parent.PickupService)
 local Recipes = require(ReplicatedStorage.Config.Recipes)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local RunManager = require(script.Parent.RunManager)
@@ -39,6 +41,7 @@ local killsByType: { [string]: number } = {}
 local damageTakenBy: { [string]: number } = {}
 local lowestHp = math.huge
 local reported = false
+local lastReport: string? = nil -- the last finished run's report (for PlaytestBotService)
 
 -- Last value we saw for each player attribute, to tell a level going up from going down.
 local lastValues: { [string]: any } = {}
@@ -135,6 +138,7 @@ local function buildReport(result: string): string
 		`Kills: {breakdown(killsByType)}`,
 		`Damage dealt: {breakdown(WeaponService.getDamageByWeapon())}`,
 		`Damage taken: {breakdown(damageTakenBy)}`,
+		`Pies eaten: {PickupService.getPiesEaten()}`,
 	}
 	return table.concat(lines, "\n")
 end
@@ -145,12 +149,18 @@ local function sendReport(result: string)
 	end
 	reported = true
 	local text = buildReport(result)
+	lastReport = text
 	print(`\n{text}`)
 	for _, player in Players:GetPlayers() do
 		if DevAccess.isAllowed(player) then
 			runReport:FireClient(player, text)
 		end
 	end
+end
+
+-- The report of the last run that ended, or nil if none has ended yet.
+function RunReportService.getLastReport(): string?
+	return lastReport
 end
 
 -- Start counting a fresh run.

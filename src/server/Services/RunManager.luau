@@ -223,7 +223,7 @@ function RunManager.damagePlayer(amount: number, source: string?)
 	end
 end
 
--- Heal the player by a fraction of max HP (0.3 = 30%), capped at max HP. Used by the Pie card.
+-- Heal the player by a fraction of max HP (0.2 = 20%), capped at max HP. Used by pies (PickupService).
 function RunManager.healPlayer(fraction: number)
 	if runOver or fraction <= 0 then
 		return

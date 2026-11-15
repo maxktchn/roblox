@@ -10,6 +10,10 @@
 --   * At most RunRules.MaxTipsOnGround tips exist; past that, a new drop is added to the
 --     oldest tip's value, so no XP is ever lost.
 --
+-- Pies (#82, PRD §2.6): bigger enemies sometimes drop a pie (Enemies.luau PieDropChance).
+-- Pies don't fly to the chef: the player walks over one to eat it and heal. While the chef is
+-- at full HP a pie stays on the floor, so it can be saved for later.
+--
 -- Server only: the server decides who collected what (PRD §8.4).
 
 local Players = game:GetService("Players")
@@ -34,10 +38,18 @@ type Tip = {
 local PARK_CFRAME = CFrame.new(0, -210, 0) -- out of sight under the map
 local COLLECT_DISTANCE = 1.5 -- studs: a flying tip this close to the chef is collected
 local TIP_COLOR = Color3.fromRGB(245, 195, 40)
+local PIE_COLOR = Color3.fromRGB(255, 95, 120) -- pink-red: reads as "health", unlike the gold tips
+local PIE_SIZE = Vector3.new(0.5, 2.4, 2.4) -- a flat disc (cylinder length runs along X)
 
 local tips: { Tip } = {} -- oldest first
 local spareParts: { BasePart } = {}
 local tipFolder: Folder
+local random = Random.new()
+
+type Pie = { position: Vector3, part: BasePart }
+local pies: { Pie } = {}
+local sparePieParts: { BasePart } = {}
+local piesEaten = 0 -- this run, for the run report
 local floorY = 0 -- top of the floor (Workspace.Map's ArenaCenter.Y, like EnemyService)
 
 -- Reused every frame for BulkMoveTo.
@@ -106,18 +118,85 @@ function PickupService.dropTip(position: Vector3, value: number)
 	table.insert(tips, { value = value, position = standing, part = part, flying = false })
 end
 
+-- A pie lying flat on the floor.
+local function pieCFrame(position: Vector3): CFrame
+	return CFrame.new(position) * CFrame.Angles(0, 0, math.rad(90))
+end
+
+local function takePiePart(): BasePart
+	local part = table.remove(sparePieParts)
+	if part then
+		return part
+	end
+	local newPart = Instance.new("Part")
+	newPart.Name = "Pie"
+	newPart.Shape = Enum.PartType.Cylinder
+	newPart.Material = Enum.Material.Neon
+	newPart.Color = PIE_COLOR
+	newPart.Size = PIE_SIZE
+	newPart.Anchored = true
+	newPart.CanCollide = false
+	newPart.CanQuery = false
+	newPart.CanTouch = false
+	newPart.CastShadow = false
+	newPart.Parent = tipFolder
+	return newPart
+end
+
+-- Drop a pie at `position` (only X and Z are used). Skipped if the floor already has the most.
+function PickupService.dropPie(position: Vector3)
+	if #pies >= RunRules.MaxPiesOnGround then
+		return
+	end
+	local onFloor = Vector3.new(position.X, floorY + PIE_SIZE.X / 2, position.Z)
+	local part = takePiePart()
+	part.CFrame = pieCFrame(onFloor)
+	table.insert(pies, { position = onFloor, part = part })
+end
+
+-- How many pies the chef has eaten this run.
+function PickupService.getPiesEaten(): number
+	return piesEaten
+end
+
+-- Eat any pie the chef is standing on, unless HP is already full.
+local function updatePies(chefPosition: Vector3)
+	local hp, maxHp = RunManager.getHp()
+	if hp >= maxHp then
+		return
+	end
+	for i = #pies, 1, -1 do
+		local pie = pies[i]
+		local offset = Vector3.new(chefPosition.X - pie.position.X, 0, chefPosition.Z - pie.position.Z)
+		if offset.Magnitude <= RunRules.PiePickupDistance then
+			RunManager.healPlayer(RunRules.PieHealFraction)
+			piesEaten += 1
+			pie.part.CFrame = PARK_CFRAME
+			table.insert(sparePieParts, pie.part)
+			table.remove(pies, i)
+			return -- one pie per frame, so standing on two doesn't waste the second
+		end
+	end
+end
+
 -- How many tips are on the floor or flying right now.
 function PickupService.getTipCount(): number
 	return #tips
 end
 
--- Remove every tip (start of a new run). No XP is given for them.
+-- Remove every tip and pie (start of a new run). No XP is given for them.
 function PickupService.reset()
 	for _, tip in tips do
 		tip.part.CFrame = PARK_CFRAME
 		table.insert(spareParts, tip.part)
 	end
 	table.clear(tips)
+	for _, pie in pies do
+		pie.part.CFrame = PARK_CFRAME
+		table.insert(sparePieParts, pie.part)
+	end
+	table.clear(pies)
+	piesEaten = 0
 end
 
 -- Pickup range right now: base range plus Fridge Magnet (PRD §3.3).
@@ -130,7 +209,13 @@ local function update(deltaTime: number)
 		return -- "Order Up!" is on screen: tips stay where they are
 	end
 	local chefPosition = getChefPosition()
-	if not chefPosition or #tips == 0 then
+	if not chefPosition then
+		return
+	end
+	if #pies > 0 and not RunManager.isRunOver() then
+		updatePies(chefPosition)
+	end
+	if #tips == 0 then
 		return
 	end
 
@@ -185,11 +270,15 @@ function PickupService:init()
 end
 
 function PickupService:start()
-	-- Every defeated enemy drops a tip worth its config's Tips value.
+	-- Every defeated enemy drops a tip worth its config's Tips value, and maybe a pie.
 	EnemyService.onEnemyKilled(function(_enemyId, enemyType, position)
 		local config = EnemyService.getConfigForType(enemyType) -- bosses drop tips too
 		if config then
 			PickupService.dropTip(position, config.Tips)
+			local pieChance = config.PieDropChance
+			if pieChance and random:NextNumber() < pieChance then
+				PickupService.dropPie(position)
+			end
 		end
 	end)
 	RunService.Heartbeat:Connect(update)

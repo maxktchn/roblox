@@ -1,6 +1,6 @@
 --!strict
 -- DEV panel: playtest buttons (level up, jump the clock, start the boss, give items, heal,
--- god mode, remove enemies). Only built for devs: the server marks them with the "IsDev"
+-- god mode, remove enemies, the playtest bot). Only built for devs: the server marks them with the "IsDev"
 -- attribute. Every button just sends DevAction(action, arg); the server checks who sent it
 -- and does the work (DevCommandService), then replies with DevMessage, shown at the top.
 --
@@ -11,6 +11,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local BossPowers = require(ReplicatedStorage.Config.BossPowers)
+local DevTools = require(ReplicatedStorage.Config.DevTools)
 local Gadgets = require(ReplicatedStorage.Config.Gadgets)
 local Ingredients = require(ReplicatedStorage.Config.Ingredients)
 local Recipes = require(ReplicatedStorage.Config.Recipes)
@@ -207,6 +208,32 @@ local function buildPanel()
 		send("UnlockPowers")
 	end)
 
+	makeHeader("PLAYTEST BOT (plays runs by itself)")
+	-- Choose how many runs with - and +, then Start. Up to DevTools.BotMaxRuns.
+	local bot = makeGrid()
+	local botRuns = 3
+	local countButton: TextButton
+	local function showCount()
+		countButton.Text = `{botRuns} run{if botRuns == 1 then "" else "s"}`
+	end
+	makeButton(bot, "-", COLORS.button, function()
+		botRuns = math.max(botRuns - 1, 1)
+		showCount()
+	end)
+	countButton = makeButton(bot, "", COLORS.panel, function() end) -- just shows the number
+	countButton.AutoButtonColor = false
+	makeButton(bot, "+", COLORS.button, function()
+		botRuns = math.min(botRuns + 1, DevTools.BotMaxRuns)
+		showCount()
+	end)
+	showCount()
+	makeButton(bot, "Start bot", COLORS.recipe, function()
+		send("Bot", botRuns)
+	end)
+	makeButton(bot, "Stop bot", COLORS.danger, function()
+		send("Bot", 0)
+	end)
+
 	makeHeader("JUMP TO TIME")
 	local time = makeGrid()
 	-- Follows the run length: 1:00, 2:00, halfway, a minute before the boss, 10 s before it.
@@ -333,6 +360,10 @@ local function showIfDev()
 	player:GetAttributeChangedSignal("DevGod"):Connect(updateGodButton)
 	Remotes.get("DevMessage").OnClientEvent:Connect(function(text: string)
 		status.Text = text
+	end)
+	-- The playtest bot's progress ("Bot run 2/3: GadgetFirst") shows in the same place.
+	player:GetAttributeChangedSignal("BotStatus"):Connect(function()
+		status.Text = tostring(player:GetAttribute("BotStatus"))
 	end)
 	-- One blank line between the report's sections, so it's easier to read.
 	Remotes.get("RunReport").OnClientEvent:Connect(function(text: string)

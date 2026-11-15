@@ -15,6 +15,7 @@
 --   "Wipe"             remove every enemy (no tips, no kills)
 --   "Restart"          start a fresh run right now, even mid-run (RestartService)
 --   "UnlockPowers"     unlock every boss power, as if every boss had been beaten (UnlockService)
+--   "Bot", runs        let the playtest bot play `runs` runs (up to DevTools.BotMaxRuns); 0 stops it
 -- Replies go back with DevMessage(text) and show on the panel.
 --
 -- The player gets the attribute "IsDev" = true so the client knows to show the panel,
@@ -26,9 +27,11 @@ local RunService = game:GetService("RunService")
 
 local BossPowers = require(ReplicatedStorage.Config.BossPowers)
 local DevAccess = require(script.Parent.Parent.DevAccess)
+local DevTools = require(ReplicatedStorage.Config.DevTools)
 local EnemyService = require(script.Parent.EnemyService)
 local Gadgets = require(ReplicatedStorage.Config.Gadgets)
 local Ingredients = require(ReplicatedStorage.Config.Ingredients)
+local PlaytestBotService = require(script.Parent.PlaytestBotService)
 local Recipes = require(ReplicatedStorage.Config.Recipes)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local RestartService = require(script.Parent.RestartService)
@@ -154,6 +157,18 @@ end
 ACTIONS.Restart = function(player)
 	RestartService.restart()
 	reply(player, "New run started")
+end
+
+ACTIONS.Bot = function(player, arg)
+	local runs = toWholeNumber(arg)
+	if not runs then
+		return
+	end
+	runs = math.clamp(runs, 0, DevTools.BotMaxRuns)
+	PlaytestBotService.play(runs)
+	if runs == 0 then
+		reply(player, "Bot stopped")
+	end
 end
 
 ACTIONS.Wipe = function(player)

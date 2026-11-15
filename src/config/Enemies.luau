@@ -13,6 +13,8 @@
 --   "Charge" picks a direction toward the chef and rolls straight; re-aims after it
 --            overshoots the chef or reaches a wall
 -- GroupSize: how many spawn together in one cluster (1 if left out)
+-- PieDropChance: chance (0 to 1) it drops a Pie that heals the chef (PRD §2.6). Left out = never.
+--                 Bigger enemies only: Fruit Flies come in swarms, so pies from them would be everywhere.
 -- HurtCooldown: seconds before the chef can be hurt again after this enemy's hit
 --               (RunRules.ChefHurtCooldown if left out; the boss hits harder but slower)
 
@@ -30,6 +32,7 @@ export type Enemy = {
 	Color: Color3,
 	Movement: "Chase" | "Charge",
 	GroupSize: number?,
+	PieDropChance: number?,
 	HurtCooldown: number?,
 }
 
@@ -39,10 +42,11 @@ local Enemies: { [string]: Enemy } = {
 		Role = "Basic swarm",
 		Behavior = "Walks straight at the player",
 		Mvp = true,
-		Hp = 10,
+		Hp = 25,
 		Speed = 8,
 		Damage = 5,
 		Tips = 2,
+		PieDropChance = 0.05,
 		Size = Vector3.new(3, 3.5, 1.2),
 		Shape = "Block",
 		Color = Color3.fromRGB(150, 170, 90),
@@ -53,7 +57,7 @@ local Enemies: { [string]: Enemy } = {
 		Role = "Fast swarm",
 		Behavior = "Fast, low HP, spawn in large groups",
 		Mvp = true,
-		Hp = 3,
+		Hp = 6,
 		Speed = 17, -- just faster than the chef (16): can't simply be outrun
 		Damage = 2,
 		Tips = 1,
@@ -68,10 +72,11 @@ local Enemies: { [string]: Enemy } = {
 		Role = "Area denial",
 		Behavior = "Bursts on death, leaves a slowing puddle",
 		Mvp = true,
-		Hp = 15,
+		Hp = 35,
 		Speed = 7,
 		Damage = 6,
 		Tips = 3,
+		PieDropChance = 0.05,
 		Size = Vector3.new(3, 3, 3),
 		Shape = "Ball",
 		Color = Color3.fromRGB(170, 60, 50),
@@ -82,10 +87,11 @@ local Enemies: { [string]: Enemy } = {
 		Role = "Charger",
 		Behavior = "Rolls toward the player in a straight line",
 		Mvp = true,
-		Hp = 25,
-		Speed = 20,
-		Damage = 10,
+		Hp = 40,
+		Speed = 24, -- well above the chef's 16: has to be dodged, not outrun
+		Damage = 6, -- low per hit: it's fast and rolls back through, so it hits often
 		Tips = 4,
+		PieDropChance = 0.05,
 		Size = Vector3.new(3.5, 3.5, 3.5),
 		Shape = "Ball",
 		Color = Color3.fromRGB(120, 70, 45),
@@ -96,10 +102,11 @@ local Enemies: { [string]: Enemy } = {
 		Role = "Ranged",
 		Behavior = "Keeps distance and squirts juice",
 		Mvp = true,
-		Hp = 12,
+		Hp = 30,
 		Speed = 9,
 		Damage = 6,
 		Tips = 3,
+		PieDropChance = 0.05,
 		Size = Vector3.new(2.8, 2.8, 2.8),
 		Shape = "Ball",
 		Color = Color3.fromRGB(245, 220, 60),
@@ -114,6 +121,7 @@ local Enemies: { [string]: Enemy } = {
 		Speed = 6,
 		Damage = 4,
 		Tips = 4,
+		PieDropChance = 0.05,
 		Size = Vector3.new(4, 4, 4),
 		Shape = "Ball",
 		Color = Color3.fromRGB(240, 200, 110),
@@ -128,6 +136,7 @@ local Enemies: { [string]: Enemy } = {
 		Speed = 4,
 		Damage = 12,
 		Tips = 8,
+		PieDropChance = 0.05,
 		Size = Vector3.new(4, 4.5, 1.6),
 		Shape = "Block",
 		Color = Color3.fromRGB(60, 40, 30),

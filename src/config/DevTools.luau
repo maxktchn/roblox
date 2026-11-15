@@ -2,8 +2,9 @@
 -- Developer-only tools (not part of the game design).
 --
 -- Playtest DEV panel (DevCommandService + DevPanelController): buttons to level up, jump the
--- clock, start the boss, give items, heal, god mode and remove enemies. Shown only to devs:
--- same access rule as /stress (Server/DevAccess).
+-- clock, start the boss, give items, heal, god mode, remove enemies, and run the playtest bot
+-- (PlaytestBotService + PlaytestBotController: plays runs by itself and prints their
+-- reports). Shown only to devs: same access rule as /stress (Server/DevAccess).
 --
 -- Stress test (issue #12, PRD §8.3): type /stress in chat during a run to max every Phase 1
 -- weapon, keep RunRules.MaxAliveEnemies enemies alive, keep the chef alive, and show an
@@ -15,6 +16,9 @@ return {
 	DevUserIds = {
 		34785286, -- thatcher989
 	},
+
+	-- Most runs the playtest bot can be asked to play in one go (DEV panel - / + buttons).
+	BotMaxRuns = 10,
 
 	-- How many spawn groups per second while stress testing: enough to refill the cap
 	-- as fast as maxed weapons clear it.

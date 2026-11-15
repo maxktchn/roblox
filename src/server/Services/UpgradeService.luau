@@ -230,7 +230,7 @@ local function readyRecipes(): { Card }
 end
 
 -- Draw an offer: ready recipes first (guaranteed, PRD §2.5), then random cards from the
--- pool up to CardsPerLevelUp. If nothing at all is left, offer a Pie.
+-- pool up to CardsPerLevelUp. Empty once everything is maxed (then no cards are shown).
 local function drawCards(): { Card }
 	local cards: { Card } = {}
 	for _, recipeCard in readyRecipes() do
@@ -250,16 +250,6 @@ local function drawCards(): { Card }
 			break
 		end
 		table.insert(cards, card)
-	end
-	if #cards == 0 then
-		table.insert(cards, {
-			Kind = "Filler",
-			Id = "Pie",
-			Name = "Pie",
-			FromLevel = 0,
-			ToLevel = 0,
-			Description = `Heal {math.round(RunRules.PieHealFraction * 100)}% HP`,
-		})
 	end
 	return cards
 end
@@ -299,7 +289,14 @@ local function offerNext()
 		return -- no one to show it to yet; tried again on the next tip or choice
 	end
 	pendingLevelUps -= 1
-	currentOffer = drawCards()
+	local cards = drawCards()
+	if #cards == 0 then
+		-- Everything is maxed: nothing to pick, so the level goes up without pausing the run.
+		-- (There used to be a healing Pie card here; healing now comes from pies on the floor.)
+		pendingLevelUps = 0
+		return
+	end
+	currentOffer = cards
 	RunManager.setPaused(true) -- the run stands still until a card is picked
 	sendOffer()
 end
@@ -323,8 +320,6 @@ local function applyCard(card: Card)
 	elseif card.Kind == "Recipe" then
 		-- The recipe takes its weapon's slot; the ingredient stays (PRD §2.5).
 		WeaponService.replaceWeapon(Recipes[card.Id].Weapon, card.Id)
-	elseif card.Id == "Pie" then
-		RunManager.healPlayer(RunRules.PieHealFraction)
 	end
 end
 

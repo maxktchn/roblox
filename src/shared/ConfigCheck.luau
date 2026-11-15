@@ -154,6 +154,18 @@ function ConfigCheck.run(): { string }
 	for id, power in BossPowers do
 		checkAimed(id, power, false)
 	end
+	-- AimAtNearest: Arc weapons only, and not together with Aimed (one or the other picks the way).
+	local function checkAimAtNearest(id: string, weapon: any)
+		if weapon.AimAtNearest and (weapon.Shape ~= "Arc" or weapon.Aimed) then
+			fail(`Weapon {id}: AimAtNearest is only for Arc weapons that aren't Aimed`)
+		end
+	end
+	for id, gadget in Gadgets do
+		checkAimAtNearest(id, gadget)
+	end
+	for id, recipe in Recipes do
+		checkAimAtNearest(id, recipe)
+	end
 	if RunRules.AimMessagesPerSecond <= 0 then
 		fail(`RunRules.AimMessagesPerSecond must be more than 0`)
 	end
@@ -174,6 +186,12 @@ function ConfigCheck.run(): { string }
 		end
 		if boss.Body and Enemies[id] then
 			fail(`{id} is both a boss and an enemy`)
+		end
+	end
+
+	for id, enemy in Enemies do
+		if enemy.PieDropChance and (enemy.PieDropChance < 0 or enemy.PieDropChance > 1) then
+			fail(`Enemy {id}: PieDropChance must be between 0 and 1`)
 		end
 	end
 
