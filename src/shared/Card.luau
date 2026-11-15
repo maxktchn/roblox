@@ -10,7 +10,7 @@ export type Kind = "Starter" | "Gadget" | "Ingredient" | "Recipe" | "Filler" | "
 
 export type Card = {
 	Kind: Kind,
-	Id: string, -- config id, e.g. "ChefsKnife", "HotSauce", "SushiMasterBlade", "Pie"
+	Id: string, -- config id, e.g. "ChefsKnife", "HotSauce", "SushiMasterBlade"
 	Name: string, -- display name, e.g. "Hot Sauce"
 	FromLevel: number, -- 0 = NEW
 	ToLevel: number, -- 0 for recipes and fillers (they have no level)

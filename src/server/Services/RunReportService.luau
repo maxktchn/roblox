@@ -7,6 +7,7 @@
 -- weapon dealt (WeaponService) and:
 --   * prints the report in the Output window (copy it into #22 from there), and
 --   * sends it to devs with the RunReport remote, shown on screen by DevPanelController.
+-- The playtest bot (PlaytestBotService) reads it with getLastReport().
 -- RestartService calls RunReportService.reset() when a new run starts.
 
 local Players = game:GetService("Players")
@@ -40,6 +41,7 @@ local killsByType: { [string]: number } = {}
 local damageTakenBy: { [string]: number } = {}
 local lowestHp = math.huge
 local reported = false
+local lastReport: string? = nil -- the last finished run's report (for PlaytestBotService)
 
 -- Last value we saw for each player attribute, to tell a level going up from going down.
 local lastValues: { [string]: any } = {}
@@ -147,12 +149,18 @@ local function sendReport(result: string)
 	end
 	reported = true
 	local text = buildReport(result)
+	lastReport = text
 	print(`\n{text}`)
 	for _, player in Players:GetPlayers() do
 		if DevAccess.isAllowed(player) then
 			runReport:FireClient(player, text)
 		end
 	end
+end
+
+-- The report of the last run that ended, or nil if none has ended yet.
+function RunReportService.getLastReport(): string?
+	return lastReport
 end
 
 -- Start counting a fresh run.
