@@ -11,6 +11,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local BossPowers = require(ReplicatedStorage.Config.BossPowers)
+local DevTools = require(ReplicatedStorage.Config.DevTools)
 local Gadgets = require(ReplicatedStorage.Config.Gadgets)
 local Ingredients = require(ReplicatedStorage.Config.Ingredients)
 local Recipes = require(ReplicatedStorage.Config.Recipes)
@@ -207,13 +208,27 @@ local function buildPanel()
 		send("UnlockPowers")
 	end)
 
-	makeHeader("PLAYTEST BOT (plays by itself, then reports)")
+	makeHeader("PLAYTEST BOT (plays runs by itself)")
+	-- Choose how many runs with - and +, then Start. Up to DevTools.BotMaxRuns.
 	local bot = makeGrid()
-	makeButton(bot, "Bot: 3 runs", COLORS.recipe, function()
-		send("Bot", 3)
+	local botRuns = 3
+	local countButton: TextButton
+	local function showCount()
+		countButton.Text = `{botRuns} run{if botRuns == 1 then "" else "s"}`
+	end
+	makeButton(bot, "-", COLORS.button, function()
+		botRuns = math.max(botRuns - 1, 1)
+		showCount()
 	end)
-	makeButton(bot, "Bot: 6 runs", COLORS.recipe, function()
-		send("Bot", 6)
+	countButton = makeButton(bot, "", COLORS.panel, function() end) -- just shows the number
+	countButton.AutoButtonColor = false
+	makeButton(bot, "+", COLORS.button, function()
+		botRuns = math.min(botRuns + 1, DevTools.BotMaxRuns)
+		showCount()
+	end)
+	showCount()
+	makeButton(bot, "Start bot", COLORS.recipe, function()
+		send("Bot", botRuns)
 	end)
 	makeButton(bot, "Stop bot", COLORS.danger, function()
 		send("Bot", 0)

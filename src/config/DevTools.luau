@@ -17,6 +17,9 @@ return {
 		34785286, -- thatcher989
 	},
 
+	-- Most runs the playtest bot can be asked to play in one go (DEV panel - / + buttons).
+	BotMaxRuns = 10,
+
 	-- How many spawn groups per second while stress testing: enough to refill the cap
 	-- as fast as maxed weapons clear it.
 	StressSpawnsPerSecond = 20,

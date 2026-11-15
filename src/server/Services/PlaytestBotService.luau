@@ -1,5 +1,5 @@
 --!strict
--- Playtest bot (#22), server half. Dev only: started from the DEV panel ("Bot" buttons).
+-- Playtest bot (#22), server half. Dev only: started from the DEV panel (choose how many runs, then "Start bot").
 -- It plays several runs in a row by itself and collects their run reports, so you can test
 -- balance changes without playing every run yourself.
 --
@@ -18,6 +18,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Card = require(ReplicatedStorage.Shared.Card)
 local DevAccess = require(script.Parent.Parent.DevAccess)
+local DevTools = require(ReplicatedStorage.Config.DevTools)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local RestartService = require(script.Parent.RestartService)
 local RunManager = require(script.Parent.RunManager)
@@ -33,7 +34,6 @@ local PlaytestBotService = {}
 --   GadgetFirst: takes gadgets first, the knife last
 --   Balanced:    mostly random
 local STRATEGIES = { "KnifeFirst", "GadgetFirst", "Balanced" }
-local MAX_RUNS = 10
 local SECONDS_BETWEEN_RUNS = 4 -- time to read the run-over screen before the next run
 local PICK_EVERY_SECONDS = 0.4 -- how often the bot looks for open cards
 
@@ -158,7 +158,7 @@ local function onRunOver()
 	end)
 end
 
--- Start `runs` bot runs (1 to MAX_RUNS) from a fresh run, or 0 to stop.
+-- Start `runs` bot runs (up to DevTools.BotMaxRuns) from a fresh run, or 0 to stop.
 function PlaytestBotService.play(runs: number)
 	if runs <= 0 then
 		if running then
@@ -171,7 +171,7 @@ function PlaytestBotService.play(runs: number)
 		return
 	end
 	running = true
-	runsWanted = math.min(runs, MAX_RUNS)
+	runsWanted = math.min(runs, DevTools.BotMaxRuns)
 	table.clear(reports)
 	player:SetAttribute("BotRunning", true)
 	startRun(1)
