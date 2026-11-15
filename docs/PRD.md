@@ -78,7 +78,7 @@ The restaurant's food has gone rotten and come alive. You're the chef, and you h
 - **Rerolls:** Players get **2 rerolls per run**. A reroll replaces all 3 cards with a new draw. Talents can add more (see 4.5).
 - Items already at max level are removed from the pool. Once all 6 shared slots are full, new gadgets and ingredients are removed too, and only upgrades to owned items can appear.
 - If the pool runs out completely, show filler cards: **Pie** (heal 30% HP) or **Tip Jar** (bonus gold). Phase 1 has no gold, so it shows only Pie.
-- **Tip bar:** 4 tips fill the first bar, and each bar after needs 2 more than the last (4, 6, 8, 10…). Leftover tips carry over. If several bars fill at once, the "Order Up!" screens come one after another.
+- **Tip bar:** 5 tips fill the first bar, and each bar after needs 5 more than the last (5, 10, 15, 20…), so a run reaches about Lv 20 by the boss. Leftover tips carry over. If several bars fill at once, the "Order Up!" screens come one after another.
 
 ### 2.4 Loadout limits
 | Slot type | Max | Max level each |
@@ -102,9 +102,9 @@ The restaurant's food has gone rotten and come alive. You're the chef, and you h
 | Recipe | Shape | Numbers |
 |---|---|---|
 | Sushi Master Blade | Arc | 30 damage, 150° slash, 13 range, every 0.45 s, +25% crit chance on this weapon |
-| Ghost Pepper Blaster | Arc | 10 damage, 120° cone, 13 range, every 0.7 s, burns 12/s for 3 s |
-| Fondue Ring | Orbit | 6 forks on a 9-stud circle, 260°/s, 14 damage, burns 6/s for 2 s |
-| Smoothie Vortex | Aura | 9 damage every 0.35 s within 12 studs, and pulls enemies within 12 studs toward you at 8 studs/s (bosses are too heavy to pull) |
+| Ghost Pepper Blaster | Arc | 7 damage, 120° cone, 13 range, every 0.7 s, burns 8/s for 3 s |
+| Fondue Ring | Orbit | 6 forks on a 9-stud circle, 260°/s, 9 damage, burns 4/s for 2 s |
+| Smoothie Vortex | Aura | 6 damage every 0.35 s within 12 studs, and pulls enemies within 12 studs toward you at 8 studs/s (bosses are too heavy to pull) |
 
 ### 2.6 Pickups in the arena
 | Pickup | Effect |
@@ -170,17 +170,17 @@ All 7 gadgets are in the MVP.
 **Phase 1 gadget starting values** (Lv 1 → Lv 5, tune in `Gadgets.luau`):
 | Gadget | Shape | Lv 1 | Changes by Lv 5 |
 |---|---|---|---|
-| Pepper Shaker | Arc | 4 damage, 60° cone, 9 range, every 1.2 s, burns 3/s for 2 s | 7 damage, 90° cone, 10 range, every 0.9 s, burns 6/s for 3 s |
-| Blender | Aura | 3 damage every 0.5 s within 6 studs | 6 damage every 0.4 s within 9 studs |
-| Spinning Forks | Orbit | 2 forks on a 7-stud circle, 180°/s, 6 damage, each enemy hit at most every 0.6 s | 4 forks, 8 studs, 240°/s, 11 damage |
-| Toaster | Projectile | 1 toast every 1.4 s at the nearest enemy within 40 studs, 9 damage, 45 studs/s | 4 toasts every 1.2 s, 16 damage |
+| Pepper Shaker | Arc | 3 damage, 60° cone, 9 range, every 1.2 s, burns 2/s for 2 s | 5 damage, 90° cone, 10 range, every 0.9 s, burns 4/s for 3 s |
+| Blender | Aura | 2 damage every 0.5 s within 6 studs | 4 damage every 0.4 s within 9 studs |
+| Spinning Forks | Orbit | 2 forks on a 7-stud circle, 180°/s, 3 damage, each enemy hit at most every 0.6 s | 4 forks, 8 studs, 240°/s, 6 damage |
+| Toaster | Projectile | 1 toast every 1.4 s at the nearest enemy within 40 studs, 6 damage, 45 studs/s | 4 toasts every 1.2 s, 11 damage |
 
 Burns tick every 0.5 s and get the Hot Sauce bonus but can't crit. A fork hits enemies within 2.5 studs of it; a toast hits the first enemy within 2 studs.
 
 ### 3.3 Ingredients (passives)
 | Ingredient | Effect per level |
 |---|---|
-| Hot Sauce | +10% damage |
+| Hot Sauce | +6% damage |
 | Butter | +8% move speed |
 | Coffee | -8% weapon cooldowns |
 | Salt | +5% crit chance |
@@ -188,7 +188,7 @@ Burns tick every 0.5 s and get the Hot Sauce bonus but can't crit. A fork hits e
 | Beef Jerky | +1 armor (flat damage reduction) |
 | Fridge Magnet | +20% tip pickup range |
 
-Percent bonuses add up per level and multiply the base value (Hot Sauce Lv 3 = base damage × 1.3). Base crit chance is 0%, and a crit deals **2×** damage.
+Percent bonuses add up per level and multiply the base value (Hot Sauce Lv 3 = base damage × 1.18). Base crit chance is 0%, and a crit deals **2×** damage.
 
 Weapon ranges (and orbit and shot hit radii) are measured to the enemy's edge, not its center, so big enemies like bosses can be hit from outside touching distance. Enemies are measured by their real shape: their **thickness** toward the chef for distances (flat ones like Moldy Bread are thin) and their **width** for side-to-side checks, so a slash that crosses any part of an enemy's body hits it. A slash stays live while its blade is drawn sweeping across (0.15 s, `RunRules.SlashSeconds`): an enemy that runs into it during the sweep is hit too, once per slash.
 
@@ -213,11 +213,11 @@ All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with ga
 
 | Enemy | HP | Speed | Damage | Tips |
 |---|---|---|---|---|
-| Moldy Bread | 10 | 8 | 5 | 2 |
-| Fruit Flies | 3 | 17 | 2 | 1 |
-| Rotten Tomato | 15 | 7 | 6 | 3 |
-| Meatball | 25 | 20 | 10 | 4 |
-| Sour Lemon | 12 | 9 | 6 | 3 |
+| Moldy Bread | 25 | 8 | 5 | 2 |
+| Fruit Flies | 6 | 17 | 2 | 1 |
+| Rotten Tomato | 35 | 7 | 6 | 3 |
+| Meatball | 50 | 26 | 10 | 4 |
+| Sour Lemon | 30 | 9 | 6 | 3 |
 | Spaghetti Monster | 30 | 6 | 4 | 4 |
 | Burnt Toast | 80 | 4 | 12 | 8 |
 

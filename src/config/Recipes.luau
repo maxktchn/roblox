@@ -57,7 +57,7 @@ local Recipes: { [string]: Recipe } = {
 		Shape = "Arc",
 		FxColor = Color3.fromRGB(190, 80, 255),
 		Levels = {
-			{ Damage = 10, Cooldown = 0.7, Range = 13, ArcDegrees = 120, BurnDps = 12, BurnSeconds = 3 },
+			{ Damage = 7, Cooldown = 0.7, Range = 13, ArcDegrees = 120, BurnDps = 8, BurnSeconds = 3 },
 		},
 	},
 	BreakfastBomb = {
@@ -75,7 +75,7 @@ local Recipes: { [string]: Recipe } = {
 		Shape = "Aura",
 		FxColor = Color3.fromRGB(255, 120, 200),
 		Levels = {
-			{ Damage = 9, Cooldown = 0.35, Range = 12, PullStrength = 8 },
+			{ Damage = 6, Cooldown = 0.35, Range = 12, PullStrength = 8 },
 		},
 	},
 	FondueRing = {
@@ -86,7 +86,7 @@ local Recipes: { [string]: Recipe } = {
 		Shape = "Orbit",
 		FxColor = Color3.fromRGB(255, 200, 60),
 		Levels = {
-			{ Damage = 14, Cooldown = 0.5, Range = 9, Count = 6, Speed = 260, BurnDps = 6, BurnSeconds = 2 },
+			{ Damage = 9, Cooldown = 0.5, Range = 9, Count = 6, Speed = 260, BurnDps = 4, BurnSeconds = 2 },
 		},
 	},
 	ButteredBarrage = { Name = "Buttered Barrage", Weapon = "Toaster", Ingredient = "Butter" },

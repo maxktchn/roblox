@@ -49,7 +49,7 @@ function StatsService.getIngredientLevel(ingredientId: string): number?
 end
 
 -- Total bonus for one stat from every owned ingredient. 0 when none give it.
--- Examples: Hot Sauce Lv 2 -> getStat("Damage") == 0.2; Beef Jerky Lv 2 -> getStat("Armor") == 2.
+-- Examples: Hot Sauce Lv 2 -> getStat("Damage") == 0.12; Beef Jerky Lv 2 -> getStat("Armor") == 2.
 function StatsService.getStat(stat: Ingredients.Stat): number
 	local total = 0
 	for ingredientId, level in ingredientLevels do
