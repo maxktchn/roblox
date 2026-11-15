@@ -216,7 +216,7 @@ All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with ga
 | Moldy Bread | 25 | 8 | 5 | 2 |
 | Fruit Flies | 6 | 17 | 2 | 1 |
 | Rotten Tomato | 35 | 7 | 6 | 3 |
-| Meatball | 50 | 26 | 10 | 4 |
+| Meatball | 40 | 24 | 6 | 4 |
 | Sour Lemon | 30 | 9 | 6 | 3 |
 | Spaghetti Monster | 30 | 6 | 4 | 4 |
 | Burnt Toast | 80 | 4 | 12 | 8 |
