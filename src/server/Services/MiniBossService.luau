@@ -62,6 +62,7 @@ end
 local function endFight()
 	fightOver = true
 	bossId = nil
+	BossHpBar.remove(hpFill)
 	hpFill = nil
 	RunManager.setClockHeld(false)
 	local player = getPlayer()
@@ -110,6 +111,7 @@ local function onKilled(enemyId: number, enemyType: string, position: Vector3)
 	pieceCount -= 1
 	if enemyId == bossId then
 		bossId = nil
+		BossHpBar.remove(hpFill)
 		hpFill = nil
 	end
 
@@ -169,6 +171,7 @@ function MiniBossService.reset()
 	table.clear(pieces)
 	pieceCount = 0
 	bossId = nil
+	BossHpBar.remove(hpFill)
 	hpFill = nil
 	fightSeconds = nil
 	fightOver = false

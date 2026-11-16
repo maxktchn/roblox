@@ -333,6 +333,7 @@ end
 -- The boss itself is an enemy: RestartService removes it with EnemyService.clearAll().
 function BossService.reset()
 	active = nil
+	BossHpBar.remove(hpFill)
 	hpFill = nil
 	hidePulse()
 	EnemyService.setBossArena(nil, 0)
@@ -364,6 +365,7 @@ function BossService:start()
 	EnemyService.onEnemyKilled(function(enemyId)
 		if active and enemyId == active.bossId then
 			active = nil
+			BossHpBar.remove(hpFill)
 			hpFill = nil
 			hidePulse()
 			RunManager.winRun()

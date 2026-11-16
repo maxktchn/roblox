@@ -4,6 +4,8 @@
 --
 -- attach() returns the bar's fill. Each frame, the caller sets
 --   fill.Size = UDim2.fromScale(hp / maxHp, 1)
+-- When the boss dies or the run restarts, the caller passes that fill to remove(): a dead
+-- boss's part is parked under the map, and an always-on-top bar would show through the floor.
 
 local BossHpBar = {}
 
@@ -52,6 +54,14 @@ function BossHpBar.attach(part: BasePart, title: string): Frame
 	fill.BorderSizePixel = 0
 	fill.Parent = back
 	return fill
+end
+
+-- Take down the bar that `fill` (from attach) belongs to. Does nothing for nil.
+function BossHpBar.remove(fill: Frame?)
+	local billboard = fill and fill:FindFirstAncestorOfClass("BillboardGui")
+	if billboard then
+		billboard:Destroy()
+	end
 end
 
 return BossHpBar
