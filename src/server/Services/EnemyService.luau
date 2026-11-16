@@ -246,6 +246,18 @@ function EnemyService.spawn(enemyType: string, position: Vector3): EnemyId?
 	return spawnWithConfig(enemyType, config, clampToArena(position), true)
 end
 
+-- Create one enemy or boss with its config's exact numbers: no run-time scaling, and the
+-- alive cap is ignored. Used for bosses and The Big Cheese's pieces (#84), so a split can't be
+-- swallowed by a full screen. Returns its id, or nil if the type is unknown.
+function EnemyService.spawnUnscaled(enemyType: string, position: Vector3): EnemyId?
+	local config = EnemyService.getConfigForType(enemyType)
+	if not config then
+		warn(`[EnemyService] unknown enemy type "{enemyType}"`)
+		return nil
+	end
+	return spawnWithConfig(enemyType, config, clampToArena(position), false)
+end
+
 -- Create a boss (an id from Bosses.luau that has a Body). Bosses ignore the alive cap.
 -- Returns its id, or nil if the boss has no Body.
 function EnemyService.spawnBoss(bossType: string, position: Vector3): EnemyId?
@@ -254,7 +266,7 @@ function EnemyService.spawnBoss(bossType: string, position: Vector3): EnemyId?
 		warn(`[EnemyService] boss "{bossType}" has no Body in Bosses.luau`)
 		return nil
 	end
-	return spawnWithConfig(bossType, boss.Body, clampToArena(position), false)
+	return EnemyService.spawnUnscaled(bossType, position)
 end
 
 -- Remove every live enemy without a kill: no tips, no kill count, no callbacks.
