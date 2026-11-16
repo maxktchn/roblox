@@ -131,7 +131,7 @@ local function drawArc(weaponId: string, color: Color3, facing: Vector3, range: 
 end
 
 -- AURA: a flat see-through disc around the chef that grows slightly and fades.
--- A weapon that pulls (PullStrength, e.g. Smoothie Vortex) shrinks inward instead,
+-- A weapon that pulls (PullStrength; none in Phase 1) shrinks inward instead,
 -- so every pulse looks like it is sucking enemies in.
 local function drawAura(weaponId: string, color: Color3, range: number)
 	local config = getConfig(weaponId)

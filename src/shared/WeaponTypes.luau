@@ -5,7 +5,8 @@
 -- A weapon's Shape picks how it attacks. WeaponService has one function per shape,
 -- so a new weapon only needs a config entry with one of these shapes (PRD §8.5).
 --   Arc        - hits everything in a slice in front of the chef (Chef's Knife, Pepper Shaker)
---   Aura       - hits everything in a circle around the chef, every Cooldown (Blender)
+--   Aura       - hits everything in a circle around the chef, every Cooldown (no Phase 1 weapon
+--                uses it since the Blender was removed, #83; kept for later gadgets)
 --   Orbit      - Count objects circle the chef and hit what they touch (Spinning Forks)
 --   Projectile - fires Count shots at the nearest enemies (Toaster)
 --   Pulse      - every Cooldown, a ring grows out from where the chef stands, hitting each
@@ -31,7 +32,8 @@ export type WeaponLevel = {
 	CritBonus: number?, -- optional: extra crit chance for this weapon only (0.25 = +25%)
 	Knockback: number?, -- optional: studs each hit pushes an enemy away (Pulse; bosses aren't pushed)
 	-- optional: pulls enemies within Range toward the chef, in studs per second
-	-- (Smoothie Vortex). Works with any shape. Bosses are too heavy to pull.
+	-- (no Phase 1 weapon since Smoothie Vortex was removed, #83). Works with any shape.
+	-- Bosses are too heavy to pull.
 	PullStrength: number?,
 }
 

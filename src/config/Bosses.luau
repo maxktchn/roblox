@@ -55,7 +55,7 @@ local Bosses: { [string]: Boss } = {
 			HurtCooldown = 1, -- at most one touch hit per second
 			Tips = 50,
 			-- 8 wide: the chef stops 5.5 studs from its center and is touched within 6.25, so the
-			-- knife (10) can hit it from outside touch range. The Blender (6 at Lv 1) can't (see #22).
+			-- knife (10) can hit it from outside touch range.
 			Size = Vector3.new(8, 7, 7),
 			Shape = "Block",
 			Color = Color3.fromRGB(225, 228, 232),

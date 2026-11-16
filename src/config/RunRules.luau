@@ -59,7 +59,7 @@ return {
 	-- Which gadgets and ingredients can show up as cards. Phase 1 picks (PRD §9);
 	-- add ids here to put more items in the game. Checked by ConfigCheck.
 	UpgradePool = {
-		Gadgets = { "PepperShaker", "Blender", "SpinningForks", "Toaster" },
+		Gadgets = { "PepperShaker", "SpinningForks", "Toaster" }, -- Blender removed (#83); its replacement comes in Phase 2
 		Ingredients = { "Salt", "HotSauce", "BeefJerky", "FridgeMagnet" },
 		-- Boss powers only show up once their boss has been defeated (PRD §3.8).
 		BossPowers = { "MicrowavePulse" },

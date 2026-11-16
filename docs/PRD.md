@@ -104,7 +104,6 @@ The restaurant's food has gone rotten and come alive. You're the chef, and you h
 | Sushi Master Blade | Arc | 30 damage, 150° slash, 13 range, every 0.45 s, +25% crit chance on this weapon |
 | Ghost Pepper Blaster | Arc | 7 damage, 120° cone, 13 range, every 0.7 s, burns 8/s for 3 s |
 | Fondue Ring | Orbit | 6 forks on a 9-stud circle, 260°/s, 9 damage, burns 4/s for 2 s |
-| Smoothie Vortex | Aura | 6 damage every 0.35 s within 12 studs, and pulls enemies within 12 studs toward you at 8 studs/s (bosses are too heavy to pull) |
 
 ### 2.6 Pickups in the arena
 | Pickup | Effect |
@@ -160,18 +159,16 @@ Rewards scale with how long the player survived and how far they got:
 | Pepper Shaker | Sprays a burning cone at the nearest enemy | + Hot Sauce = **Ghost Pepper Blaster** |
 | Egg Grenade | Lobbed, splash damage | + Bread = **Breakfast Bomb** (cluster splash) |
 | Pizza Cutter | Disc that bounces between enemies | + Coffee = **Pizza Party** (multiple discs) |
-| Blender | Damage zone around you | + Fridge Magnet = **Smoothie Vortex** (pulls enemies in) |
 | Spinning Forks | Forks orbit you | + Beef Jerky = **Fondue Ring** (burning orbit) |
 | Toaster | Launches toast at the nearest enemies | + Butter = **Buttered Barrage** |
 | Squeeze Bottle | Drops a ketchup trail that slows enemies | + Salt = **Condiment Flood** |
 
-All 7 gadgets are in the MVP.
+All 6 gadgets are in the MVP, plus a 7th that takes the removed Blender's place (designed in Phase 2, #83). Fridge Magnet has no recipe until then; the new gadget's recipe can use it.
 
 **Phase 1 gadget starting values** (Lv 1 → Lv 5, tune in `Gadgets.luau`):
 | Gadget | Shape | Lv 1 | Changes by Lv 5 |
 |---|---|---|---|
 | Pepper Shaker | Arc | 4 damage, 75° cone, 9 range, every 1.2 s, burns 3/s for 2 s | 7 damage, 105° cone, 10 range, every 0.9 s, burns 6/s for 3 s |
-| Blender | Aura | 2 damage every 0.5 s within 6 studs | 4 damage every 0.4 s within 9 studs |
 | Spinning Forks | Orbit | 2 forks on a 7-stud circle, 180°/s, 4 damage, each enemy hit at most every 0.6 s | 4 forks, 8 studs, 240°/s, 8 damage |
 | Toaster | Projectile | 1 toast every 1.4 s at the nearest enemy within 40 studs, 8 damage, 45 studs/s | 4 toasts every 1.2 s, 14 damage |
 
@@ -273,11 +270,11 @@ Beating a chapter's final boss takes its **power**: an ability the player keeps 
 
 - **Unlock:** defeating the boss unlocks its power for good (the first time only; dying in the fight unlocks nothing). The win screen says "New power unlocked: <name>".
 - **In a run:** once unlocked, the power can show up as an "Order Up!" card, marked **BOSS POWER**. It works like a gadget: it uses one of the 6 shared slots and levels 1 to 5.
-- **Rarity:** its NEW card is rarer than a gadget's. For each "Order Up!" it has a **35%** chance to join the cards being drawn from (while you don't own it and have a free slot), so it shows up about a third as often as a gadget's NEW card (roughly 1 offer in 8 with the Phase 1 pool). Once owned, its upgrade cards appear like any gadget's.
+- **Rarity:** its NEW card is rarer than a gadget's. For each "Order Up!" it has a **35%** chance to join the cards being drawn from (while you don't own it and have a free slot), so it shows up about a third as often as a gadget's NEW card (roughly 1 offer in 8 with a 4-gadget pool, a bit more often with Phase 1's 3). Once owned, its upgrade cards appear like any gadget's.
 - **Strength:** at Lv 1 about as strong as a normal gadget; at Lv 5 stronger than a maxed gadget.
 - **No recipes.** Boss powers never evolve.
 - **Never sold.** Only beating the boss unlocks a power (see 5.1).
-- Nothing existing gets locked: the Blender and Smoothie Vortex stay in the normal pool.
+- Nothing existing gets locked by boss powers. (The Blender was later removed because Microwave Pulse made it redundant, #83.)
 - **Phase 1:** unlocks last until the server closes (no saving yet); Phase 2 saves them.
 
 **Microwave Pulse** (Microwave Monster's power, tune in `BossPowers.luau`): every few seconds a shockwave ring grows out from where the chef stands, hitting each enemy once as it passes and knocking it back. Bosses aren't knocked back.
@@ -521,10 +518,10 @@ StarterPlayerScripts/
 ## 9. Roadmap
 
 ### Phase 1: Playable run prototype
-- One map, Chef's Knife, 4 gadgets, 4 ingredients, 3 enemy types, 1 boss
+- One map, Chef's Knife, 3 gadgets, 4 ingredients, 3 enemy types, a mini-boss and a boss
   - **Map:** Diner Kitchen
-  - **Gadgets:** Pepper Shaker (cone), Blender (aura), Spinning Forks (orbit), Toaster (projectile). Four different attack shapes that the other gadgets reuse later.
-  - **Ingredients:** Salt, Hot Sauce, Beef Jerky, Fridge Magnet. Together these make 4 recipes testable: Sushi Master Blade, Ghost Pepper Blaster, Fondue Ring, Smoothie Vortex. (Toaster has no recipe in Phase 1, since Buttered Barrage needs Butter.)
+  - **Gadgets:** Pepper Shaker (cone), Spinning Forks (orbit), Toaster (projectile). Three different attack shapes that the other gadgets reuse later. (The Blender was removed in #83: Microwave Pulse covers the damage-zone role.)
+  - **Ingredients:** Salt, Hot Sauce, Beef Jerky, Fridge Magnet. Together these make 3 recipes testable: Sushi Master Blade, Ghost Pepper Blaster, Fondue Ring. Fridge Magnet has no recipe in Phase 1. (Toaster has no recipe in Phase 1, since Buttered Barrage needs Butter.)
   - **Enemies:** Moldy Bread, Fruit Flies, Meatball (movement only, no puddles or ranged attacks)
   - **Bosses:** The Big Cheese mini-boss at 3:00 (#84) and the Microwave Monster at 6:00.
 - Tips, "Order Up!" cards, and recipes working
