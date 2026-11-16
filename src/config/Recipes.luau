@@ -69,17 +69,6 @@ local Recipes: { [string]: Recipe } = {
 		Description = "Cluster splash",
 	},
 	PizzaParty = { Name = "Pizza Party", Weapon = "PizzaCutter", Ingredient = "Coffee", Description = "Multiple discs" },
-	SmoothieVortex = {
-		Name = "Smoothie Vortex",
-		Weapon = "Blender",
-		Ingredient = "FridgeMagnet",
-		Description = "Pulls enemies in",
-		Shape = "Aura",
-		FxColor = Color3.fromRGB(255, 120, 200),
-		Levels = {
-			{ Damage = 6, Cooldown = 0.35, Range = 12, PullStrength = 8 },
-		},
-	},
 	FondueRing = {
 		Name = "Fondue Ring",
 		Weapon = "SpinningForks",

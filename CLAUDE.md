@@ -19,4 +19,4 @@ Roblox survivors-style roguelike. **`docs/PRD.md` is the source of truth** for d
 - Our `RunService`-equivalent is `RunManager`; `RunService` always means Roblox's.
 
 ## Phase 1 scope (current)
-One map, Chef's Knife, 4 gadgets, 4 ingredients, 3 enemy types, 1 boss; tips, "Order Up!" cards, recipes. No saving, lobby or progression. Only one place (the run place) exists for now; the lobby place comes in Phase 2.
+One map, Chef's Knife, 3 gadgets (the Blender was removed, #83), 4 ingredients, 3 enemy types, a mini-boss (The Big Cheese, #84) and a boss; tips, "Order Up!" cards, recipes. No saving, lobby or progression. Only one place (the run place) exists for now; the lobby place comes in Phase 2.

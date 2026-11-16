@@ -36,19 +36,6 @@ local Gadgets: { [string]: Gadget } = {
 	},
 	EggGrenade = { Name = "Egg Grenade", Behavior = "Lobbed, splash damage" },
 	PizzaCutter = { Name = "Pizza Cutter", Behavior = "Disc that bounces between enemies" },
-	Blender = {
-		Name = "Blender",
-		Behavior = "Damage zone around you",
-		Shape = "Aura",
-		FxColor = Color3.fromRGB(120, 200, 255),
-		Levels = {
-			{ Damage = 2, Cooldown = 0.5, Range = 6 },
-			{ Damage = 3, Cooldown = 0.5, Range = 6 },
-			{ Damage = 3, Cooldown = 0.5, Range = 7.5 },
-			{ Damage = 4, Cooldown = 0.5, Range = 7.5 },
-			{ Damage = 4, Cooldown = 0.4, Range = 9 },
-		},
-	},
 	SpinningForks = {
 		Name = "Spinning Forks",
 		Behavior = "Forks orbit you",

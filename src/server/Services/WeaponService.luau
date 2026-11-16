@@ -460,7 +460,8 @@ local function updateBurns(deltaTime: number)
 	end
 end
 
--- PULL (Smoothie Vortex): every frame, drag enemies within Range toward the chef.
+-- PULL (PullStrength weapons; none in Phase 1 since Smoothie Vortex was removed, #83):
+-- every frame, drag enemies within Range toward the chef.
 local function updatePull(stats: WeaponLevel, root: BasePart, deltaTime: number)
 	local studs = (stats.PullStrength or 0) * deltaTime
 	for _, enemyId in getEnemiesInReach(root.Position, stats.Range) do

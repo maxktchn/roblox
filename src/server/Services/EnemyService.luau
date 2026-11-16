@@ -330,7 +330,7 @@ function EnemyService.getEnemyPart(enemyId: EnemyId): BasePart?
 	return enemy and enemy.part
 end
 
--- Pull one enemy up to `studs` toward `toward` (Smoothie Vortex, #51). It stops at the
+-- Pull one enemy up to `studs` toward `toward` (PullStrength weapons, #51; none in Phase 1). It stops at the
 -- chef's edge rather than inside (pulls are always toward the chef) and stays inside the
 -- arena. Bosses are too heavy to pull: nothing happens. The part follows on the next frame.
 function EnemyService.pull(enemyId: EnemyId, toward: Vector3, studs: number)
