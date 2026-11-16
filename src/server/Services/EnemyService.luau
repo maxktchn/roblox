@@ -287,6 +287,20 @@ function EnemyService.clearAll()
 	aliveCount = 0
 end
 
+-- Remove one live enemy without a kill: no tips, no kill count, no callbacks (a popcorn kernel
+-- that pops on the chef or times out, #92). Does nothing if it is already dead.
+function EnemyService.remove(enemyId: EnemyId)
+	local enemy = alive[enemyId]
+	if not enemy then
+		return
+	end
+	alive[enemyId] = nil
+	aliveCount -= 1
+	enemy.part.CFrame = PARK_CFRAME
+	enemy.part:SetAttribute("HpFraction", nil)
+	table.insert(pools[enemy.enemyType], enemy.part)
+end
+
 -- Keep every enemy inside a circle (the boss ring), or pass nil to lift the limit.
 function EnemyService.setBossArena(center: Vector3?, radius: number)
 	bossArenaCenter = center

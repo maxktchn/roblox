@@ -189,7 +189,23 @@ function ConfigCheck.run(): { string }
 			if fight.Phase2At <= 0 or fight.Phase2At >= 1 then
 				fail(`Boss {id}: Phase2At must be between 0 and 1 (a fraction of max HP)`)
 			end
-			for _, field in { "PhaseChangeSeconds", "LaserWalkSpeed", "LaserSeconds", "WalkingSeconds" } do
+			if not Enemies[fight.PopcornEnemy] then
+				fail(`Boss {id}: unknown PopcornEnemy "{fight.PopcornEnemy}"`)
+			end
+			for _, field in
+				{
+					"PhaseChangeSeconds",
+					"LaserWalkSpeed",
+					"LaserSeconds",
+					"WalkingSeconds",
+					"PopcornEvery",
+					"PopcornWarning",
+					"PopcornSeconds",
+					"PopWarning",
+					"PopRadius",
+					"PopDamage",
+				}
+			do
 				if (fight :: any)[field] <= 0 then
 					fail(`Boss {id}: {field} must be more than 0`)
 				end

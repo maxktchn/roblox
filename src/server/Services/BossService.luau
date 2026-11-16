@@ -16,6 +16,8 @@
 --                      LaserSeconds. No pulses and no new minions; it can still be hurt.
 --        Walking turn: phase 1 again for WalkingSeconds.
 --      Laser, walking, laser, walking... until it dies.
+--      Homing popcorn (#92, PopcornService): in phase 1 and the walking turns, every
+--      PopcornEvery seconds its door glows for PopcornWarning seconds, then a kernel flies out.
 --   5. When it dies, the run is won.
 --
 -- The boss's part carries the attribute "BossStage" ("Phase1", "PhaseChange", "Laser" or
@@ -32,6 +34,7 @@ local BossHpBar = require(script.Parent.Parent.BossHpBar)
 local Bosses = require(ReplicatedStorage.Config.Bosses)
 local Chapters = require(ReplicatedStorage.Config.Chapters)
 local EnemyService = require(script.Parent.EnemyService)
+local PopcornService = require(script.Parent.PopcornService)
 local RunManager = require(script.Parent.RunManager)
 local RunRules = require(ReplicatedStorage.Config.RunRules)
 
@@ -55,6 +58,8 @@ local COLORS = {
 	phase2Bar = Color3.fromRGB(255, 140, 30), -- HP bar in phase 2 (phase 1 uses BossHpBar's red)
 	phase2Display = Color3.fromRGB(255, 90, 50),
 	phase2Glow = Color3.fromRGB(255, 120, 40),
+	doorGlow = Color3.fromRGB(255, 255, 230), -- the window lights up before popcorn flies out
+	doorDisplay = Color3.fromRGB(255, 240, 120),
 }
 
 -- Within this many studs of the middle counts as arrived for a laser turn.
@@ -77,6 +82,8 @@ type ActiveFight = {
 	summonTimer: number, -- seconds until the next summon
 	pulseTimer: number, -- seconds until the next pulse warning starts
 	warningLeft: number?, -- while a pulse is warning: seconds until it hits
+	popcornTimer: number, -- seconds until the door starts glowing for the next kernel
+	doorLeft: number?, -- while the door glows: seconds until the kernel flies out
 }
 
 local active: ActiveFight? = nil
@@ -306,6 +313,8 @@ local function startFight()
 		arrived = false,
 		summonTimer = fight.SummonEvery,
 		pulseTimer = fight.PulseEvery,
+		popcornTimer = fight.PopcornEvery,
+		doorLeft = nil,
 		warningLeft = nil,
 	}
 end
@@ -319,18 +328,52 @@ local function setStage(current: ActiveFight, stage: Stage)
 	end
 end
 
--- Stop a pulse that is still warning (it never hits), and start its countdown again.
-local function cancelPulse(current: ActiveFight)
-	current.warningLeft = nil
-	current.pulseTimer = current.fight.PulseEvery
+-- The microwave's face for the current phase: DING in phase 1, HOT! in phase 2, and POP!
+-- with a bright window while popcorn is about to fly out.
+local function updateFace(current: ActiveFight)
+	local phase2 = current.stage ~= "Phase1"
+	if display then
+		if current.doorLeft then
+			display.Text = "POP!"
+			display.TextColor3 = COLORS.doorDisplay
+		else
+			display.Text = if phase2 then "HOT!" else "DING"
+			display.TextColor3 = if phase2 then COLORS.phase2Display else COLORS.display
+		end
+	end
+	if glow then
+		if current.doorLeft then
+			glow.BackgroundColor3 = COLORS.doorGlow
+			glow.BackgroundTransparency = 0
+		else
+			glow.BackgroundColor3 = if phase2 then COLORS.phase2Glow else COLORS.windowGlow
+			glow.BackgroundTransparency = if phase2 then 0.25 else 0.55
+		end
+	end
+end
+
+-- Stop a pulse or popcorn that is still warning (they don't happen now). Used whenever the
+-- boss stops attacking (phase change, laser turn). The countdowns just wait meanwhile (they
+-- only run in updateAttacks), so walking turns shorter than PopcornEvery still get popcorn.
+-- A cancelled one starts its warning again as soon as the boss attacks again.
+local function cancelWarnings(current: ActiveFight)
+	if current.warningLeft then
+		current.warningLeft = nil
+		current.pulseTimer = 0
+	end
+	if current.doorLeft then
+		current.doorLeft = nil
+		current.popcornTimer = 0
+	end
 	hidePulse()
+	updateFace(current)
 end
 
 -- Phase 2 starts: the boss stops and flashes, its bar turns orange and its screen says HOT!
 local function startPhaseChange(current: ActiveFight)
 	setStage(current, "PhaseChange")
 	current.stageTimer = current.fight.PhaseChangeSeconds
-	cancelPulse(current)
+	cancelWarnings(current) -- also switches the face to HOT!
 	EnemyService.setMoveTarget(current.bossId, EnemyService.getEnemyPosition(current.bossId), 0)
 
 	local part = EnemyService.getEnemyPart(current.bossId)
@@ -342,14 +385,6 @@ local function startPhaseChange(current: ActiveFight)
 	if hpFill then
 		hpFill.BackgroundColor3 = COLORS.phase2Bar
 	end
-	if display then
-		display.Text = "HOT!"
-		display.TextColor3 = COLORS.phase2Display
-	end
-	if glow then
-		glow.BackgroundColor3 = COLORS.phase2Glow
-		glow.BackgroundTransparency = 0.25
-	end
 end
 
 -- Laser turn: run to the middle of the ring. Its clock starts once it gets there.
@@ -357,7 +392,7 @@ local function startLaserTurn(current: ActiveFight)
 	setStage(current, "Laser")
 	current.arrived = false
 	current.stageTimer = MAX_WALK_TO_MIDDLE_SECONDS -- until it arrives: how long it may take
-	cancelPulse(current)
+	cancelWarnings(current)
 	EnemyService.setMoveTarget(current.bossId, current.center, current.fight.LaserWalkSpeed)
 end
 
@@ -368,9 +403,48 @@ local function startWalkingTurn(current: ActiveFight)
 	EnemyService.setMoveTarget(current.bossId, nil)
 end
 
--- Phase 1 behaviour (and the walking turn): summon minions and send out damage pulses.
+-- Fire one popcorn kernel out of the microwave's door (its front), toward the chef.
+local function firePopcorn(current: ActiveFight, bossPosition: Vector3)
+	local fight = current.fight
+	local part = EnemyService.getEnemyPart(current.bossId)
+	local bossType = EnemyService.getEnemyType(current.bossId)
+	local body = bossType and EnemyService.getConfigForType(bossType)
+	local kernel = EnemyService.getConfigForType(fight.PopcornEnemy)
+	local front = Vector3.new(0, 0, -1)
+	if part then
+		local look = part.CFrame.LookVector
+		front = Vector3.new(look.X, 0, look.Z)
+		front = if front.Magnitude > 0.01 then front.Unit else Vector3.new(0, 0, -1)
+	end
+	local gap = (if body then EnemyService.getHalfDepth(body) else 3)
+		+ (if kernel then EnemyService.getHalfDepth(kernel) else 1)
+		+ 0.5
+	PopcornService.fire(bossPosition + front * gap, fight)
+end
+
+-- Phase 1 behaviour (and the walking turn): summon minions, send out damage pulses and fire popcorn.
 local function updateAttacks(current: ActiveFight, bossPosition: Vector3, deltaTime: number)
 	local fight = current.fight
+
+	-- Popcorn: the door glows (the warning), then a kernel flies out.
+	local doorLeft = current.doorLeft
+	if doorLeft then
+		doorLeft -= deltaTime
+		if doorLeft > 0 then
+			current.doorLeft = doorLeft
+		else
+			current.doorLeft = nil
+			current.popcornTimer = fight.PopcornEvery
+			updateFace(current)
+			firePopcorn(current, bossPosition)
+		end
+	else
+		current.popcornTimer -= deltaTime
+		if current.popcornTimer <= 0 then
+			current.doorLeft = fight.PopcornWarning
+			updateFace(current)
+		end
+	end
 
 	-- Summon minions around the boss.
 	current.summonTimer -= deltaTime
@@ -487,6 +561,7 @@ function BossService.reset()
 	display = nil
 	glow = nil
 	hidePulse()
+	PopcornService.reset()
 	EnemyService.setBossArena(nil, 0)
 	local ring = workspace:FindFirstChild("BossRing")
 	if ring then
@@ -521,6 +596,7 @@ function BossService:start()
 			display = nil
 			glow = nil
 			hidePulse()
+			PopcornService.reset()
 			RunManager.winRun()
 		end
 	end)

@@ -20,6 +20,14 @@
 --   LaserWalkSpeed     studs per second on its way to the middle for a laser turn
 --   LaserSeconds       how long each laser turn lasts once it reaches the middle
 --   WalkingSeconds     how long each walking turn lasts
+-- Homing popcorn (#92), in phase 1 and the walking turns:
+--   PopcornEvery       seconds between kernels
+--   PopcornWarning     seconds the microwave door glows before a kernel flies out
+--   PopcornEnemy       which enemy it fires (an id from Enemies.luau)
+--   PopcornSeconds     a kernel pops on its own after this long
+--   PopWarning         seconds the pop's warning ring grows before it hits
+--   PopRadius          studs from the kernel that the pop reaches
+--   PopDamage          damage to the chef if inside the pop, before armor
 -- Power: the boss power (id in BossPowers.luau) that defeating this boss unlocks (PRD §3.8).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -40,6 +48,13 @@ export type BossFight = {
 	LaserWalkSpeed: number,
 	LaserSeconds: number,
 	WalkingSeconds: number,
+	PopcornEvery: number,
+	PopcornWarning: number,
+	PopcornEnemy: string,
+	PopcornSeconds: number,
+	PopWarning: number,
+	PopRadius: number,
+	PopDamage: number,
 }
 
 export type Boss = {
@@ -77,7 +92,7 @@ local Bosses: { [string]: Boss } = {
 	},
 	MicrowaveMonster = {
 		Name = "Microwave Monster",
-		Mechanics = "Summons minions and sends out damage pulses; below half HP, takes turns with a laser turn in the middle",
+		Mechanics = "Summons minions, sends out damage pulses and fires homing popcorn; below half HP, takes turns with a laser turn in the middle",
 		Mvp = true,
 		Body = {
 			Name = "Microwave Monster",
@@ -111,6 +126,13 @@ local Bosses: { [string]: Boss } = {
 			LaserWalkSpeed = 15, -- 3x its walk, still just slower than the chef (16)
 			LaserSeconds = 8,
 			WalkingSeconds = 8,
+			PopcornEvery = 10,
+			PopcornWarning = 0.6,
+			PopcornEnemy = "PopcornKernel",
+			PopcornSeconds = 8,
+			PopWarning = 0.5,
+			PopRadius = 8,
+			PopDamage = 20,
 		},
 	},
 	Doughzilla = {

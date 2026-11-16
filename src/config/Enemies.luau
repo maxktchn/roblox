@@ -178,6 +178,23 @@ local Enemies: { [string]: Enemy } = {
 		Color = Color3.fromRGB(255, 230, 150),
 		Movement = "Chase",
 	},
+	-- The Microwave Monster's popcorn (#92, Bosses.luau Fight.Popcorn...): fired from the boss,
+	-- never in the normal waves, no run-time scaling. It does no contact damage: when it dies
+	-- (shot down, touching the chef, or after Fight.PopcornSeconds) it pops, and the pop hurts.
+	PopcornKernel = {
+		Name = "Popcorn Kernel",
+		Role = "Boss attack",
+		Behavior = "Follows the chef, then pops",
+		Mvp = true,
+		Hp = 150,
+		Speed = 13, -- the chef runs at 16: you can outrun it, but not lose it
+		Damage = 0, -- the pop does the damage, not the touch
+		Tips = 5, -- only when shot down (a pop from touching or timing out drops nothing)
+		Size = Vector3.new(2.5, 2.5, 2.5),
+		Shape = "Ball",
+		Color = Color3.fromRGB(255, 240, 190),
+		Movement = "Chase",
+	},
 }
 
 return Enemies
