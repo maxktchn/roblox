@@ -9,6 +9,7 @@
 --   "LevelUp", count   gain `count` levels (1 to 20); the "Order Up!" cards come as normal
 --   "SetTime", seconds jump the run clock (the boss arrives at RunLengthSeconds)
 --   "Boss"             jump straight to the end of the timeline: the boss fight starts
+--   "Cheese"           jump to 5 s before the mini-boss (The Big Cheese, #84); works again after it
 --   "Give", id         +1 level of a gadget, ingredient or recipe (Lv 1 if not owned)
 --   "Heal"             full HP
 --   "God"              turn "can't die" on or off (HP refills every frame)
@@ -124,6 +125,13 @@ ACTIONS.Boss = function(player)
 	-- Reaching RunLengthSeconds is what starts the fight (RunManager -> BossService).
 	RunManager.setRunSeconds(RunRules.RunLengthSeconds)
 	reply(player, "Here comes the boss")
+end
+
+ACTIONS.Cheese = function(player)
+	-- The clock counting up past MiniBossAtSeconds is what starts the fight (RunManager ->
+	-- MiniBossService). Jumping back before 3:00 lets the fight happen again.
+	RunManager.setRunSeconds(RunRules.MiniBossAtSeconds - 5)
+	reply(player, "The Big Cheese arrives in 5 s")
 end
 
 ACTIONS.Give = function(player, arg)
