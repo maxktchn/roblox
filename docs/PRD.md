@@ -434,6 +434,7 @@ For now the lobby is a set of **menu screens inside the run place** (see 8.1), s
 
 ### 7.2 In-run HUD
 - HP bar (above the chef)
+- Enemy HP bars: a small bar over an enemy once it has been damaged, none at full HP (so a big swarm doesn't draw a bar each). At most 60 at once. Bosses have their own big bar.
 - Tip (XP) bar and current level (top of screen)
 - Run timer and kill count
 - Owned weapons and ingredients (small icons)
