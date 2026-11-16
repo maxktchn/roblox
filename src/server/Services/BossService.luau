@@ -19,6 +19,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
+local BossHpBar = require(script.Parent.Parent.BossHpBar)
 local Bosses = require(ReplicatedStorage.Config.Bosses)
 local Chapters = require(ReplicatedStorage.Config.Chapters)
 local EnemyService = require(script.Parent.EnemyService)
@@ -41,8 +42,6 @@ local COLORS = {
 	display = Color3.fromRGB(80, 230, 120),
 	pulseWarning = Color3.fromRGB(255, 160, 40),
 	pulseHit = Color3.fromRGB(255, 60, 40),
-	hpBack = Color3.fromRGB(30, 30, 36),
-	hpFill = Color3.fromRGB(220, 60, 50),
 }
 
 type ActiveFight = {
@@ -167,10 +166,9 @@ end
 -- Make the boss's plain part look like a microwave, and give it an HP bar.
 -- (Boss parts are pooled, so clear anything left from before first.)
 local function decorateBoss(part: BasePart, bossName: string)
-	for _, child in part:GetChildren() do
-		if child:IsA("SurfaceGui") or child:IsA("BillboardGui") then
-			child:Destroy()
-		end
+	local oldFace = part:FindFirstChild("MicrowaveFace")
+	if oldFace then
+		oldFace:Destroy()
 	end
 
 	-- Front face (the side facing the chef): a dark window with a warm glow, and a green display.
@@ -211,40 +209,7 @@ local function decorateBoss(part: BasePart, bossName: string)
 	display.TextColor3 = COLORS.display
 	display.Parent = face
 
-	-- HP bar floating above the boss. Sized in studs, so it scales with the camera like the boss.
-	local billboard = Instance.new("BillboardGui")
-	billboard.Name = "BossHp"
-	billboard.Size = UDim2.fromScale(12, 2.2)
-	billboard.StudsOffset = Vector3.new(0, part.Size.Y / 2 + 2.5, 0)
-	billboard.AlwaysOnTop = true
-	billboard.LightInfluence = 0
-	billboard.Parent = part
-
-	local title = Instance.new("TextLabel")
-	title.Name = "Name"
-	title.Size = UDim2.fromScale(1, 0.5)
-	title.BackgroundTransparency = 1
-	title.Font = Enum.Font.FredokaOne
-	title.Text = bossName
-	title.TextScaled = true
-	title.TextColor3 = Color3.new(1, 1, 1)
-	title.TextStrokeTransparency = 0.3
-	title.Parent = billboard
-
-	local back = Instance.new("Frame")
-	back.Name = "Bar"
-	back.Position = UDim2.fromScale(0, 0.58)
-	back.Size = UDim2.fromScale(1, 0.38)
-	back.BackgroundColor3 = COLORS.hpBack
-	back.BorderSizePixel = 0
-	back.Parent = billboard
-	local fill = Instance.new("Frame")
-	fill.Name = "Fill"
-	fill.Size = UDim2.fromScale(1, 1)
-	fill.BackgroundColor3 = COLORS.hpFill
-	fill.BorderSizePixel = 0
-	fill.Parent = back
-	hpFill = fill
+	hpFill = BossHpBar.attach(part, bossName)
 end
 
 -- Hide the pulse ring under the map.
@@ -368,6 +333,7 @@ end
 -- The boss itself is an enemy: RestartService removes it with EnemyService.clearAll().
 function BossService.reset()
 	active = nil
+	BossHpBar.remove(hpFill)
 	hpFill = nil
 	hidePulse()
 	EnemyService.setBossArena(nil, 0)
@@ -399,6 +365,7 @@ function BossService:start()
 	EnemyService.onEnemyKilled(function(enemyId)
 		if active and enemyId == active.bossId then
 			active = nil
+			BossHpBar.remove(hpFill)
 			hpFill = nil
 			hidePulse()
 			RunManager.winRun()

@@ -195,6 +195,28 @@ function ConfigCheck.run(): { string }
 		end
 	end
 
+	-- Splits (The Big Cheese, #84): normal enemies and boss bodies alike.
+	local function checkSplit(id: string, enemy: Enemies.Enemy)
+		if not enemy.SplitInto then
+			return
+		end
+		if not Enemies[enemy.SplitInto] then
+			fail(`{id}: unknown SplitInto "{enemy.SplitInto}"`)
+		end
+		local count = enemy.SplitCount
+		if not (count and count >= 1 and count == math.floor(count)) then
+			fail(`{id}: SplitCount must be a whole number of 1 or more`)
+		end
+	end
+	for id, enemy in Enemies do
+		checkSplit(id, enemy)
+	end
+	for id, boss in Bosses do
+		if boss.Body then
+			checkSplit(id, boss.Body)
+		end
+	end
+
 	for _, id in RunRules.EnemyPool do
 		if not Enemies[id] then
 			fail(`RunRules.EnemyPool: unknown enemy "{id}"`)
@@ -207,6 +229,8 @@ function ConfigCheck.run(): { string }
 		end
 		if chapter.MiniBoss and not Bosses[chapter.MiniBoss] then
 			fail(`Chapter {id}: unknown mini-boss "{chapter.MiniBoss}"`)
+		elseif chapter.MiniBoss and not Bosses[chapter.MiniBoss].Body then
+			fail(`Chapter {id}: mini-boss "{chapter.MiniBoss}" has no Body`)
 		end
 		if chapter.Timeline then
 			-- Phases must run back to back from 0:00 to the end of the shift, with no gaps.

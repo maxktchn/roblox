@@ -52,7 +52,7 @@ The restaurant's food has gone rotten and come alive. You're the chef, and you h
 3. Enemies spawn in waves and get harder over time
 4. Defeated enemies drop **tips** (XP)
 5. When the tip bar fills: **"Order Up!"** The game pauses and shows 3 upgrade cards. The player picks 1.
-6. At **3:00**, a mini-boss appears
+6. At **3:00**, a mini-boss appears (Chapter 1: The Big Cheese). Normal spawns stop and the run clock holds at 3:00 until every piece of it is defeated; enemies already in the kitchen stay
 7. At **6:00**, the final boss appears in a closed arena
 8. Beat the final boss to **clear the chapter**. If HP reaches 0, the player can revive once, or the run ends.
 9. Results screen shows rewards earned
@@ -218,6 +218,14 @@ All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with ga
 | Spaghetti Monster | 30 | 6 | 4 | 4 |
 | Burnt Toast | 80 | 4 | 12 | 8 |
 
+**The Big Cheese's pieces** (mini-boss, see 3.5; tune in `Bosses.luau` and `Enemies.luau`). They never spawn in the normal waves and don't get the run-time scaling below. The Big Cheese always drops a pie when it splits.
+
+| Piece | Count | HP | Speed | Damage | Tips |
+|---|---|---|---|---|---|
+| The Big Cheese | 1 | 600 | 6 | 12 | 20 |
+| Cheese Wedge | 3 | 120 | 10 | 8 | 6 |
+| Cheese Cube | 6 | 40 | 15 | 5 | 3 |
+
 **Movement (Phase 1):** Fruit Flies spawn in groups of 6. Meatballs roll straight at where the chef was, and turn to aim again after overshooting by 25 studs or hitting a wall. Everything else walks straight at the chef. Enemies push each other apart so the swarm spreads into a crowd instead of stacking on one spot.
 
 **Scaling over the run:** enemies get tougher the longer the run goes, so a strong build still meets resistance late. Every minute of run time (paused time doesn't count), new enemies get **+20% HP** and **+8.5% contact damage**, compounding. That's x1.7 HP at 3:00 and x3.0 at 6:00, and x1.6 damage at 6:00. This is well below the player's growth (about 10-20x damage from Lv 1 knife to a maxed build), so the player still pulls ahead. Speed and tips don't scale. The boss doesn't scale either (its numbers are in 3.5), but its minions do. Tune in `RunRules.luau` (`EnemyHpGrowthPerMinute`, `EnemyDamageGrowthPerMinute`).
@@ -225,7 +233,7 @@ All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with ga
 ### 3.5 Bosses
 | Boss | When | Mechanics | Power (see 3.8) | MVP |
 |---|---|---|---|---|
-| The Big Cheese | 3:00 mini-boss (Chapter 1) | Splits into smaller cheeses when damaged | None (mini-boss) | Yes |
+| The Big Cheese | 3:00 mini-boss (Chapter 1) | Splits on death: 1 → 3 Cheese Wedges → 6 Cheese Cubes. Normal spawns stop and the run clock holds at 3:00 until every piece is defeated | None (mini-boss) | Yes |
 | Microwave Monster | 6:00 final boss (Chapter 1) | Summons minions and sends out damage pulses | **Microwave Pulse** | Yes |
 | Doughzilla | Final boss (Chapter 2, Bakery) | Giant dough that grows bigger by absorbing flour clouds | TBD | No |
 | Kraken Roll | Final boss (Chapter 3, Sushi Bar) | Sushi kraken that grabs the player from the conveyor belts | TBD | No |
@@ -252,7 +260,7 @@ All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with ga
 
 **Spawn rate per phase** (spawn groups per second, tune in `Chapters.luau`; most enemies spawn alone, Fruit Flies in groups of 6): 0.6 until 1:15 (Moldy Bread only until 0:40), 1 until 3:00, 1.4 until 5:25, 2 until 6:00. Normal spawns stop at 6:00.
 
-**Phase 1:** only the Phase 1 enemies (Moldy Bread, Fruit Flies, Meatball, set in `RunRules.EnemyPool`) spawn from this timeline. The Big Cheese mini-boss arrives at 3:00 (#84). Elites and the dinner rush wait for later. At 6:00 the Microwave Monster arrives; defeating it wins the run.
+**Phase 1:** only the Phase 1 enemies (Moldy Bread, Fruit Flies, Meatball, set in `RunRules.EnemyPool`) spawn from this timeline. The Big Cheese mini-boss arrives at 3:00 (#84): spawns stop and the clock holds at 3:00 until all its pieces are defeated, then the timeline carries on. Elites and the dinner rush wait for later. At 6:00 the Microwave Monster arrives; defeating it wins the run.
 
 ### 3.7 Chapters (maps)
 - Chapters unlock in order. Beat a chapter's final boss to unlock the next one.

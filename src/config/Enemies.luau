@@ -17,6 +17,8 @@
 --                 Bigger enemies only: Fruit Flies come in swarms, so pies from them would be everywhere.
 -- HurtCooldown: seconds before the chef can be hurt again after this enemy's hit
 --               (RunRules.ChefHurtCooldown if left out; the boss hits harder but slower)
+-- SplitInto, SplitCount: when it dies, SplitCount enemies of type SplitInto appear where it
+--               died (MiniBossService, The Big Cheese #84). Left out = no split.
 
 export type Enemy = {
 	Name: string,
@@ -34,6 +36,8 @@ export type Enemy = {
 	GroupSize: number?,
 	PieDropChance: number?,
 	HurtCooldown: number?,
+	SplitInto: string?,
+	SplitCount: number?,
 }
 
 local Enemies: { [string]: Enemy } = {
@@ -140,6 +144,38 @@ local Enemies: { [string]: Enemy } = {
 		Size = Vector3.new(4, 4.5, 1.6),
 		Shape = "Block",
 		Color = Color3.fromRGB(60, 40, 30),
+		Movement = "Chase",
+	},
+	-- The Big Cheese's pieces (#84, Bosses.luau): they only appear when a bigger piece splits,
+	-- never in the normal waves (not in RunRules.EnemyPool), and they don't get run-time scaling.
+	CheeseWedge = {
+		Name = "Cheese Wedge",
+		Role = "Mini-boss piece",
+		Behavior = "Chases the chef; splits into 2 Cheese Cubes",
+		Mvp = true,
+		Hp = 120,
+		Speed = 10,
+		Damage = 8,
+		Tips = 6,
+		Size = Vector3.new(3.5, 3, 3.5),
+		Shape = "Block",
+		Color = Color3.fromRGB(255, 215, 100),
+		Movement = "Chase",
+		SplitInto = "CheeseCube",
+		SplitCount = 2,
+	},
+	CheeseCube = {
+		Name = "Cheese Cube",
+		Role = "Mini-boss piece",
+		Behavior = "Small and fast; just slower than the chef",
+		Mvp = true,
+		Hp = 40,
+		Speed = 15,
+		Damage = 5,
+		Tips = 3,
+		Size = Vector3.new(2, 2, 2),
+		Shape = "Block",
+		Color = Color3.fromRGB(255, 230, 150),
 		Movement = "Chase",
 	},
 }

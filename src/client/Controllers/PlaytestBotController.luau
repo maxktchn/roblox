@@ -3,8 +3,9 @@
 -- "BotRunning" attribute (PlaytestBotService, started from the DEV panel).
 --
 -- While it runs, every frame it adds up a few "pushes" and walks the chef that way:
---   * away from enemies that are too close (Meatballs and bosses from further away)
---   * toward the nearest small enemy when it's far and HP is fine, so weapons hit something
+--   * away from enemies that are too close (Meatballs and the final boss from further away)
+--   * toward the nearest small enemy (or the mini-boss) when it's far and HP is fine, so
+--     weapons hit something
 --   * away from the walls, plus a slow circle around the arena, like a person kiting
 --   * toward a pie when hurt, otherwise toward tips nearby
 -- and aims at the nearest enemy. Cards are picked by the server half.
@@ -21,7 +22,7 @@ local PlaytestBotController = {}
 local player = Players.LocalPlayer
 
 local SEE_DISTANCE = 30 -- enemies further than this are ignored for dodging
-local KEEP_AWAY_BIG = 14 -- studs to keep from Meatballs and bosses
+local KEEP_AWAY_BIG = 14 -- studs to keep from Meatballs and the final boss
 local KEEP_AWAY_SMALL = 5 -- studs to keep from everything else
 local CHASE_FROM = 7 -- walk toward the nearest small enemy when it's further than this
 local CHASE_MIN_HP = 0.35 -- ...and HP is above this share of max
@@ -37,8 +38,13 @@ local function flat(v: Vector3): Vector3
 	return Vector3.new(v.X, 0, v.Z)
 end
 
+-- Meatballs and the final boss are dodged from far away and never chased. The mini-boss
+-- (The Big Cheese, #84) is slow and only hurts by touch, so the bot chases it like a small
+-- enemy and fights it in knife range: the clock holds until it's beaten, so running from
+-- it forever would stall the run.
 local function isBig(name: string): boolean
-	return name == "Meatball" or Bosses[name] ~= nil
+	local boss = Bosses[name]
+	return name == "Meatball" or (boss ~= nil and boss.Fight ~= nil)
 end
 
 local function step()
