@@ -39,7 +39,29 @@ export type Boss = {
 }
 
 local Bosses: { [string]: Boss } = {
-	BigCheese = { Name = "The Big Cheese", Mechanics = "Splits into smaller cheeses when damaged", Mvp = true },
+	-- Mini-boss at 3:00 (MiniBossService): the run clock holds at 3:00 until every piece is gone.
+	BigCheese = {
+		Name = "The Big Cheese",
+		Mechanics = "Splits on death: 1 -> 3 Cheese Wedges -> 6 Cheese Cubes",
+		Mvp = true,
+		Body = {
+			Name = "The Big Cheese",
+			Role = "Mini-boss",
+			Behavior = "Walks slowly at the chef; splits into 3 Cheese Wedges",
+			Mvp = true,
+			Hp = 600,
+			Speed = 6,
+			Damage = 12,
+			Tips = 20,
+			PieDropChance = 1, -- always drops a pie when it splits: a breather for weak builds
+			Size = Vector3.new(6, 6, 6),
+			Shape = "Ball",
+			Color = Color3.fromRGB(255, 200, 60),
+			Movement = "Chase",
+			SplitInto = "CheeseWedge",
+			SplitCount = 3,
+		},
+	},
 	MicrowaveMonster = {
 		Name = "Microwave Monster",
 		Mechanics = "Summons minions and sends out damage pulses",
