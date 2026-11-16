@@ -13,6 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local BossService = require(script.Parent.BossService)
 local EnemyService = require(script.Parent.EnemyService)
+local MiniBossService = require(script.Parent.MiniBossService)
 local PickupService = require(script.Parent.PickupService)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local RunManager = require(script.Parent.RunManager)
@@ -30,6 +31,7 @@ local RestartService = {}
 function RestartService.restart()
 	EnemyService.clearAll()
 	BossService.reset()
+	MiniBossService.reset()
 	PickupService.reset()
 	WeaponService.reset() -- back to the starter at Lv 1, kills 0
 	StatsService.reset() -- no ingredients

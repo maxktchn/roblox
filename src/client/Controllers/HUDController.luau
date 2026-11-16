@@ -6,6 +6,7 @@
 --   "Kills"                         WeaponService
 --   "Weapon_<id>", "Ingredient_<id>" WeaponService / StatsService (owned item icons)
 --   "RunSeconds"                    RunManager, run timer in whole seconds (#6)
+--   "MiniBoss"                      MiniBossService, the mini-boss's name during its fight (#84)
 --   "Hp", "MaxHp"                   RunManager, the chef's HP (#9)
 --   "RunState"                      RunManager: "Playing", "Lost" or "Won" (shows the run-over banner)
 --   "JustUnlocked"                  UnlockService: a boss power this run unlocked (line on the banner)
@@ -34,6 +35,7 @@ local COLORS = {
 	tips = Color3.fromRGB(240, 185, 40), -- gold tips
 	hpHigh = Color3.fromRGB(70, 190, 80),
 	hpLow = Color3.fromRGB(220, 60, 50),
+	cheese = Color3.fromRGB(255, 200, 60), -- the mini-boss line (#84)
 }
 
 -- Icon colours by item type (same idea as the Order Up! cards).
@@ -58,6 +60,7 @@ local levelLabel: TextLabel
 local tipFill: Frame
 local tipText: TextLabel
 local timerLabel: TextLabel
+local miniBossLabel: TextLabel -- "Defeat The Big Cheese!" while the mini-boss fight is on
 local killsLabel: TextLabel
 local iconRow: Frame
 local hpBillboard: BillboardGui
@@ -140,6 +143,14 @@ local function buildScreen()
 	timerLabel.AnchorPoint = Vector2.new(0.5, 0)
 	timerLabel.Position = UDim2.new(0.5, 0, 0, 52)
 	timerLabel.Size = UDim2.fromOffset(120, 34)
+
+	-- Under the timer, only during the mini-boss fight (the clock holds at 3:00 until it's beaten).
+	miniBossLabel = makeLabel(gui, "MiniBoss", 22)
+	miniBossLabel.AnchorPoint = Vector2.new(0.5, 0)
+	miniBossLabel.Position = UDim2.new(0.5, 0, 0, 86)
+	miniBossLabel.Size = UDim2.fromOffset(320, 28)
+	miniBossLabel.TextColor3 = COLORS.cheese
+	miniBossLabel.Visible = false
 
 	killsLabel = makeLabel(gui, "Kills", 22)
 	killsLabel.AnchorPoint = Vector2.new(1, 0)
@@ -265,6 +276,11 @@ local function updateNumbers()
 	else
 		timerLabel.Text = "--:--" -- RunManager's timer isn't running yet (#6)
 	end
+
+	-- "MiniBoss" is the mini-boss's name while its fight is on (MiniBossService).
+	local miniBoss = player:GetAttribute("MiniBoss")
+	miniBossLabel.Visible = type(miniBoss) == "string"
+	miniBossLabel.Text = if type(miniBoss) == "string" then `Defeat {miniBoss}!` else ""
 end
 
 -- HP: RunManager's attributes if it sets them (#9), otherwise the Humanoid's health.

@@ -20,6 +20,7 @@ local Enemies = require(ReplicatedStorage.Config.Enemies)
 local EnemyService = require(script.Parent.EnemyService)
 local Gadgets = require(ReplicatedStorage.Config.Gadgets)
 local Ingredients = require(ReplicatedStorage.Config.Ingredients)
+local MiniBossService = require(script.Parent.MiniBossService)
 local PickupService = require(script.Parent.PickupService)
 local Recipes = require(ReplicatedStorage.Config.Recipes)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
@@ -127,12 +128,20 @@ local function buildReport(result: string): string
 		return table.concat(parts, ", ")
 	end
 
+	-- The mini-boss fight (#84). The clock holds during it, so its length isn't in endSeconds.
+	local fightSeconds, fightOver = MiniBossService.getFightSeconds()
+	local miniBoss = if fightSeconds == nil
+		then "not reached"
+		elseif fightOver then `beaten in {formatTime(fightSeconds)}`
+		else `still alive after {formatTime(fightSeconds)}`
+
 	local lines = {
 		`RUN REPORT: {string.upper(result)} at {formatTime(endSeconds)} · Lv {level} · {kills} kills · lowest HP {if lowestHp
 				== math.huge
 			then "full"
 			else math.round(lowestHp)}`,
 		`Progress: {table.concat(checkpoints, ", ")}`,
+		`Big Cheese: {miniBoss}`,
 		`Level-ups: {eventList(levelUps)}`,
 		`Items: {eventList(itemsGained)}`,
 		`Kills: {breakdown(killsByType)}`,
