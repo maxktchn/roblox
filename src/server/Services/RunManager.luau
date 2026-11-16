@@ -71,6 +71,12 @@ local phaseCallbacks: { PhaseCallback } = {}
 -- Final boss (#11): who to tell at the end of the timeline, and whether we already did.
 local finalBossCallbacks: { () -> () } = {}
 local finalBossStarted = false
+-- Mini-boss (#84): who to tell when the clock reaches RunRules.MiniBossAtSeconds, and whether
+-- it already happened this run.
+local miniBossCallbacks: { () -> () } = {}
+local miniBossStarted = false
+-- While held, the clock stands still and nothing new spawns (the mini-boss fight).
+local clockHeld = false
 
 local function getTimeline(): { Chapters.Phase }
 	return Chapters[CHAPTER].Timeline or {}
@@ -127,6 +133,35 @@ function RunManager.onFinalBoss(callback: () -> ())
 	table.insert(finalBossCallbacks, callback)
 end
 
+-- Run `callback` once per run, on the frame the clock counts up past RunRules.MiniBossAtSeconds
+-- (3:00): time for the mini-boss (MiniBossService, #84). The clock is set to exactly 3:00 first.
+-- Jumping the clock past 3:00 with setRunSeconds doesn't count (a dev skip).
+function RunManager.onMiniBoss(callback: () -> ())
+	table.insert(miniBossCallbacks, callback)
+end
+
+-- Hold or release the clock (the mini-boss fight, #84). While held, the clock stands still,
+-- the timeline doesn't move on, and every phase listener is told "spawn nothing". Releasing
+-- announces the current phase again, so spawns pick up where they left off.
+function RunManager.setClockHeld(held: boolean)
+	if held == clockHeld then
+		return
+	end
+	clockHeld = held
+	if held then
+		for _, callback in phaseCallbacks do
+			task.spawn(callback, {}, 0)
+		end
+	elseif phaseIndex > 0 then
+		setPhase(findPhase(runSeconds))
+	end
+end
+
+-- True while the clock is held (the mini-boss fight).
+function RunManager.isClockHeld(): boolean
+	return clockHeld
+end
+
 -- Seconds since the run started (paused time doesn't count).
 function RunManager.getRunSeconds(): number
 	return runSeconds
@@ -134,8 +169,16 @@ end
 
 -- Jump the run clock to `seconds` (testing and tuning only, e.g. to try the final wave
 -- straight away). The phase for that time is announced on the next frame.
+-- A jump releases a held clock, and a jump back before 3:00 lets the mini-boss come again.
 function RunManager.setRunSeconds(seconds: number)
 	runSeconds = math.max(seconds, 0)
+	if runSeconds < RunRules.MiniBossAtSeconds then
+		miniBossStarted = false
+	end
+	if clockHeld then
+		clockHeld = false
+		phaseIndex = 0 -- announce the phase again on the next frame
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -251,6 +294,8 @@ function RunManager.reset()
 	shownSeconds = -1
 	phaseIndex = 0
 	finalBossStarted = false
+	miniBossStarted = false
+	clockHeld = false
 	syncAttributes()
 end
 
@@ -268,7 +313,20 @@ local function update(deltaTime: number)
 		return -- the clock starts once the chef is in the kitchen
 	end
 
+	if clockHeld then
+		return -- the mini-boss fight: the clock waits at 3:00
+	end
+
+	local before = runSeconds
 	runSeconds += deltaTime
+
+	-- Mini-boss (#84): only when the clock counts up past 3:00, not when a dev jumps over it.
+	local miniBossAt = RunRules.MiniBossAtSeconds
+	local miniBossNow = before < miniBossAt and runSeconds >= miniBossAt and not miniBossStarted
+	if miniBossNow then
+		miniBossStarted = true
+		runSeconds = miniBossAt
+	end
 
 	-- The HUD only needs whole seconds, so only write the attribute when the number changes.
 	local whole = math.floor(runSeconds)
@@ -280,6 +338,12 @@ local function update(deltaTime: number)
 	local index = findPhase(runSeconds)
 	if index ~= phaseIndex then
 		setPhase(index)
+	end
+
+	if miniBossNow then
+		for _, callback in miniBossCallbacks do
+			task.spawn(callback)
+		end
 	end
 
 	if runSeconds >= RunRules.RunLengthSeconds and not finalBossStarted then
