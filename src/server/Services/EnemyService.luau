@@ -55,6 +55,9 @@ local HP_BAR_STEPS = 20
 -- How far the chef's body reaches (RunRules.ChefRadius), so chasing enemies stop at the chef's
 -- edge instead of inside them.
 local CHEF_RADIUS = RunRules.ChefRadius
+-- An enemy walking to a setMoveTarget spot starts going around the chef this many studs
+-- before it would touch them.
+local AVOID_MARGIN = 1
 
 local killedCallbacks: { KilledCallback } = {}
 local alive: { [EnemyId]: EnemyRecord } = {}
@@ -463,13 +466,40 @@ local function moveEnemy(enemy: EnemyRecord, deltaTime: number, chefPosition: Ve
 	local config = enemy.config
 	local target = enemy.moveTarget
 	if target then
-		-- Sent somewhere by setMoveTarget: walk straight there and stop.
+		-- Sent somewhere by setMoveTarget: walk there and stop. Never through the chef: if the
+		-- chef is in the way, walk around them along the edge of their body.
 		local toTarget = Vector3.new(target.X - enemy.position.X, 0, target.Z - enemy.position.Z)
 		local remaining = toTarget.Magnitude
 		if remaining > 0.01 then
-			enemy.direction = toTarget / remaining
+			local direction = toTarget / remaining
+			local fromChef = Vector3.new(enemy.position.X - chefPosition.X, 0, enemy.position.Z - chefPosition.Z)
+			local chefDistance = fromChef.Magnitude
+			local stopDistance = CHEF_RADIUS + EnemyService.getHalfDepth(config)
+			-- If the chef is standing on the spot itself there's no way around: wait at their edge.
+			local targetFromChef = Vector3.new(target.X - chefPosition.X, 0, target.Z - chefPosition.Z)
+			local targetBlocked = targetFromChef.Magnitude < stopDistance
+			if not targetBlocked and chefDistance > 0.01 and chefDistance < stopDistance + AVOID_MARGIN then
+				local outward = fromChef / chefDistance
+				if direction:Dot(outward) < 0 then
+					-- Heading into the chef: go sideways around them instead, on the side
+					-- closer to where it wants to go (any side if the chef is dead ahead).
+					local around = Vector3.new(-outward.Z, 0, outward.X)
+					if around:Dot(direction) < 0 then
+						around = -around
+					end
+					direction = around
+				end
+			end
+			enemy.direction = direction
 			local targetStep = math.min((enemy.moveSpeed or config.Speed) * deltaTime, remaining)
-			enemy.position = clampToArena(enemy.position + enemy.direction * targetStep)
+			local wanted = enemy.position + direction * targetStep
+			-- Stay at the chef's edge, never inside (going around a circle in steps cuts in a bit).
+			local wantedFromChef = Vector3.new(wanted.X - chefPosition.X, 0, wanted.Z - chefPosition.Z)
+			if wantedFromChef.Magnitude < stopDistance and wantedFromChef.Magnitude > 0.01 then
+				local edge = chefPosition + wantedFromChef.Unit * stopDistance
+				wanted = Vector3.new(edge.X, wanted.Y, edge.Z)
+			end
+			enemy.position = clampToArena(wanted)
 		end
 		return
 	end

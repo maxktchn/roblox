@@ -442,9 +442,21 @@ local function update(deltaTime: number)
 		current.stageTimer -= deltaTime
 		if not current.arrived then
 			local toMiddle = flat(current.center) - flat(bossPosition)
-			if toMiddle.Magnitude <= ARRIVE_DISTANCE or current.stageTimer <= 0 then
-				-- In the middle: stand there (it walks back if minions shove it) for LaserSeconds.
-				-- The spinning lasers (#93) fire during this part.
+			-- The chef standing on the middle blocks it: it waits at their edge, and walks in
+			-- once they move (its target stays the middle for the whole laser turn).
+			local blocked = false
+			local root = getChefRoot()
+			local bossType = EnemyService.getEnemyType(current.bossId)
+			local body = bossType and EnemyService.getConfigForType(bossType)
+			if root and body then
+				local stopDistance = CHEF_RADIUS + EnemyService.getHalfDepth(body)
+				local chefToMiddle = (flat(root.Position) - flat(current.center)).Magnitude
+				local bossToChef = (flat(root.Position) - flat(bossPosition)).Magnitude
+				blocked = chefToMiddle < stopDistance and bossToChef <= stopDistance + ARRIVE_DISTANCE
+			end
+			if toMiddle.Magnitude <= ARRIVE_DISTANCE or blocked or current.stageTimer <= 0 then
+				-- In the middle (or as close as the chef lets it): stand there for LaserSeconds,
+				-- walking back if minions shove it. The spinning lasers (#93) fire during this part.
 				current.arrived = true
 				current.stageTimer = fight.LaserSeconds
 			end
