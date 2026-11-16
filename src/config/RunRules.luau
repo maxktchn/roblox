@@ -89,11 +89,11 @@ return {
 	MaxAliveEnemies = 150,
 
 	-- Enemy scaling over the run (PRD §3.4). Enemies get tougher every minute of run time
-	-- (paused time doesn't count), compounding: HP x(1 + growth) per minute. With 0.26 that is
-	-- x2.0 at 3:00 and x4.0 at 6:00; damage with 0.085 is x1.6 at 6:00. Each enemy keeps the
+	-- (paused time doesn't count), compounding: HP x(1 + growth) per minute. With 0.20 that is
+	-- x1.7 at 3:00 and x3.0 at 6:00; damage with 0.085 is x1.6 at 6:00. Each enemy keeps the
 	-- strength it spawned with. Speed never scales (Fruit Flies are already faster than the chef),
 	-- and bosses don't scale (their numbers are tuned in Bosses.luau); their minions do.
-	EnemyHpGrowthPerMinute = 0.26,
+	EnemyHpGrowthPerMinute = 0.20, -- was 0.26: gadget builds hit a wall at ~3:40 (#22 bot runs)
 	EnemyDamageGrowthPerMinute = 0.085,
 
 	-- Enemy spawning (PRD §2.1, §8.3). How many spawn per second is set per timeline phase in Chapters.luau.
