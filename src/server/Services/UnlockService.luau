@@ -53,6 +53,16 @@ function UnlockService.unlock(id: string): boolean
 	return true
 end
 
+-- Lock a boss power again. Dev only: the playtest bot (PlaytestBotService) uses it so a win
+-- in one bot run doesn't hand the next run a power. Players never lose an unlock.
+function UnlockService.lock(id: string)
+	unlocked[id] = nil
+	local player = getRunPlayer()
+	if player then
+		player:SetAttribute(`Unlocked_{id}`, nil)
+	end
+end
+
 function UnlockService.isUnlocked(id: string): boolean
 	return unlocked[id] == true
 end
