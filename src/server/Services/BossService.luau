@@ -10,7 +10,16 @@
 --   3. Every SummonEvery seconds it summons minions. Every PulseEvery seconds it sends out a
 --      damage pulse: a ring grows around it for PulseWarning seconds (the warning), then hits
 --      the chef if they are inside PulseRadius.
---   4. When it dies, the run is won.
+--   4. Two HP phases (#91). Phase 1 is step 3. Below Fight.Phase2At of its HP the boss stops
+--      and flashes (PhaseChangeSeconds), its HP bar turns orange, and it starts taking turns:
+--        Laser turn:   runs to the middle of the ring (LaserWalkSpeed) and stands there for
+--                      LaserSeconds. No pulses and no new minions; it can still be hurt.
+--        Walking turn: phase 1 again for WalkingSeconds.
+--      Laser, walking, laser, walking... until it dies.
+--   5. When it dies, the run is won.
+--
+-- The boss's part carries the attribute "BossStage" ("Phase1", "PhaseChange", "Laser" or
+-- "Walking") so the client (and the playtest bot) can see what it is doing.
 -- Normal spawns stay off during the fight because the timeline has ended.
 -- Everything stands still while the run is paused ("Order Up!").
 
@@ -42,11 +51,29 @@ local COLORS = {
 	display = Color3.fromRGB(80, 230, 120),
 	pulseWarning = Color3.fromRGB(255, 160, 40),
 	pulseHit = Color3.fromRGB(255, 60, 40),
+	flash = Color3.new(1, 1, 1),
+	phase2Bar = Color3.fromRGB(255, 140, 30), -- HP bar in phase 2 (phase 1 uses BossHpBar's red)
+	phase2Display = Color3.fromRGB(255, 90, 50),
+	phase2Glow = Color3.fromRGB(255, 120, 40),
 }
+
+-- Within this many studs of the middle counts as arrived for a laser turn.
+local ARRIVE_DISTANCE = 1
+-- If minions keep it from reaching the middle, start the laser turn anyway after this long.
+local MAX_WALK_TO_MIDDLE_SECONDS = 5
+-- Phase change flash: white and back, FLASH_REPEATS + 1 times.
+local FLASH_SECONDS = 0.15
+local FLASH_REPEATS = 2
+
+export type Stage = "Phase1" | "PhaseChange" | "Laser" | "Walking"
 
 type ActiveFight = {
 	bossId: number,
 	fight: Bosses.BossFight,
+	center: Vector3, -- middle of the ring (on the floor)
+	stage: Stage,
+	stageTimer: number, -- PhaseChange, Laser (once arrived) and Walking: seconds left in the stage
+	arrived: boolean, -- Laser: reached the middle (the laser turn's clock has started)
 	summonTimer: number, -- seconds until the next summon
 	pulseTimer: number, -- seconds until the next pulse warning starts
 	warningLeft: number?, -- while a pulse is warning: seconds until it hits
@@ -55,6 +82,8 @@ type ActiveFight = {
 local active: ActiveFight? = nil
 local pulsePart: Part
 local hpFill: Frame? = nil
+local display: TextLabel? = nil -- the microwave's little screen ("DING")
+local glow: Frame? = nil -- the light in its window
 local random = Random.new()
 
 -- The chef's root part, or nil while there is no chef.
@@ -165,7 +194,8 @@ end
 
 -- Make the boss's plain part look like a microwave, and give it an HP bar.
 -- (Boss parts are pooled, so clear anything left from before first.)
-local function decorateBoss(part: BasePart, bossName: string)
+local function decorateBoss(part: BasePart, bossName: string, color: Color3)
+	part.Color = color -- a pooled part may still be mid-flash from a past fight
 	local oldFace = part:FindFirstChild("MicrowaveFace")
 	if oldFace then
 		oldFace:Destroy()
@@ -187,27 +217,29 @@ local function decorateBoss(part: BasePart, bossName: string)
 	window.BackgroundColor3 = COLORS.window
 	window.BorderSizePixel = 0
 	window.Parent = face
-	local glow = Instance.new("Frame")
-	glow.Name = "Glow"
-	glow.AnchorPoint = Vector2.new(0.5, 0.5)
-	glow.Position = UDim2.fromScale(0.5, 0.55)
-	glow.Size = UDim2.fromScale(0.7, 0.5)
-	glow.BackgroundColor3 = COLORS.windowGlow
-	glow.BackgroundTransparency = 0.55
-	glow.BorderSizePixel = 0
-	glow.Parent = window
+	local windowGlow = Instance.new("Frame")
+	windowGlow.Name = "Glow"
+	windowGlow.AnchorPoint = Vector2.new(0.5, 0.5)
+	windowGlow.Position = UDim2.fromScale(0.5, 0.55)
+	windowGlow.Size = UDim2.fromScale(0.7, 0.5)
+	windowGlow.BackgroundColor3 = COLORS.windowGlow
+	windowGlow.BackgroundTransparency = 0.55
+	windowGlow.BorderSizePixel = 0
+	windowGlow.Parent = window
+	glow = windowGlow
 
-	local display = Instance.new("TextLabel")
-	display.Name = "Display"
-	display.Position = UDim2.fromScale(0.74, 0.15)
-	display.Size = UDim2.fromScale(0.2, 0.18)
-	display.BackgroundColor3 = COLORS.window
-	display.BorderSizePixel = 0
-	display.Font = Enum.Font.Code
-	display.Text = "DING"
-	display.TextScaled = true
-	display.TextColor3 = COLORS.display
-	display.Parent = face
+	local screen = Instance.new("TextLabel")
+	screen.Name = "Display"
+	screen.Position = UDim2.fromScale(0.74, 0.15)
+	screen.Size = UDim2.fromScale(0.2, 0.18)
+	screen.BackgroundColor3 = COLORS.window
+	screen.BorderSizePixel = 0
+	screen.Font = Enum.Font.Code
+	screen.Text = "DING"
+	screen.TextScaled = true
+	screen.TextColor3 = COLORS.display
+	screen.Parent = face
+	display = screen
 
 	hpFill = BossHpBar.attach(part, bossName)
 end
@@ -261,34 +293,84 @@ local function startFight()
 	end
 	local part = EnemyService.getEnemyPart(bossId)
 	if part then
-		decorateBoss(part, boss.Name)
+		decorateBoss(part, boss.Name, boss.Body.Color)
+		part:SetAttribute("BossStage", "Phase1")
 	end
 
 	active = {
 		bossId = bossId,
 		fight = fight,
+		center = center,
+		stage = "Phase1",
+		stageTimer = 0,
+		arrived = false,
 		summonTimer = fight.SummonEvery,
 		pulseTimer = fight.PulseEvery,
 		warningLeft = nil,
 	}
 end
 
--- Every frame during the fight: HP bar, summons and pulses.
-local function update(deltaTime: number)
-	local current = active
-	if not current or RunManager.isPaused() or RunManager.isRunOver() then
-		return
+-- Move the fight to `stage` and show it on the boss's part.
+local function setStage(current: ActiveFight, stage: Stage)
+	current.stage = stage
+	local part = EnemyService.getEnemyPart(current.bossId)
+	if part then
+		part:SetAttribute("BossStage", stage)
 	end
-	local bossPosition = EnemyService.getEnemyPosition(current.bossId)
-	if not bossPosition then
-		return -- the boss just died; onEnemyKilled ends the fight
-	end
-	local fight = current.fight
+end
 
-	local hp, maxHp = EnemyService.getEnemyHp(current.bossId)
-	if hpFill and hp and maxHp then
-		hpFill.Size = UDim2.fromScale(math.clamp(hp / maxHp, 0, 1), 1)
+-- Stop a pulse that is still warning (it never hits), and start its countdown again.
+local function cancelPulse(current: ActiveFight)
+	current.warningLeft = nil
+	current.pulseTimer = current.fight.PulseEvery
+	hidePulse()
+end
+
+-- Phase 2 starts: the boss stops and flashes, its bar turns orange and its screen says HOT!
+local function startPhaseChange(current: ActiveFight)
+	setStage(current, "PhaseChange")
+	current.stageTimer = current.fight.PhaseChangeSeconds
+	cancelPulse(current)
+	EnemyService.setMoveTarget(current.bossId, EnemyService.getEnemyPosition(current.bossId), 0)
+
+	local part = EnemyService.getEnemyPart(current.bossId)
+	if part then
+		local flash =
+			TweenInfo.new(FLASH_SECONDS, Enum.EasingStyle.Linear, Enum.EasingDirection.Out, FLASH_REPEATS, true)
+		TweenService:Create(part, flash, { Color = COLORS.flash }):Play()
 	end
+	if hpFill then
+		hpFill.BackgroundColor3 = COLORS.phase2Bar
+	end
+	if display then
+		display.Text = "HOT!"
+		display.TextColor3 = COLORS.phase2Display
+	end
+	if glow then
+		glow.BackgroundColor3 = COLORS.phase2Glow
+		glow.BackgroundTransparency = 0.25
+	end
+end
+
+-- Laser turn: run to the middle of the ring. Its clock starts once it gets there.
+local function startLaserTurn(current: ActiveFight)
+	setStage(current, "Laser")
+	current.arrived = false
+	current.stageTimer = MAX_WALK_TO_MIDDLE_SECONDS -- until it arrives: how long it may take
+	cancelPulse(current)
+	EnemyService.setMoveTarget(current.bossId, current.center, current.fight.LaserWalkSpeed)
+end
+
+-- Walking turn: back to phase 1 behaviour for a while.
+local function startWalkingTurn(current: ActiveFight)
+	setStage(current, "Walking")
+	current.stageTimer = current.fight.WalkingSeconds
+	EnemyService.setMoveTarget(current.bossId, nil)
+end
+
+-- Phase 1 behaviour (and the walking turn): summon minions and send out damage pulses.
+local function updateAttacks(current: ActiveFight, bossPosition: Vector3, deltaTime: number)
+	local fight = current.fight
 
 	-- Summon minions around the boss.
 	current.summonTimer -= deltaTime
@@ -328,6 +410,61 @@ local function update(deltaTime: number)
 	end
 end
 
+-- Every frame during the fight: HP bar, phases and turns, summons and pulses.
+local function update(deltaTime: number)
+	local current = active
+	if not current or RunManager.isPaused() or RunManager.isRunOver() then
+		return
+	end
+	local bossPosition = EnemyService.getEnemyPosition(current.bossId)
+	if not bossPosition then
+		return -- the boss just died; onEnemyKilled ends the fight
+	end
+	local fight = current.fight
+
+	local hp, maxHp = EnemyService.getEnemyHp(current.bossId)
+	if hpFill and hp and maxHp then
+		hpFill.Size = UDim2.fromScale(math.clamp(hp / maxHp, 0, 1), 1)
+	end
+
+	if current.stage == "Phase1" then
+		if hp and maxHp and hp <= maxHp * fight.Phase2At then
+			startPhaseChange(current)
+			return
+		end
+		updateAttacks(current, bossPosition, deltaTime)
+	elseif current.stage == "PhaseChange" then
+		current.stageTimer -= deltaTime
+		if current.stageTimer <= 0 then
+			startLaserTurn(current)
+		end
+	elseif current.stage == "Laser" then
+		current.stageTimer -= deltaTime
+		if not current.arrived then
+			local toMiddle = flat(current.center) - flat(bossPosition)
+			if toMiddle.Magnitude <= ARRIVE_DISTANCE or current.stageTimer <= 0 then
+				-- In the middle: stand there (it walks back if minions shove it) for LaserSeconds.
+				-- The spinning lasers (#93) fire during this part.
+				current.arrived = true
+				current.stageTimer = fight.LaserSeconds
+			end
+		elseif current.stageTimer <= 0 then
+			startWalkingTurn(current)
+		end
+	elseif current.stage == "Walking" then
+		updateAttacks(current, bossPosition, deltaTime)
+		current.stageTimer -= deltaTime
+		if current.stageTimer <= 0 then
+			startLaserTurn(current)
+		end
+	end
+end
+
+-- What the final boss is doing right now, or nil when there is no fight (tests, DEV tools).
+function BossService.getStage(): Stage?
+	return if active then active.stage else nil
+end
+
 -- End any boss fight without a winner (a new run is starting, #50): forget the fight,
 -- take down the ring and its walls, and let enemies roam the whole kitchen again.
 -- The boss itself is an enemy: RestartService removes it with EnemyService.clearAll().
@@ -335,6 +472,8 @@ function BossService.reset()
 	active = nil
 	BossHpBar.remove(hpFill)
 	hpFill = nil
+	display = nil
+	glow = nil
 	hidePulse()
 	EnemyService.setBossArena(nil, 0)
 	local ring = workspace:FindFirstChild("BossRing")
@@ -367,6 +506,8 @@ function BossService:start()
 			active = nil
 			BossHpBar.remove(hpFill)
 			hpFill = nil
+			display = nil
+			glow = nil
 			hidePulse()
 			RunManager.winRun()
 		end

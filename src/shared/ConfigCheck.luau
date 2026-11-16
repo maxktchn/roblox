@@ -184,6 +184,17 @@ function ConfigCheck.run(): { string }
 		if boss.Fight and not boss.Body then
 			fail(`Boss {id}: has a Fight but no Body`)
 		end
+		local fight = boss.Fight
+		if fight then
+			if fight.Phase2At <= 0 or fight.Phase2At >= 1 then
+				fail(`Boss {id}: Phase2At must be between 0 and 1 (a fraction of max HP)`)
+			end
+			for _, field in { "PhaseChangeSeconds", "LaserWalkSpeed", "LaserSeconds", "WalkingSeconds" } do
+				if (fight :: any)[field] <= 0 then
+					fail(`Boss {id}: {field} must be more than 0`)
+				end
+			end
+		end
 		if boss.Body and Enemies[id] then
 			fail(`{id} is both a boss and an enemy`)
 		end

@@ -234,7 +234,7 @@ All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with ga
 | Boss | When | Mechanics | Power (see 3.8) | MVP |
 |---|---|---|---|---|
 | The Big Cheese | 3:00 mini-boss (Chapter 1) | Splits on death: 1 → 3 Cheese Wedges → 6 Cheese Cubes. Normal spawns stop and the run clock holds at 3:00 until every piece is defeated | None (mini-boss) | Yes |
-| Microwave Monster | 6:00 final boss (Chapter 1) | Summons minions and sends out damage pulses | **Microwave Pulse** | Yes |
+| Microwave Monster | 6:00 final boss (Chapter 1) | Two HP phases. Phase 1: walks at the chef, summons minions, sends out damage pulses. Below half HP: takes turns between a laser turn in the middle of the arena and a walking turn (phase 1 again) | **Microwave Pulse** | Yes |
 | Doughzilla | Final boss (Chapter 2, Bakery) | Giant dough that grows bigger by absorbing flour clouds | TBD | No |
 | Kraken Roll | Final boss (Chapter 3, Sushi Bar) | Sushi kraken that grabs the player from the conveyor belts | TBD | No |
 | Pantry Rat King | Final boss (Chapter 4, Walk-in Freezer) | TBD | TBD | No |
@@ -245,7 +245,14 @@ All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with ga
 
 | HP | Speed | Contact damage | Tips | Summons | Pulse |
 |---|---|---|---|---|---|
-| 3500 | 5 | 25, at most once a second | 50 | 4 Moldy Bread every 7 s | every 6 s, 1.2 s warning ring, 16 stud radius, 20 damage |
+| 5000 | 5 | 25, at most once a second | 50 | 4 Moldy Bread every 7 s | every 6 s, 1.2 s warning ring, 16 stud radius, 20 damage |
+
+**Two HP phases** (aiming for a fight of about 60 s; tune in the `Fight` table in `Bosses.luau`):
+- **Phase 1 (100% to 50% HP):** the summons and pulses above.
+- **Phase change (at 50%):** the boss stops for 1 s and flashes white, its HP bar turns from red to orange, and its screen changes from DING to HOT!
+- **Phase 2 (below 50%):** it takes turns, over and over until it dies:
+  - **Laser turn:** runs to the middle of the arena (speed 15, just slower than the chef) and stands there for 8 s. No pulses and no new minions (minions already alive stay). It can still be hurt.
+  - **Walking turn (8 s):** phase 1 again.
 
 ### 3.6 Run timeline (Chapter 1, starting values)
 | Time | What happens |

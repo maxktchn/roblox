@@ -40,6 +40,9 @@ type EnemyRecord = {
 	damage: number, -- contact damage (after run-time scaling)
 	position: Vector3,
 	direction: Vector3, -- flat unit vector it is moving/facing along
+	-- Set by setMoveTarget (the boss's laser turn, #91): walk here instead of using Movement.
+	moveTarget: Vector3?,
+	moveSpeed: number?,
 }
 
 -- Where unused parts wait: far below the floor, out of sight.
@@ -342,6 +345,18 @@ function EnemyService.getEnemyPart(enemyId: EnemyId): BasePart?
 	return enemy and enemy.part
 end
 
+-- Send one enemy to `target` at `speed` studs per second (its own Speed if nil) instead of
+-- its config's Movement; it stops when it arrives. speed 0 holds it where it is.
+-- Pass nil as the target to go back to its normal Movement. Used by BossService (#91).
+function EnemyService.setMoveTarget(enemyId: EnemyId, target: Vector3?, speed: number?)
+	local enemy = alive[enemyId]
+	if not enemy then
+		return
+	end
+	enemy.moveTarget = target
+	enemy.moveSpeed = if target then speed else nil
+end
+
 -- Pull one enemy up to `studs` toward `toward` (PullStrength weapons, #51; none in Phase 1). It stops at the
 -- chef's edge rather than inside (pulls are always toward the chef) and stays inside the
 -- arena. Bosses are too heavy to pull: nothing happens. The part follows on the next frame.
@@ -446,6 +461,18 @@ end
 -- Updates enemy.position and enemy.direction.
 local function moveEnemy(enemy: EnemyRecord, deltaTime: number, chefPosition: Vector3)
 	local config = enemy.config
+	local target = enemy.moveTarget
+	if target then
+		-- Sent somewhere by setMoveTarget: walk straight there and stop.
+		local toTarget = Vector3.new(target.X - enemy.position.X, 0, target.Z - enemy.position.Z)
+		local remaining = toTarget.Magnitude
+		if remaining > 0.01 then
+			enemy.direction = toTarget / remaining
+			local targetStep = math.min((enemy.moveSpeed or config.Speed) * deltaTime, remaining)
+			enemy.position = clampToArena(enemy.position + enemy.direction * targetStep)
+		end
+		return
+	end
 	local toChef = Vector3.new(chefPosition.X - enemy.position.X, 0, chefPosition.Z - enemy.position.Z)
 	local distance = toChef.Magnitude
 	local step = config.Speed * deltaTime

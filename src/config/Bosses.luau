@@ -12,6 +12,14 @@
 --   PulseWarning  seconds the pulse ring grows (the warning) before it hits
 --   PulseRadius   studs from the boss's center that the pulse reaches
 --   PulseDamage   damage to the chef if inside the pulse, before armor
+-- Two HP phases (#91): phase 1 is the walking, summoning and pulsing above. Below Phase2At the
+-- boss takes turns: a laser turn (runs to the middle of the ring and stands there; no pulses
+-- or new minions) then a walking turn (phase 1 again), over and over until it dies.
+--   Phase2At           fraction of max HP where phase 2 starts (0.5 = at half HP)
+--   PhaseChangeSeconds the boss stops and flashes this long when phase 2 starts
+--   LaserWalkSpeed     studs per second on its way to the middle for a laser turn
+--   LaserSeconds       how long each laser turn lasts once it reaches the middle
+--   WalkingSeconds     how long each walking turn lasts
 -- Power: the boss power (id in BossPowers.luau) that defeating this boss unlocks (PRD §3.8).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -27,6 +35,11 @@ export type BossFight = {
 	PulseWarning: number,
 	PulseRadius: number,
 	PulseDamage: number,
+	Phase2At: number,
+	PhaseChangeSeconds: number,
+	LaserWalkSpeed: number,
+	LaserSeconds: number,
+	WalkingSeconds: number,
 }
 
 export type Boss = {
@@ -64,14 +77,14 @@ local Bosses: { [string]: Boss } = {
 	},
 	MicrowaveMonster = {
 		Name = "Microwave Monster",
-		Mechanics = "Summons minions and sends out damage pulses",
+		Mechanics = "Summons minions and sends out damage pulses; below half HP, takes turns with a laser turn in the middle",
 		Mvp = true,
 		Body = {
 			Name = "Microwave Monster",
 			Role = "Final boss",
 			Behavior = "Walks slowly at the chef",
 			Mvp = true,
-			Hp = 3500, -- lowered for 6-minute runs (weaker builds by the boss)
+			Hp = 5000, -- two HP phases (#91): aiming for a fight of about 60 s
 			Speed = 5,
 			Damage = 25, -- 4 touches take a full-HP chef (100)
 			HurtCooldown = 1, -- at most one touch hit per second
@@ -93,6 +106,11 @@ local Bosses: { [string]: Boss } = {
 			PulseWarning = 1.2,
 			PulseRadius = 16,
 			PulseDamage = 20,
+			Phase2At = 0.5,
+			PhaseChangeSeconds = 1,
+			LaserWalkSpeed = 15, -- 3x its walk, still just slower than the chef (16)
+			LaserSeconds = 8,
+			WalkingSeconds = 8,
 		},
 	},
 	Doughzilla = {
