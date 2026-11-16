@@ -23,6 +23,7 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local RestartService = require(script.Parent.RestartService)
 local RunManager = require(script.Parent.RunManager)
 local RunReportService = require(script.Parent.RunReportService)
+local UnlockService = require(script.Parent.UnlockService)
 local UpgradeService = require(script.Parent.UpgradeService)
 
 type Card = Card.Card
@@ -51,6 +52,10 @@ local running = false
 local runsWanted = 0
 local runNumber = 0
 local reports: { string } = {}
+-- Boss powers unlocked when the bot was started. Every run starts with exactly these, so a
+-- boss win in one run doesn't give the next run a power (use "Unlock powers" before starting
+-- the bot to test with them).
+local startingUnlocks: { [string]: boolean } = {}
 local closeCards: RemoteEvent
 local runReport: RemoteEvent
 
@@ -137,6 +142,11 @@ end
 local function startRun(run: number)
 	runNumber = run
 	setStatus(`Bot run {run}/{runsWanted}: {strategyFor(run)}`)
+	for _, id in UnlockService.getUnlocked() do
+		if not startingUnlocks[id] then
+			UnlockService.lock(id)
+		end
+	end
 	RestartService.restart()
 end
 
@@ -173,6 +183,10 @@ function PlaytestBotService.play(runs: number)
 	running = true
 	runsWanted = math.min(runs, DevTools.BotMaxRuns)
 	table.clear(reports)
+	table.clear(startingUnlocks)
+	for _, id in UnlockService.getUnlocked() do
+		startingUnlocks[id] = true
+	end
 	player:SetAttribute("BotRunning", true)
 	startRun(1)
 end
