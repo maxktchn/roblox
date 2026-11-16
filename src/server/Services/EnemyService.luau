@@ -44,6 +44,11 @@ type EnemyRecord = {
 
 -- Where unused parts wait: far below the floor, out of sight.
 local PARK_CFRAME = CFrame.new(0, -200, 0)
+
+-- Enemy health bars (#81, EnemyHealthBarController): a damaged enemy's part gets the attribute
+-- "HpFraction" (0 to 1), rounded up to these steps so it changes at most ~20 times per enemy
+-- instead of on every hit. No attribute = full HP or dead = no bar. Bosses have their own bar.
+local HP_BAR_STEPS = 20
 -- How far the chef's body reaches (RunRules.ChefRadius), so chasing enemies stop at the chef's
 -- edge instead of inside them.
 local CHEF_RADIUS = RunRules.ChefRadius
@@ -168,6 +173,7 @@ local function kill(enemy: EnemyRecord)
 	alive[enemy.id] = nil
 	aliveCount -= 1
 	enemy.part.CFrame = PARK_CFRAME
+	enemy.part:SetAttribute("HpFraction", nil)
 	table.insert(pools[enemy.enemyType], enemy.part)
 	fireKilled(enemy.id, enemy.enemyType, enemy.position)
 end
@@ -220,6 +226,7 @@ local function spawnWithConfig(enemyType: string, config: Enemies.Enemy, positio
 		direction = direction,
 	}
 	enemy.part.CFrame = CFrame.lookAt(standing, standing + direction)
+	enemy.part:SetAttribute("HpFraction", nil) -- a pooled part may still carry its last enemy's
 	alive[enemy.id] = enemy
 	aliveCount += 1
 	return enemy.id
@@ -256,6 +263,7 @@ function EnemyService.clearAll()
 	for id, enemy in alive do
 		alive[id] = nil
 		enemy.part.CFrame = PARK_CFRAME
+		enemy.part:SetAttribute("HpFraction", nil)
 		table.insert(pools[enemy.enemyType], enemy.part)
 	end
 	aliveCount = 0
@@ -408,6 +416,12 @@ function EnemyService.damage(enemyId: EnemyId, amount: number)
 	enemy.hp -= amount
 	if enemy.hp <= 0 then
 		kill(enemy)
+	elseif not Bosses[enemy.enemyType] then
+		-- Health bar: only write when the rounded value changes (see HP_BAR_STEPS).
+		local fraction = math.ceil(enemy.hp / enemy.maxHp * HP_BAR_STEPS) / HP_BAR_STEPS
+		if fraction < 1 and enemy.part:GetAttribute("HpFraction") ~= fraction then
+			enemy.part:SetAttribute("HpFraction", fraction)
+		end
 	end
 end
 

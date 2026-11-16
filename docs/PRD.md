@@ -255,7 +255,7 @@ All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with ga
 
 **Spawn rate per phase** (spawn groups per second, tune in `Chapters.luau`; most enemies spawn alone, Fruit Flies in groups of 6): 0.6 until 1:15 (Moldy Bread only until 0:40), 1 until 3:00, 1.4 until 5:25, 2 until 6:00. Normal spawns stop at 6:00.
 
-**Phase 1:** only the Phase 1 enemies (Moldy Bread, Fruit Flies, Meatball, set in `RunRules.EnemyPool`) spawn from this timeline. Elites, the mini-boss and the dinner rush wait for later. At 6:00 the Microwave Monster arrives; defeating it wins the run.
+**Phase 1:** only the Phase 1 enemies (Moldy Bread, Fruit Flies, Meatball, set in `RunRules.EnemyPool`) spawn from this timeline. The Big Cheese mini-boss arrives at 3:00 (#84). Elites and the dinner rush wait for later. At 6:00 the Microwave Monster arrives; defeating it wins the run.
 
 ### 3.7 Chapters (maps)
 - Chapters unlock in order. Beat a chapter's final boss to unlock the next one.
@@ -434,6 +434,7 @@ For now the lobby is a set of **menu screens inside the run place** (see 8.1), s
 
 ### 7.2 In-run HUD
 - HP bar (above the chef)
+- Enemy HP bars: a small bar over an enemy once it has been damaged, none at full HP (so a big swarm doesn't draw a bar each). At most 60 at once. Bosses have their own big bar.
 - Tip (XP) bar and current level (top of screen)
 - Run timer and kill count
 - Owned weapons and ingredients (small icons)
@@ -475,7 +476,7 @@ This is the biggest technical risk. Rules:
 - Use simple distance checks for hits instead of Roblox physics touches
 - Limit how many enemies can be alive at once (starting cap: 150, tune after testing)
 - Spawn enemies on a ring just outside the camera view (starting radius: 90 studs), at a rate set per timeline phase (see 3.6)
-- **Phase 1 must prove** the cap runs smoothly on a mid-range phone
+- **Phase 1 checked the cap on a flagship phone** (iPhone 15 Pro Max: 150 enemies, 60 fps average, 1% low 57). The mid-range phone check is deferred to before launch (#53), since we don't have one to test on.
 
 ### 8.4 Security (server authority)
 - The server decides all damage, drops, XP, rewards, and purchases
@@ -525,18 +526,18 @@ StarterPlayerScripts/
   - **Gadgets:** Pepper Shaker (cone), Blender (aura), Spinning Forks (orbit), Toaster (projectile). Four different attack shapes that the other gadgets reuse later.
   - **Ingredients:** Salt, Hot Sauce, Beef Jerky, Fridge Magnet. Together these make 4 recipes testable: Sushi Master Blade, Ghost Pepper Blaster, Fondue Ring, Smoothie Vortex. (Toaster has no recipe in Phase 1, since Buttered Barrage needs Butter.)
   - **Enemies:** Moldy Bread, Fruit Flies, Meatball (movement only, no puddles or ranged attacks)
-  - **Boss:** Microwave Monster at 6:00. The Big Cheese mini-boss waits for Phase 2.
+  - **Bosses:** The Big Cheese mini-boss at 3:00 (#84) and the Microwave Monster at 6:00.
 - Tips, "Order Up!" cards, and recipes working
 - No saving, no lobby, no progression
 - **Boss powers prototype:** Microwave Pulse, unlocked by beating the Microwave Monster until the server closes (no saving yet)
-- **Done when:** A full 6-minute run is fun and runs smoothly on a mid-range phone
+- **Done when:** A full 6-minute run is fun and runs smoothly on a phone. (The mid-range phone check moved to Phase 3, #53.)
 
 ### Phase 2: MVP
 - **Build order:**
   1. Saving player data
   2. Boss powers saving properly (unlocks kept between sessions)
   3. Chapter and starter unlocks
-  4. Full Chapter 1 content: 3 starters, 7 gadgets, 7 ingredients, 5 enemies, elites, 2 bosses (The Big Cheese)
+  4. Full Chapter 1 content: 3 starters, 7 gadgets, 7 ingredients, 5 enemies, elites, 2 bosses (The Big Cheese is already in from Phase 1)
   5. Gear (5 slots, rarity, merging, leveling), talents, Basic Chests
 - Lobby as menu screens in the run place (see 8.1)
 - **Done when:** A new player can go from first run to unlocking the Rolling Pin, and all progress saves correctly
@@ -546,6 +547,7 @@ StarterPlayerScripts/
 - Battle pass (first season)
 - Gamepasses
 - Daily missions and leaderboards
+- Mid-range phone performance check with every Phase 2 enemy and effect in (#53)
 - **Done when:** All purchases work and are checked on the server, and the game is ready to publish
 
 ### Post-launch
@@ -561,7 +563,7 @@ StarterPlayerScripts/
 
 ### 10.1 Open questions
 1. Robux prices for gem bundles, gamepasses, and the battle pass (decide in Phase 3)
-2. What enemy cap can a mid-range phone actually handle? (answered by testing in Phase 1)
+2. What enemy cap can a mid-range phone actually handle? (150 passes on a flagship; mid-range still to test before launch, #53)
 
 ### 10.2 Out of scope for launch
 - Co-op
