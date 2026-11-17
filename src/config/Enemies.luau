@@ -10,7 +10,8 @@
 -- Shape:  "Block" or "Ball" (one simple part each, so the swarm stays cheap on phones)
 -- Movement: how it moves, handled in EnemyService (one code path per movement, not per enemy):
 --   "Chase"  walks straight at the chef every frame
---   "Charge" picks a direction toward the chef and rolls straight; re-aims after it
+--   "Charge" winds up (stops and wobbles, RunRules.ChargeWindupSeconds), then picks a
+--            direction toward the chef and rolls straight; winds up and re-aims after it
 --            overshoots the chef or reaches a wall
 -- GroupSize: how many spawn together in one cluster (1 if left out)
 -- PieDropChance: chance (0 to 1) it drops a Pie that heals the chef (PRD §2.6). Left out = never.

@@ -43,6 +43,8 @@ type EnemyRecord = {
 	-- Set by setMoveTarget (the boss's laser turn, #91): walk here instead of using Movement.
 	moveTarget: Vector3?,
 	moveSpeed: number?,
+	-- Chargers (#119): seconds left standing still and wobbling before the next charge; 0 = rolling.
+	windup: number,
 }
 
 -- Where unused parts wait: far below the floor, out of sight.
@@ -58,6 +60,9 @@ local CHEF_RADIUS = RunRules.ChefRadius
 -- An enemy walking to a setMoveTarget spot starts going around the chef this many studs
 -- before it would touch them.
 local AVOID_MARGIN = 1
+-- A winding-up charger wobbles side to side this far (studs) and this fast (radians per second).
+local WINDUP_WOBBLE = 0.3
+local WINDUP_WOBBLE_SPEED = 45
 
 local killedCallbacks: { KilledCallback } = {}
 local alive: { [EnemyId]: EnemyRecord } = {}
@@ -230,6 +235,7 @@ local function spawnWithConfig(enemyType: string, config: Enemies.Enemy, positio
 		damage = config.Damage * damageScale,
 		position = standing,
 		direction = direction,
+		windup = if config.Movement == "Charge" then RunRules.ChargeWindupSeconds else 0,
 	}
 	enemy.part.CFrame = CFrame.lookAt(standing, standing + direction)
 	enemy.part:SetAttribute("HpFraction", nil) -- a pooled part may still carry its last enemy's
@@ -530,19 +536,29 @@ local function moveEnemy(enemy: EnemyRecord, deltaTime: number, chefPosition: Ve
 		local stopDistance = CHEF_RADIUS + EnemyService.getHalfDepth(config)
 		step = math.min(step, math.max(distance - stopDistance, 0))
 	elseif config.Movement == "Charge" then
+		if enemy.windup > 0 then
+			-- Winding up (#119): stand still, turning to face the chef, then roll at where
+			-- the chef is when the wind-up ends.
+			enemy.windup -= deltaTime
+			if distance > 0.01 then
+				enemy.direction = toChef / distance
+			end
+			return
+		end
 		-- Keep rolling the same way. Once it has rolled past the chef (moving away)
-		-- by more than ChargeOvershootDistance, aim at the chef again.
+		-- by more than ChargeOvershootDistance, wind up and aim at the chef again.
 		local movingAway = enemy.direction:Dot(toChef) < 0
 		if movingAway and distance > RunRules.ChargeOvershootDistance then
-			enemy.direction = toChef / distance
+			enemy.windup = RunRules.ChargeWindupSeconds
+			return
 		end
 	end
 
 	local wanted = enemy.position + enemy.direction * step
 	local allowed = clampToArena(wanted)
-	-- A charger that runs into a wall aims at the chef again instead of sliding along it.
+	-- A charger that runs into a wall winds up and aims at the chef again instead of sliding along it.
 	if config.Movement == "Charge" and allowed ~= wanted and distance > 0.01 then
-		enemy.direction = toChef / distance
+		enemy.windup = RunRules.ChargeWindupSeconds
 	end
 	enemy.position = allowed
 end
@@ -630,9 +646,15 @@ local function moveEnemies(deltaTime: number, chefPosition: Vector3)
 
 	table.clear(moveParts)
 	table.clear(moveCFrames)
+	local wobble = math.sin(os.clock() * WINDUP_WOBBLE_SPEED) * WINDUP_WOBBLE
 	for _, enemy in alive do
 		table.insert(moveParts, enemy.part)
-		table.insert(moveCFrames, CFrame.lookAt(enemy.position, enemy.position + enemy.direction))
+		local shown = enemy.position
+		if enemy.windup > 0 then
+			-- A charger about to roll wobbles side to side (only the part; the record stays put).
+			shown += Vector3.new(-enemy.direction.Z, 0, enemy.direction.X) * wobble
+		end
+		table.insert(moveCFrames, CFrame.lookAt(shown, shown + enemy.direction))
 	end
 	if #moveParts > 0 then
 		-- FireCFrameChanged skips the extra Position/Orientation change events nobody listens to.
