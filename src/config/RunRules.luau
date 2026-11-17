@@ -108,6 +108,9 @@ return {
 
 	-- Enemy movement (PRD §3.4)
 	ChargeOvershootDistance = 25, -- studs a charger rolls past the chef before it turns and aims again
+	-- Before every charge (on spawn and each re-aim) a charger stops and wobbles this long, then
+	-- rolls at where the chef is (#119): a tell, so dodging is a skill, not luck.
+	ChargeWindupSeconds = 0.4,
 	-- How hard overlapping enemies push apart each frame: 0 = not at all, 1 = fully separated at once.
 	-- Lower is smoother but lets the swarm squash together more.
 	EnemySeparationStrength = 0.5,
