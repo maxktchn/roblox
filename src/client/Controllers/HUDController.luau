@@ -11,6 +11,8 @@
 --   "RunState"                      RunManager: "Playing", "Lost" or "Won" (shows the run-over banner)
 --   "JustUnlocked"                  UnlockService: a boss power this run unlocked (line on the banner)
 --   "SaveStatus"                    DataService: "Off" shows the not-saving banner (P2-1, #114)
+--   "Rush", "RushStage", "RushSound" RunManager: the dinner rush banner (#121), big while
+--                                   "Warning", smaller while "On"; the sound plays with the warning
 -- Until the lobby exists (#109), the "Test build" note (Config.Saving.TestBuild) sits here too.
 -- If Hp/MaxHp are missing the HP bar shows the Humanoid's health instead, and the
 -- timer shows "--:--" until RunSeconds exists.
@@ -40,6 +42,7 @@ local COLORS = {
 	hpLow = Color3.fromRGB(220, 60, 50),
 	cheese = Color3.fromRGB(255, 200, 60), -- the mini-boss line (#84)
 	saveOff = Color3.fromRGB(150, 30, 30), -- the not-saving banner (#114)
+	rush = Color3.fromRGB(255, 140, 40), -- the dinner rush banner (#121)
 	note = Color3.fromRGB(190, 190, 190), -- the small test-build note
 }
 
@@ -67,6 +70,9 @@ local tipText: TextLabel
 local timerLabel: TextLabel
 local miniBossLabel: TextLabel -- "Defeat The Big Cheese!" while the mini-boss fight is on
 local killsLabel: TextLabel
+local rushLabel: TextLabel -- "DINNER RUSH!" (#121)
+local rushSound: Sound
+local lastRushStage: unknown = nil
 local saveBanner: Frame -- "Progress isn't saving right now" while SaveStatus is "Off" (#114)
 local iconRow: Frame
 local hpBillboard: BillboardGui
@@ -157,6 +163,17 @@ local function buildScreen()
 	miniBossLabel.Size = UDim2.fromOffset(320, 28)
 	miniBossLabel.TextColor3 = COLORS.cheese
 	miniBossLabel.Visible = false
+
+	-- Same place, during the dinner rush (#121; never at the same time as the mini-boss).
+	rushLabel = makeLabel(gui, "Rush", 44)
+	rushLabel.AnchorPoint = Vector2.new(0.5, 0)
+	rushLabel.Position = UDim2.new(0.5, 0, 0, 86)
+	rushLabel.Size = UDim2.fromOffset(360, 48)
+	rushLabel.TextColor3 = COLORS.rush
+	rushLabel.Visible = false
+	rushSound = Instance.new("Sound")
+	rushSound.Name = "RushSound"
+	rushSound.Parent = gui
 
 	-- Under the mini-boss line: shown only while the save couldn't load (DataService, #114).
 	saveBanner = Instance.new("Frame")
@@ -315,6 +332,21 @@ local function updateNumbers()
 	miniBossLabel.Text = if type(miniBoss) == "string" then `Defeat {miniBoss}!` else ""
 
 	saveBanner.Visible = player:GetAttribute("SaveStatus") == "Off"
+
+	-- The dinner rush (#121): big while it's warning, smaller while it's on.
+	local rush = player:GetAttribute("Rush")
+	local stage = player:GetAttribute("RushStage")
+	rushLabel.Visible = type(rush) == "string"
+	rushLabel.Text = if type(rush) == "string" then rush else ""
+	rushLabel.TextSize = if stage == "Warning" then 44 else 26
+	if stage == "Warning" and lastRushStage ~= "Warning" then
+		local soundId = player:GetAttribute("RushSound")
+		if type(soundId) == "string" and soundId ~= "" then
+			rushSound.SoundId = soundId
+			rushSound:Play()
+		end
+	end
+	lastRushStage = stage
 end
 
 -- HP: RunManager's attributes if it sets them (#9), otherwise the Humanoid's health.

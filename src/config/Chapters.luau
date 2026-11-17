@@ -12,6 +12,19 @@ export type Phase = {
 	Note: string?,
 }
 
+-- A swarm event (#121, the dinner rush): from At (run-clock seconds) for Seconds, normal spawns
+-- run SpawnScale times faster, still capped at RunRules.MaxAliveEnemies. Name shows on the HUD
+-- Warning seconds before it starts and stays (smaller) until it ends. SoundId (an
+-- "rbxassetid://..." id) plays with the warning; nil = no sound yet.
+export type Rush = {
+	Name: string,
+	At: number,
+	Seconds: number,
+	SpawnScale: number,
+	Warning: number,
+	SoundId: string?,
+}
+
 export type Chapter = {
 	Name: string,
 	Order: number,
@@ -21,6 +34,7 @@ export type Chapter = {
 	Timeline: { Phase }?,
 	-- Run-clock seconds an elite arrives (#120), in order. Held clock time doesn't count.
 	Elites: { number }?,
+	Rushes: { Rush }?,
 	Mvp: boolean,
 }
 
@@ -62,6 +76,10 @@ local Chapters: { [string]: Chapter } = {
 		-- 1:50, 2:40, 3:40, 4:15, 5:00, 5:40. The clock holds at 3:00 for The Big Cheese, so
 		-- 3:40 always comes after it.
 		Elites = { 110, 160, 220, 255, 300, 340 },
+		-- 4:30 to 4:50: spawns from every side at 3x (1.4 -> 4.2 groups a second).
+		Rushes = {
+			{ Name = "DINNER RUSH!", At = 270, Seconds = 20, SpawnScale = 3, Warning = 2, SoundId = nil },
+		},
 		Mvp = true,
 	},
 	Bakery = {

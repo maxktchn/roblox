@@ -346,6 +346,18 @@ function ConfigCheck.run(): { string }
 				last = seconds
 			end
 		end
+		if chapter.Rushes then
+			local lastEnd = -math.huge
+			for index, rush in chapter.Rushes do
+				if rush.Seconds <= 0 or rush.SpawnScale <= 0 or rush.Warning < 0 then
+					fail(`Chapter {id}: rush {index} needs Seconds and SpawnScale above 0, Warning 0 or more`)
+				end
+				if rush.At - rush.Warning < lastEnd or rush.At + rush.Seconds > RunRules.RunLengthSeconds then
+					fail(`Chapter {id}: rush {index} overlaps another or runs past the end of the run`)
+				end
+				lastEnd = rush.At + rush.Seconds
+			end
+		end
 		if chapter.Timeline then
 			-- Phases must run back to back from 0:00 to the end of the shift, with no gaps.
 			local expectedFrom = 0
