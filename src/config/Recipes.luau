@@ -66,7 +66,19 @@ local Recipes: { [string]: Recipe } = {
 		Name = "Breakfast Bomb",
 		Weapon = "EggGrenade",
 		Ingredient = "Bread",
-		Description = "Cluster splash",
+		Description = "Eggs burst into mini-eggs that splash again",
+		Shape = "Lob",
+		FxColor = Color3.fromRGB(255, 200, 80),
+		Levels = {
+			{
+				Damage = 26,
+				Cooldown = 1.4,
+				Range = 30,
+				Count = 3,
+				Radius = 7,
+				Cluster = { Count = 4, Distance = 6, Damage = 12, Radius = 4 },
+			},
+		},
 	},
 	PizzaParty = { Name = "Pizza Party", Weapon = "PizzaCutter", Ingredient = "Coffee", Description = "Multiple discs" },
 	FondueRing = {

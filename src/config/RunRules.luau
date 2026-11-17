@@ -43,6 +43,9 @@ return {
 	BurnTickSeconds = 0.5, -- burns (Pepper Shaker) deal their damage in ticks this far apart
 	OrbitHitRadius = 2.5, -- how close an enemy must be to an orbiting fork to be hit
 	ProjectileHitRadius = 2, -- how close an enemy must be to a flying shot to be hit
+	LobFlightSeconds = 0.6, -- a lobbed egg (Lob shape, #129) is in the air this long
+	LobClusterSeconds = 0.3, -- Breakfast Bomb's mini-eggs are in the air this long
+	LobHeight = 6, -- studs: how high an egg's arc goes (drawing only)
 
 	-- Loadout (PRD §2.4)
 	StarterMaxLevel = 5,
@@ -61,7 +64,7 @@ return {
 	-- Which gadgets and ingredients can show up as cards. Phase 1 picks (PRD §9);
 	-- add ids here to put more items in the game. Checked by ConfigCheck.
 	UpgradePool = {
-		Gadgets = { "PepperShaker", "SpinningForks", "Toaster" }, -- Blender removed (#83); its replacement comes in Phase 2
+		Gadgets = { "PepperShaker", "SpinningForks", "Toaster", "EggGrenade" }, -- Blender removed (#83)
 		-- Butter joins with Buttered Barrage (#132): Toaster + Butter must be playable first.
 		Ingredients = { "Salt", "HotSauce", "BeefJerky", "FridgeMagnet", "Coffee", "Bread" },
 		-- Boss powers only show up once their boss has been defeated (PRD §3.8).

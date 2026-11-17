@@ -34,7 +34,20 @@ local Gadgets: { [string]: Gadget } = {
 			{ Damage = 7, Cooldown = 0.9, Range = 10, ArcDegrees = 105, BurnDps = 6, BurnSeconds = 3 },
 		},
 	},
-	EggGrenade = { Name = "Egg Grenade", Behavior = "Lobbed, splash damage" },
+	-- Lob (#129): slow and splashy, for crowds. The egg lands where the enemy was, so it can miss fast ones.
+	EggGrenade = {
+		Name = "Egg Grenade",
+		Behavior = "Lobbed, splash damage",
+		Shape = "Lob",
+		FxColor = Color3.fromRGB(255, 240, 200),
+		Levels = {
+			{ Damage = 12, Cooldown = 2.0, Range = 30, Count = 1, Radius = 5 },
+			{ Damage = 14, Cooldown = 2.0, Range = 30, Count = 1, Radius = 5.5 },
+			{ Damage = 14, Cooldown = 1.8, Range = 30, Count = 2, Radius = 5.5 },
+			{ Damage = 17, Cooldown = 1.8, Range = 30, Count = 2, Radius = 6.5 },
+			{ Damage = 20, Cooldown = 1.6, Range = 30, Count = 2, Radius = 7 },
+		},
+	},
 	PizzaCutter = { Name = "Pizza Cutter", Behavior = "Disc that bounces between enemies" },
 	SpinningForks = {
 		Name = "Spinning Forks",

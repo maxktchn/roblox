@@ -104,6 +104,7 @@ The restaurant's food has gone rotten and come alive. You're the chef, and you h
 | Sushi Master Blade | Arc | 30 damage, 150° slash, 13 range, every 0.45 s, +25% crit chance on this weapon |
 | Ghost Pepper Blaster | Arc | 7 damage, 120° cone, 13 range, every 0.7 s, burns 8/s for 3 s |
 | Fondue Ring | Orbit | 6 forks on a 9-stud circle, 260°/s, 9 damage, burns 4/s for 2 s |
+| Breakfast Bomb | Lob | 3 eggs every 1.4 s, 26 damage, 7-stud splash; each egg then pops 4 mini-eggs that land 6 studs away and splash again (12 damage, 4 studs) |
 
 ### 2.6 Pickups in the arena
 | Pickup | Effect |
@@ -171,6 +172,7 @@ All 6 gadgets are in the MVP, plus a 7th that takes the removed Blender's place 
 | Pepper Shaker | Arc | 4 damage, 75° cone, 9 range, every 1.2 s, burns 3/s for 2 s | 7 damage, 105° cone, 10 range, every 0.9 s, burns 6/s for 3 s |
 | Spinning Forks | Orbit | 2 forks on a 7-stud circle, 180°/s, 4 damage, each enemy hit at most every 0.6 s | 4 forks, 8 studs, 240°/s, 8 damage |
 | Toaster | Projectile | 1 toast every 1.4 s at the nearest enemy within 40 studs, 8 damage, 45 studs/s | 4 toasts every 1.2 s, 14 damage |
+| Egg Grenade | Lob | 1 egg every 2.0 s at the nearest enemy within 30 studs, lands 0.6 s later where it was, 12 damage to everything within 5 studs | 2 eggs every 1.6 s, 20 damage, 7 studs |
 
 The Pepper Shaker (and Ghost Pepper Blaster) sprays toward the nearest enemy within its range plus 4 studs, or the way the chef faces if nothing is that close. Burns tick every 0.5 s and get the Hot Sauce bonus but can't crit. A fork hits enemies within 2.5 studs of it; a toast hits the first enemy within 2 studs.
 

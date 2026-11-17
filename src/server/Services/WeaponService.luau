@@ -1,7 +1,8 @@
 --!strict
 -- Fires the player's starter, gadgets and recipe weapons on cooldowns; applies ingredient stats. Server decides all damage (PRD §8.4).
 --
--- Every weapon has a Shape in config (see Shared/WeaponTypes): Arc, Aura, Orbit or Projectile.
+-- Every weapon has a Shape in config (see Shared/WeaponTypes): Arc, Aura, Orbit, Projectile,
+-- Pulse or Lob.
 -- There is one attack function per shape below, so new weapons are config-only (PRD §8.5).
 --
 -- Each frame, every owned weapon counts down its cooldown. At 0 it attacks: the server
@@ -354,21 +355,29 @@ local function attackAura(weaponId: string, stats: WeaponLevel, root: BasePart)
 	sendFx(weaponId, stats.Range)
 end
 
--- PROJECTILE: fire one shot at each of the nearest `Count` enemies in range.
-local function attackProjectile(weaponId: string, stats: WeaponLevel, root: BasePart)
-	local origin = root.Position
-	-- Sort the enemies in range by distance and take the closest few.
-	local targets = {}
-	for _, enemyId in getEnemiesInReach(origin, stats.Range) do
+-- The enemies within `range` of `origin`, nearest edge first.
+type Target = { id: number, position: Vector3, distance: number }
+local function getNearestTargets(origin: Vector3, range: number): { Target }
+	local targets: { Target } = {}
+	for _, enemyId in getEnemiesInReach(origin, range) do
 		local position = EnemyService.getEnemyPosition(enemyId)
 		if position then
-			table.insert(targets, { position = position, distance = distanceToEdge(enemyId, position, origin) })
+			table.insert(
+				targets,
+				{ id = enemyId, position = position, distance = distanceToEdge(enemyId, position, origin) }
+			)
 		end
 	end
 	table.sort(targets, function(a, b)
 		return a.distance < b.distance
 	end)
+	return targets
+end
 
+-- PROJECTILE: fire one shot at each of the nearest `Count` enemies in range.
+local function attackProjectile(weaponId: string, stats: WeaponLevel, root: BasePart)
+	local origin = root.Position
+	local targets = getNearestTargets(origin, stats.Range)
 	for i = 1, math.min(stats.Count or 1, #targets) do
 		local toTarget = targets[i].position - origin
 		if toTarget.Magnitude > 0.01 then
@@ -406,6 +415,74 @@ local function updateShots(deltaTime: number)
 		if target or shot.traveled >= shot.maxDistance then
 			table.remove(shots, i)
 			sendFx(shot.weaponId, "End", shot.id)
+		end
+	end
+end
+
+-- LOB (Egg Grenade, #129): eggs in the air. Each lands where it was aimed and splashes.
+type Egg = {
+	weaponId: string,
+	stats: WeaponLevel,
+	target: Vector3, -- where it lands (flat position of the enemy when thrown)
+	timeLeft: number,
+	damage: number,
+	radius: number,
+	cluster: boolean, -- true = a full egg that pops mini-eggs (Breakfast Bomb); false = a mini-egg
+}
+local eggs: { Egg } = {}
+
+local function throwEgg(egg: Egg, from: Vector3)
+	table.insert(eggs, egg)
+	sendFx(egg.weaponId, "Lob", from, egg.target, egg.timeLeft, egg.radius)
+end
+
+-- Lob one egg at each of the nearest `Count` enemies in range.
+local function attackLob(weaponId: string, stats: WeaponLevel, root: BasePart)
+	local origin = root.Position
+	local targets = getNearestTargets(origin, stats.Range)
+	for i = 1, math.min(stats.Count or 1, #targets) do
+		throwEgg({
+			weaponId = weaponId,
+			stats = stats,
+			target = targets[i].position,
+			timeLeft = RunRules.LobFlightSeconds,
+			damage = stats.Damage,
+			radius = stats.Radius or 4,
+			cluster = stats.Cluster ~= nil,
+		}, origin)
+	end
+end
+
+-- Every frame: land the eggs whose time is up. A landing egg hits every enemy whose edge is
+-- within its radius (crits and Hot Sauce as usual, no burn); a full Breakfast Bomb egg then
+-- throws its mini-eggs out from where it landed.
+local function updateEggs(deltaTime: number)
+	for i = #eggs, 1, -1 do
+		local egg = eggs[i]
+		egg.timeLeft -= deltaTime
+		if egg.timeLeft <= 0 then
+			table.remove(eggs, i)
+			local splash: WeaponLevel =
+				{ Damage = egg.damage, Cooldown = 0, Range = 0, CritBonus = egg.stats.CritBonus }
+			for _, enemyId in getEnemiesInReach(egg.target, egg.radius) do
+				hit(enemyId, splash, egg.weaponId)
+			end
+			local cluster = egg.stats.Cluster
+			if egg.cluster and cluster then
+				for k = 0, cluster.Count - 1 do
+					local angle = k * 2 * math.pi / cluster.Count
+					local offset = Vector3.new(math.cos(angle), 0, math.sin(angle)) * cluster.Distance
+					throwEgg({
+						weaponId = egg.weaponId,
+						stats = egg.stats,
+						target = egg.target + offset,
+						timeLeft = RunRules.LobClusterSeconds,
+						damage = cluster.Damage,
+						radius = cluster.Radius,
+						cluster = false,
+					}, egg.target)
+				end
+			end
 		end
 	end
 end
@@ -519,6 +596,7 @@ local ATTACKS: { [string]: (string, WeaponLevel, BasePart) -> () } = {
 	Aura = attackAura,
 	Projectile = attackProjectile,
 	Pulse = attackPulse,
+	Lob = attackLob,
 }
 
 local function update(deltaTime: number)
@@ -526,6 +604,7 @@ local function update(deltaTime: number)
 		return -- "Order Up!" is on screen: cooldowns, shots and burns all freeze
 	end
 	updateShots(deltaTime)
+	updateEggs(deltaTime)
 	updatePulses(deltaTime)
 	updateBurns(deltaTime)
 	flushHitFx(deltaTime)
@@ -607,6 +686,7 @@ function WeaponService.reset()
 		sendFx(shot.weaponId, "End", shot.id)
 	end
 	table.clear(shots)
+	table.clear(eggs)
 	table.clear(pulses)
 	table.clear(swings)
 	table.clear(pendingHits)

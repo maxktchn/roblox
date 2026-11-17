@@ -68,6 +68,7 @@ function ConfigCheck.run(): { string }
 				then stats.ArcDegrees
 				elseif weapon.Shape == "Orbit" or weapon.Shape == "Projectile" then stats.Count and stats.Speed
 				elseif weapon.Shape == "Pulse" then (stats.Speed or 0) > 0 and stats.Range > 0
+				elseif weapon.Shape == "Lob" then (stats.Count or 0) > 0 and (stats.Radius or 0) > 0
 				else true
 			if not needs then
 				fail(`Weapon {id} Lv {i}: missing a field its {weapon.Shape} shape needs`)
@@ -77,6 +78,12 @@ function ConfigCheck.run(): { string }
 			end
 			if stats.PullStrength and stats.PullStrength <= 0 then
 				fail(`Weapon {id} Lv {i}: PullStrength must be more than 0`)
+			end
+			local cluster = stats.Cluster
+			if
+				cluster and (cluster.Count < 1 or cluster.Distance <= 0 or cluster.Damage <= 0 or cluster.Radius <= 0)
+			then
+				fail(`Weapon {id} Lv {i}: Cluster needs Count 1 or more and Distance, Damage, Radius above 0`)
 			end
 		end
 	end

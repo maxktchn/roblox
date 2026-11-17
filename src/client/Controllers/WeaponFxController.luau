@@ -7,6 +7,7 @@
 --   Aura       - a ring pulses around the chef           (WeaponFx: range)
 --   Projectile - a shot flies out                        (WeaponFx: "Launch"/"End", ...)
 --   Pulse      - a ring grows from where it was fired    (WeaponFx: origin, range, speed)
+--   Lob        - an egg arcs over, then splashes         (WeaponFx: "Lob", from, to, seconds, radius)
 --   Orbit      - objects circle the chef all the time. No messages: we read the weapon's
 --                level from the player's "Weapon_<id>" attribute and use the shared server
 --                clock, so they appear exactly where the server checks for hits.
@@ -197,6 +198,53 @@ local function drawShot(
 	end)
 end
 
+-- LOB: an egg flies in an arc to where it lands, then a splash disc the size of its radius
+-- flashes and fades. Parts are reused.
+local SPLASH_SECONDS = 0.25
+local spareEggParts: { Part } = {}
+local spareSplashParts: { Part } = {}
+local lobCount = 0
+
+local function drawLob(color: Color3, from: Vector3, to: Vector3, seconds: number, radius: number)
+	local floorY = to.Y - 1 -- an enemy's centre is about a stud above the floor
+	local start = Vector3.new(from.X, floorY + 1, from.Z)
+	local landing = Vector3.new(to.X, floorY, to.Z)
+	local egg = table.remove(spareEggParts) or makeFxPart("Egg", color)
+	egg.Shape = Enum.PartType.Ball
+	egg.Material = Enum.Material.SmoothPlastic
+	egg.Color = color
+	egg.Size = Vector3.new(1.1, 1.1, 1.1)
+	egg.Transparency = 0
+	lobCount += 1
+	local key = `Lob{lobCount}`
+	animate(key, function(elapsed)
+		local t = math.min(elapsed / seconds, 1)
+		local height = 4 * RunRules.LobHeight * t * (1 - t) -- 0 at both ends, LobHeight at the top
+		egg.CFrame = CFrame.new(start:Lerp(landing, t) + Vector3.new(0, height, 0))
+		if t < 1 then
+			return true
+		end
+		egg.Transparency = 1
+		table.insert(spareEggParts, egg)
+		-- Land: a flat splash disc that fades out.
+		local splash = table.remove(spareSplashParts) or makeFxPart("Splash", color)
+		splash.Shape = Enum.PartType.Cylinder
+		splash.Color = color
+		splash.Size = Vector3.new(0.2, radius * 2, radius * 2)
+		splash.CFrame = CFrame.new(landing + Vector3.new(0, 0.15, 0)) * CFrame.Angles(0, 0, math.rad(90))
+		animate(`{key}Splash`, function(splashElapsed)
+			if splashElapsed > SPLASH_SECONDS then
+				splash.Transparency = 1
+				table.insert(spareSplashParts, splash)
+				return false
+			end
+			splash.Transparency = 0.3 + 0.7 * splashElapsed / SPLASH_SECONDS
+			return true
+		end)
+		return false
+	end)
+end
+
 -- ORBIT: every frame, place each owned orbit weapon's objects around the chef.
 local function updateOrbits()
 	local root = getRoot()
@@ -259,6 +307,8 @@ local function onWeaponFx(weaponId: string, ...: any)
 		drawAura(weaponId, color, ...)
 	elseif config.Shape == "Pulse" then
 		drawPulse(weaponId, color, ...)
+	elseif config.Shape == "Lob" then
+		drawLob(color, select(2, ...))
 	elseif config.Shape == "Projectile" then
 		local action, shotId = ...
 		if action == "Launch" then

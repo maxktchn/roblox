@@ -11,7 +11,19 @@
 --   Projectile - fires Count shots at the nearest enemies (Toaster)
 --   Pulse      - every Cooldown, a ring grows out from where the chef stands, hitting each
 --                enemy once as it passes and knocking it back (Microwave Pulse, a boss power)
-export type Shape = "Arc" | "Aura" | "Orbit" | "Projectile" | "Pulse"
+--   Lob        - every Cooldown, lobs Count eggs at the nearest enemies; each lands where its
+--                enemy was (RunRules.LobFlightSeconds later) and splashes everything within
+--                Radius (Egg Grenade, #129)
+export type Shape = "Arc" | "Aura" | "Orbit" | "Projectile" | "Pulse" | "Lob"
+
+-- Lob only: when an egg lands, Count mini-eggs pop out evenly round it, land Distance studs
+-- away (RunRules.LobClusterSeconds later) and splash again (Breakfast Bomb, #129).
+export type Cluster = {
+	Count: number,
+	Distance: number,
+	Damage: number,
+	Radius: number,
+}
 
 -- Numbers for one weapon level. Levels[1] is Lv 1, Levels[5] is Lv 5.
 -- What Cooldown and Range mean depends on the shape:
@@ -25,7 +37,7 @@ export type WeaponLevel = {
 	-- Projectile: how far it looks for targets, and how far shots fly.
 	Range: number,
 	ArcDegrees: number?, -- Arc: width of the slice
-	Count: number?, -- Orbit: objects circling. Projectile: shots per attack.
+	Count: number?, -- Orbit: objects circling. Projectile: shots per attack. Lob: eggs per attack.
 	Speed: number?, -- Orbit: degrees per second. Projectile / Pulse: studs per second.
 	BurnDps: number?, -- optional: burn damage per second after a hit
 	BurnSeconds: number?, -- optional: how long the burn lasts
@@ -35,6 +47,8 @@ export type WeaponLevel = {
 	-- (no Phase 1 weapon since Smoothie Vortex was removed, #83). Works with any shape.
 	-- Bosses are too heavy to pull.
 	PullStrength: number?,
+	Radius: number?, -- Lob: splash radius, measured to each enemy's edge
+	Cluster: Cluster?, -- Lob: mini-eggs when an egg lands (see Cluster above)
 }
 
 return {}
