@@ -140,6 +140,7 @@ local function dealDamage(enemyId: number, amount: number, kind: string, weaponI
 	local part = EnemyService.getEnemyPart(enemyId)
 	local position = EnemyService.getEnemyPosition(enemyId)
 	local hpBefore = EnemyService.getEnemyHp(enemyId)
+	amount *= 1 + EnemyService.getDamageTakenBonus(enemyId) -- frozen by Deep Freeze (#128)
 	EnemyService.damage(enemyId, amount)
 	if hpBefore then
 		damageByWeapon[weaponId] = (damageByWeapon[weaponId] or 0) + math.min(amount, hpBefore)

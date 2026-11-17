@@ -271,6 +271,9 @@ function ConfigCheck.run(): { string }
 		if enemy.IsElite then
 			fail(`Enemy {id}: IsElite is set by EnemyService, not in Enemies.luau`)
 		end
+		if enemy.SlowTaken and (enemy.SlowTaken < 0 or enemy.SlowTaken > 1) then
+			fail(`Enemy {id}: SlowTaken must be 0 to 1`)
+		end
 		if enemy.CanBeElite and enemy.GroupSize and enemy.GroupSize > 1 then
 			fail(`Enemy {id}: enemies that spawn in groups can't be elites`)
 		end
