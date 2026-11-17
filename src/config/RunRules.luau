@@ -94,7 +94,7 @@ return {
 	-- An elite Rotten Tomato's puddle is EliteSizeScale wider; an elite Sour Lemon's shot does
 	-- EliteDamageScale more.
 	EliteSizeScale = 1.5,
-	EliteHpScale = 8,
+	EliteHpScale = 6,
 	EliteDamageScale = 1.5,
 	EliteTipScale = 5,
 	EliteGlowColor = Color3.fromRGB(255, 200, 50),

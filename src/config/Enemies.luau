@@ -38,6 +38,8 @@
 --               Tell: it swells to Swell times its size for Windup seconds, then a blob (Size
 --               studs, Color) flies flat at Speed studs/s to where the chef was, and stops there.
 --               Damage is before armor, and grows over the run like contact damage.
+--               Plant = true: after its first shot it stops moving for good (it still turns to
+--               face the chef) and only shoots while the chef is within Range.
 
 export type DeathPuddle = {
 	Width: number,
@@ -61,6 +63,7 @@ export type Shot = {
 	Range: number,
 	Size: number,
 	Color: Color3,
+	Plant: boolean?,
 }
 
 export type Enemy = {
@@ -173,7 +176,8 @@ local Enemies: { [string]: Enemy } = {
 		Shape = "Ball",
 		Color = Color3.fromRGB(245, 220, 60),
 		-- Ranged (#118): keeps its distance (slower than the chef, so it can be caught) and lobs
-		-- a slow, telegraphed blob of juice that walking sideways dodges.
+		-- a slow, telegraphed blob of juice that walking sideways dodges. After its first shot
+		-- it plants itself and stops moving (#122 playtest), shooting whenever the chef is in range.
 		Movement = "KeepAway",
 		CanBeElite = true,
 		KeepAway = { Min = 18, Max = 25 },
@@ -184,9 +188,10 @@ local Enemies: { [string]: Enemy } = {
 			Swell = 1.3,
 			Speed = 20,
 			Damage = 8,
-			Range = 30,
+			Range = 45,
 			Size = 1.2,
 			Color = Color3.fromRGB(255, 235, 50),
+			Plant = true,
 		},
 	},
 	SpaghettiMonster = {

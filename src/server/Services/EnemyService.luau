@@ -45,6 +45,8 @@ type EnemyRecord = {
 	moveSpeed: number?,
 	-- Chargers (#119): seconds left standing still and wobbling before the next charge; 0 = rolling.
 	windup: number,
+	-- Planted (a Sour Lemon after its first shot, Shot.Plant): never moves again, only turns.
+	planted: boolean,
 }
 
 -- Where unused parts wait: far below the floor, out of sight.
@@ -281,6 +283,7 @@ local function spawnWithConfig(enemyType: string, config: Enemies.Enemy, positio
 		position = standing,
 		direction = direction,
 		windup = if config.Movement == "Charge" then RunRules.ChargeWindupSeconds else 0,
+		planted = false,
 	}
 	enemy.part.Size = config.Size -- a pooled part may have been swollen (a Sour Lemon's tell, #118)
 	enemy.part.CFrame = CFrame.lookAt(standing, standing + direction)
@@ -431,6 +434,15 @@ function EnemyService.getEnemyType(enemyId: EnemyId): string?
 end
 
 -- An enemy's part (what the player sees), or nil if it is dead. BossService decorates the boss's part.
+-- Stop an enemy moving for good (it still turns to face the chef). JuiceService plants a
+-- Sour Lemon after its first shot (Shot.Plant).
+function EnemyService.plant(enemyId: EnemyId)
+	local enemy = alive[enemyId]
+	if enemy then
+		enemy.planted = true
+	end
+end
+
 function EnemyService.getEnemyPart(enemyId: EnemyId): BasePart?
 	local enemy = alive[enemyId]
 	return enemy and enemy.part
@@ -610,6 +622,9 @@ local function moveEnemy(enemy: EnemyRecord, deltaTime: number, chefPosition: Ve
 		-- Keep a distance from the chef, always facing them (Sour Lemon, #118).
 		if distance > 0.01 then
 			enemy.direction = toChef / distance
+		end
+		if enemy.planted then
+			return -- planted after its first shot: turn to face the chef, never move
 		end
 		local keep = config.KeepAway
 		if keep and distance < keep.Min then
