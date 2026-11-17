@@ -189,6 +189,12 @@ function ConfigCheck.run(): { string }
 			if fight.Phase2At <= 0 or fight.Phase2At >= 1 then
 				fail(`Boss {id}: Phase2At must be between 0 and 1 (a fraction of max HP)`)
 			end
+			if fight.LaserWarning < 0 or fight.LaserWarning >= fight.LaserSeconds then
+				fail(`Boss {id}: LaserWarning must be 0 or more and shorter than LaserSeconds`)
+			end
+			if fight.LaserCount ~= math.floor(fight.LaserCount) then
+				fail(`Boss {id}: LaserCount must be a whole number`)
+			end
 			if not Enemies[fight.PopcornEnemy] then
 				fail(`Boss {id}: unknown PopcornEnemy "{fight.PopcornEnemy}"`)
 			end
@@ -204,6 +210,11 @@ function ConfigCheck.run(): { string }
 					"PopWarning",
 					"PopRadius",
 					"PopDamage",
+					"LaserCount",
+					"LaserTurnSpeed",
+					"LaserWidth",
+					"LaserDamage",
+					"LaserHitCooldown",
 				}
 			do
 				if (fight :: any)[field] <= 0 then

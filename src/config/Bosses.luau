@@ -28,6 +28,13 @@
 --   PopWarning         seconds the pop's warning ring grows before it hits
 --   PopRadius          studs from the kernel that the pop reaches
 --   PopDamage          damage to the chef if inside the pop, before armor
+-- Spinning lasers (#93), during each laser turn once the boss is in the middle:
+--   LaserCount         beams, evenly spaced (3 = 120 degrees apart)
+--   LaserWarning       seconds of thin see-through beams first (part of LaserSeconds)
+--   LaserTurnSpeed     degrees per second the beams sweep once live
+--   LaserWidth         studs wide when live
+--   LaserDamage        damage to the chef per hit, before armor
+--   LaserHitCooldown   seconds before the lasers can hit the chef again
 -- Power: the boss power (id in BossPowers.luau) that defeating this boss unlocks (PRD §3.8).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -55,6 +62,12 @@ export type BossFight = {
 	PopWarning: number,
 	PopRadius: number,
 	PopDamage: number,
+	LaserCount: number,
+	LaserWarning: number,
+	LaserTurnSpeed: number,
+	LaserWidth: number,
+	LaserDamage: number,
+	LaserHitCooldown: number,
 }
 
 export type Boss = {
@@ -92,7 +105,7 @@ local Bosses: { [string]: Boss } = {
 	},
 	MicrowaveMonster = {
 		Name = "Microwave Monster",
-		Mechanics = "Summons minions, sends out damage pulses and fires homing popcorn; below half HP, takes turns with a laser turn in the middle",
+		Mechanics = "Summons minions, sends out damage pulses and fires homing popcorn; below half HP, takes turns with spinning lasers in the middle",
 		Mvp = true,
 		Body = {
 			Name = "Microwave Monster",
@@ -133,6 +146,14 @@ local Bosses: { [string]: Boss } = {
 			PopWarning = 0.5,
 			PopRadius = 8,
 			PopDamage = 20,
+			LaserCount = 3,
+			LaserWarning = 1.5,
+			-- At the ring's edge (~35 studs out) 25 degrees/s is ~15 studs/s: just under the
+			-- chef's 16, so you can run around with the beams anywhere in the arena.
+			LaserTurnSpeed = 25,
+			LaserWidth = 2,
+			LaserDamage = 35,
+			LaserHitCooldown = 1,
 		},
 	},
 	Doughzilla = {

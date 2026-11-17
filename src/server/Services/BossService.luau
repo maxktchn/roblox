@@ -13,7 +13,8 @@
 --   4. Two HP phases (#91). Phase 1 is step 3. Below Fight.Phase2At of its HP the boss stops
 --      and flashes (PhaseChangeSeconds), its HP bar turns orange, and it starts taking turns:
 --        Laser turn:   runs to the middle of the ring (LaserWalkSpeed) and stands there for
---                      LaserSeconds. No pulses and no new minions; it can still be hurt.
+--                      LaserSeconds, firing spinning lasers (#93, LaserService). No pulses
+--                      and no new minions; it can still be hurt.
 --        Walking turn: phase 1 again for WalkingSeconds.
 --      Laser, walking, laser, walking... until it dies.
 --      Homing popcorn (#92, PopcornService): in phase 1 and the walking turns, every
@@ -34,6 +35,7 @@ local BossHpBar = require(script.Parent.Parent.BossHpBar)
 local Bosses = require(ReplicatedStorage.Config.Bosses)
 local Chapters = require(ReplicatedStorage.Config.Chapters)
 local EnemyService = require(script.Parent.EnemyService)
+local LaserService = require(script.Parent.LaserService)
 local PopcornService = require(script.Parent.PopcornService)
 local RunManager = require(script.Parent.RunManager)
 local RunRules = require(ReplicatedStorage.Config.RunRules)
@@ -400,6 +402,7 @@ end
 local function startWalkingTurn(current: ActiveFight)
 	setStage(current, "Walking")
 	current.stageTimer = current.fight.WalkingSeconds
+	LaserService.turnOff()
 	EnemyService.setMoveTarget(current.bossId, nil)
 end
 
@@ -530,9 +533,11 @@ local function update(deltaTime: number)
 			end
 			if toMiddle.Magnitude <= ARRIVE_DISTANCE or blocked or current.stageTimer <= 0 then
 				-- In the middle (or as close as the chef lets it): stand there for LaserSeconds,
-				-- walking back if minions shove it. The spinning lasers (#93) fire during this part.
+				-- walking back if minions shove it, and fire the spinning lasers (#93). They reach
+				-- the counters' inner face.
 				current.arrived = true
 				current.stageTimer = fight.LaserSeconds
+				LaserService.turnOn(current.bossId, current.center, fight.ArenaRadius - COUNTER_DEPTH / 2, fight)
 			end
 		elseif current.stageTimer <= 0 then
 			startWalkingTurn(current)
@@ -562,6 +567,7 @@ function BossService.reset()
 	glow = nil
 	hidePulse()
 	PopcornService.reset()
+	LaserService.turnOff()
 	EnemyService.setBossArena(nil, 0)
 	local ring = workspace:FindFirstChild("BossRing")
 	if ring then
@@ -597,6 +603,7 @@ function BossService:start()
 			glow = nil
 			hidePulse()
 			PopcornService.reset()
+			LaserService.turnOff()
 			RunManager.winRun()
 		end
 	end)

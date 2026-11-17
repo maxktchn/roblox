@@ -234,7 +234,7 @@ All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with ga
 | Boss | When | Mechanics | Power (see 3.8) | MVP |
 |---|---|---|---|---|
 | The Big Cheese | 3:00 mini-boss (Chapter 1) | Splits on death: 1 → 3 Cheese Wedges → 6 Cheese Cubes. Normal spawns stop and the run clock holds at 3:00 until every piece is defeated | None (mini-boss) | Yes |
-| Microwave Monster | 6:00 final boss (Chapter 1) | Two HP phases. Phase 1: walks at the chef, summons minions, sends out damage pulses, fires homing popcorn. Below half HP: takes turns between a laser turn in the middle of the arena and a walking turn (phase 1 again) | **Microwave Pulse** | Yes |
+| Microwave Monster | 6:00 final boss (Chapter 1) | Two HP phases. Phase 1: walks at the chef, summons minions, sends out damage pulses, fires homing popcorn. Below half HP: takes turns between spinning lasers in the middle of the arena and a walking turn (phase 1 again) | **Microwave Pulse** | Yes |
 | Doughzilla | Final boss (Chapter 2, Bakery) | Giant dough that grows bigger by absorbing flour clouds | TBD | No |
 | Kraken Roll | Final boss (Chapter 3, Sushi Bar) | Sushi kraken that grabs the player from the conveyor belts | TBD | No |
 | Pantry Rat King | Final boss (Chapter 4, Walk-in Freezer) | TBD | TBD | No |
@@ -251,8 +251,13 @@ All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with ga
 - **Phase 1 (100% to 50% HP):** the summons and pulses above, plus homing popcorn (below).
 - **Phase change (at 50%):** the boss stops for 1 s and flashes white, its HP bar turns from red to orange, and its screen changes from DING to HOT!
 - **Phase 2 (below 50%):** it takes turns, over and over until it dies:
-  - **Laser turn:** runs to the middle of the arena (speed 15, just slower than the chef) and stands there for 8 s. No pulses and no new minions (minions already alive stay). It can still be hurt.
+  - **Laser turn:** runs to the middle of the arena (speed 15, just slower than the chef) and stands there for 8 s, firing spinning lasers (below). No pulses and no new minions (minions already alive stay). It can still be hurt, so standing close and dodging is the reward. If the chef stands on the middle, it waits at their edge and walks in when they move.
   - **Walking turn (8 s):** phase 1 again. Summon, pulse and popcorn countdowns wait during laser turns and carry on in the next walking turn.
+
+**Spinning lasers** (#93; during each laser turn, from the boss out to the ring of counters):
+- **3 beams**, 120° apart. For the first **1.5 s** they are thin, see-through and still (the warning), starting with the chef halfway between two beams.
+- Then they go live: 2 studs wide and solid, sweeping round at **25° per second** (clockwise or anticlockwise, at random each turn). At the arena's edge that's about 15 studs/s, just under the chef's 16, so you can run around with them at any distance.
+- A live beam hits the chef for **35 damage**, at most once per second.
 
 **Homing popcorn** (#92; in phase 1 and the walking turns):
 - Every 10 s the microwave's window lights up and its screen says POP! for 0.6 s (the warning), then a **Popcorn Kernel** flies out of the door and follows the chef.
