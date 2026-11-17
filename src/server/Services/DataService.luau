@@ -17,8 +17,12 @@
 --     real save stays safe.
 --   * Before launch, changing Saving.SaveSlot wipes everyone. Studio uses its own store.
 --
--- Player attribute set here (read by the HUD):
---   "SaveStatus"  "Loading", then "On" (saving) or "Off" (playing without saving)
+-- When a run ends (RunState becomes "Won" or "Lost") the Lifetime stats count it and a save is
+-- requested. Run rewards (#106) will add their payout at the same moment.
+--
+-- Player attributes:
+--   "SaveStatus"  set here: "Loading", then "On" (saving) or "Off" (playing without saving)
+--   read here:    "RunState" and "RunSeconds" (RunManager), "Kills" (WeaponService)
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -155,6 +159,38 @@ local function endSession(player: Player)
 	end
 end
 
+-- A run just ended: count it in the Lifetime stats, then save. Runs that end before the save
+-- has loaded aren't counted. When saving is off this only changes the copy in memory.
+local function onRunEnded(player: Player, result: string)
+	local data = DataService.get(player)
+	if not data then
+		return
+	end
+	local lifetime = data.Lifetime
+	local kills = player:GetAttribute("Kills")
+	lifetime.Kills += if type(kills) == "number" then kills else 0
+	lifetime.RunsPlayed += 1
+	if result == "Won" then
+		lifetime.RunsWon += 1
+		local seconds = player:GetAttribute("RunSeconds")
+		if type(seconds) == "number" and (lifetime.BestWinSeconds == 0 or seconds < lifetime.BestWinSeconds) then
+			lifetime.BestWinSeconds = seconds
+		end
+	end
+	DataService.saveNow(player)
+end
+
+-- Watch for the player's runs ending ("Playing" -> "Won"/"Lost"). Going back to "Playing"
+-- (a new run) does nothing.
+local function watchRuns(player: Player)
+	player:GetAttributeChangedSignal("RunState"):Connect(function()
+		local state = player:GetAttribute("RunState")
+		if state == "Won" or state == "Lost" then
+			onRunEnded(player, state)
+		end
+	end)
+end
+
 -- Called once each time a player's save is ready (or the fresh copy, when saving is off).
 -- Players already loaded are passed to `callback` straight away.
 function DataService.onLoaded(callback: (Player, Data) -> ())
@@ -212,12 +248,16 @@ function DataService:init()
 end
 
 function DataService:start()
-	Players.PlayerAdded:Connect(load)
+	Players.PlayerAdded:Connect(function(player)
+		watchRuns(player)
+		load(player)
+	end)
 	Players.PlayerRemoving:Connect(function(player)
 		endSession(player)
 		loadNumber[player] = nil
 	end)
 	for _, player in Players:GetPlayers() do
+		watchRuns(player)
 		task.spawn(load, player)
 	end
 end
