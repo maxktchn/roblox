@@ -32,6 +32,7 @@ local DevTools = require(ReplicatedStorage.Config.DevTools)
 local EnemyService = require(script.Parent.EnemyService)
 local Gadgets = require(ReplicatedStorage.Config.Gadgets)
 local Ingredients = require(ReplicatedStorage.Config.Ingredients)
+local MiniBossService = require(script.Parent.MiniBossService)
 local PlaytestBotService = require(script.Parent.PlaytestBotService)
 local Recipes = require(ReplicatedStorage.Config.Recipes)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
@@ -130,6 +131,11 @@ end
 ACTIONS.Cheese = function(player)
 	-- The clock counting up past MiniBossAtSeconds is what starts the fight (RunManager ->
 	-- MiniBossService). Jumping back before 3:00 lets the fight happen again.
+	-- Not while a fight is on: the jump would free the clock and stack a second cheese.
+	if MiniBossService.isFightOn() then
+		reply(player, "The Big Cheese is already here")
+		return
+	end
 	RunManager.setRunSeconds(RunRules.MiniBossAtSeconds - 5)
 	reply(player, "The Big Cheese arrives in 5 s")
 end
