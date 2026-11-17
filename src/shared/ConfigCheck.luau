@@ -268,6 +268,12 @@ function ConfigCheck.run(): { string }
 				fail(`Enemy {id}: Shot.FirstDelay can't be negative`)
 			end
 		end
+		if enemy.IsElite then
+			fail(`Enemy {id}: IsElite is set by EnemyService, not in Enemies.luau`)
+		end
+		if enemy.CanBeElite and enemy.GroupSize and enemy.GroupSize > 1 then
+			fail(`Enemy {id}: enemies that spawn in groups can't be elites`)
+		end
 		local puddle = enemy.DeathPuddle
 		if puddle then
 			if puddle.Width <= 0 or puddle.Seconds <= 0 then
@@ -329,6 +335,16 @@ function ConfigCheck.run(): { string }
 			fail(`Chapter {id}: unknown mini-boss "{chapter.MiniBoss}"`)
 		elseif chapter.MiniBoss and not Bosses[chapter.MiniBoss].Body then
 			fail(`Chapter {id}: mini-boss "{chapter.MiniBoss}" has no Body`)
+		end
+		if chapter.Elites then
+			local last = -1
+			for _, seconds in chapter.Elites do
+				if seconds <= last or seconds < 0 or seconds >= RunRules.RunLengthSeconds then
+					fail(`Chapter {id}: Elites times must be in order and inside the run`)
+					break
+				end
+				last = seconds
+			end
 		end
 		if chapter.Timeline then
 			-- Phases must run back to back from 0:00 to the end of the shift, with no gaps.

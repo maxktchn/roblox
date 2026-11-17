@@ -19,6 +19,8 @@ export type Chapter = {
 	MiniBoss: string?,
 	FinalBoss: string,
 	Timeline: { Phase }?,
+	-- Run-clock seconds an elite arrives (#120), in order. Held clock time doesn't count.
+	Elites: { number }?,
 	Mvp: boolean,
 }
 
@@ -57,6 +59,9 @@ local Chapters: { [string]: Chapter } = {
 				Note = "Final heavy wave",
 			},
 		},
+		-- 1:50, 2:40, 3:40, 4:15, 5:00, 5:40. The clock holds at 3:00 for The Big Cheese, so
+		-- 3:40 always comes after it.
+		Elites = { 110, 160, 220, 255, 300, 340 },
 		Mvp = true,
 	},
 	Bakery = {

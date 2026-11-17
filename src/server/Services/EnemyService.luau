@@ -60,9 +60,40 @@ local CHEF_RADIUS = RunRules.ChefRadius
 -- An enemy walking to a setMoveTarget spot starts going around the chef this many studs
 -- before it would touch them.
 local AVOID_MARGIN = 1
+-- Elites (#120) are their own enemy types: "Elite_" .. the normal type's id.
+local ELITE_PREFIX = "Elite_"
 -- A winding-up charger wobbles side to side this far (studs) and this fast (radians per second).
 local WINDUP_WOBBLE = 0.3
 local WINDUP_WOBBLE_SPEED = 45
+
+-- The elite version of every enemy that CanBeElite, made from its config and the RunRules
+-- Elite... values (#120). Keyed by elite type ("Elite_MoldyBread").
+local eliteConfigs: { [string]: Enemies.Enemy } = {}
+for id, config in Enemies do
+	if config.CanBeElite then
+		local elite = table.clone(config)
+		elite.Name = `Elite {config.Name}`
+		elite.Size = config.Size * RunRules.EliteSizeScale
+		elite.Hp = config.Hp * RunRules.EliteHpScale
+		elite.Damage = config.Damage * RunRules.EliteDamageScale
+		elite.Tips = config.Tips * RunRules.EliteTipScale
+		elite.CanBeElite = false
+		elite.IsElite = true
+		local puddle = config.DeathPuddle
+		if puddle then
+			local bigger = table.clone(puddle)
+			bigger.Width *= RunRules.EliteSizeScale
+			elite.DeathPuddle = bigger
+		end
+		local shot = config.Shot
+		if shot then
+			local stronger = table.clone(shot)
+			stronger.Damage *= RunRules.EliteDamageScale
+			elite.Shot = stronger
+		end
+		eliteConfigs[ELITE_PREFIX .. id] = elite
+	end
+end
 
 local killedCallbacks: { KilledCallback } = {}
 local alive: { [EnemyId]: EnemyRecord } = {}
@@ -169,6 +200,20 @@ local function takePart(enemyType: string, config: Enemies.Enemy): BasePart
 	newPart.CanTouch = false
 	newPart.CastShadow = false
 	newPart.CFrame = PARK_CFRAME
+	if config.IsElite then
+		-- Elites glow gold (#120): an outline and a soft light, apart from the red hit flash.
+		local highlight = Instance.new("Highlight")
+		highlight.FillColor = RunRules.EliteGlowColor
+		highlight.FillTransparency = 0.8
+		highlight.OutlineColor = RunRules.EliteGlowColor
+		highlight.OutlineTransparency = 0
+		highlight.Parent = newPart
+		local light = Instance.new("PointLight")
+		light.Color = RunRules.EliteGlowColor
+		light.Brightness = 2
+		light.Range = config.Size.X * 2.5
+		light.Parent = newPart
+	end
 	newPart.Parent = enemyFolder
 	return newPart
 end
@@ -193,7 +238,7 @@ end
 -- Bosses.luau. nil if the type is unknown. Use this instead of Enemies[...] so bosses work too.
 function EnemyService.getConfigForType(enemyType: string): Enemies.Enemy?
 	local boss = Bosses[enemyType]
-	return Enemies[enemyType] or (boss and boss.Body)
+	return Enemies[enemyType] or eliteConfigs[enemyType] or (boss and boss.Body)
 end
 
 -- How much tougher enemies spawning right now are: HP and damage multipliers from the run clock
@@ -257,6 +302,28 @@ function EnemyService.spawn(enemyType: string, position: Vector3): EnemyId?
 		return nil
 	end
 	return spawnWithConfig(enemyType, config, clampToArena(position), true)
+end
+
+-- Create the elite version of `enemyType` (one that CanBeElite, #120) at `position`, with
+-- run-time scaling on top of its elite numbers. Ignores the alive cap, so a full screen can't
+-- swallow it. Its part gets the attribute "IsElite" and always shows its health bar.
+-- Returns its id, or nil if that enemy can't be elite.
+function EnemyService.spawnElite(enemyType: string, position: Vector3): EnemyId?
+	local config = eliteConfigs[ELITE_PREFIX .. enemyType]
+	if not config then
+		warn(`[EnemyService] "{enemyType}" can't be an elite`)
+		return nil
+	end
+	local id = spawnWithConfig(ELITE_PREFIX .. enemyType, config, clampToArena(position), true)
+	local part = alive[id].part
+	part:SetAttribute("IsElite", true)
+	part:SetAttribute("HpFraction", 1) -- a full bar, so the extra HP shows from the start
+	return id
+end
+
+-- A random spawn point around the chef, where normal enemies appear (just off screen).
+function EnemyService.getSpawnPoint(chefPosition: Vector3): Vector3
+	return pickSpawnPoint(chefPosition)
 end
 
 -- Create one enemy or boss with its config's exact numbers: no run-time scaling, and the
@@ -447,6 +514,9 @@ end
 function EnemyService.getMaxEnemyWidth(): number
 	local widest = 0
 	for _, config in Enemies do
+		widest = math.max(widest, config.Size.X)
+	end
+	for _, config in eliteConfigs do
 		widest = math.max(widest, config.Size.X)
 	end
 	for _, boss in Bosses do
@@ -728,6 +798,9 @@ function EnemyService:init()
 
 	for enemyType in Enemies do
 		pools[enemyType] = {}
+	end
+	for eliteType in eliteConfigs do
+		pools[eliteType] = {}
 	end
 	for bossType, boss in Bosses do
 		if boss.Body then

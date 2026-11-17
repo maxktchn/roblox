@@ -14,6 +14,9 @@
 -- Pies don't fly to the chef: the player walks over one to eat it and heal. While the chef is
 -- at full HP a pie stays on the floor, so it can be saved for later.
 --
+-- Lunchboxes (#120, PRD §2.6): every elite drops one. Walk over it (no timeout) for
+-- RunRules.EliteLunchboxUpgrades free "Order Up!" picks (UpgradeService.grantLevelUps).
+--
 -- Server only: the server decides who collected what (PRD §8.4).
 
 local Players = game:GetService("Players")
@@ -50,6 +53,15 @@ type Pie = { position: Vector3, part: BasePart }
 local pies: { Pie } = {}
 local sparePieParts: { BasePart } = {}
 local piesEaten = 0 -- this run, for the run report
+
+-- Lunchboxes (#120): a red box with a white handle that bobs and turns.
+type Lunchbox = { position: Vector3, model: Model, age: number }
+local lunchboxes: { Lunchbox } = {}
+local lunchboxesOpened = 0 -- this run, for the run report
+local LUNCHBOX_COLOR = Color3.fromRGB(215, 45, 45)
+local LUNCHBOX_HEIGHT = 1.6 -- studs from the floor to the box's centre
+local LUNCHBOX_BOB = 0.3 -- studs up and down
+local LUNCHBOX_TURN_SPEED = 1.5 -- radians per second
 local floorY = 0 -- top of the floor (Workspace.Map's ArenaCenter.Y, like EnemyService)
 
 -- Reused every frame for BulkMoveTo.
@@ -179,6 +191,75 @@ local function updatePies(chefPosition: Vector3)
 	end
 end
 
+local function makeLunchbox(): Model
+	local model = Instance.new("Model")
+	model.Name = "Lunchbox"
+	local function piece(name: string, size: Vector3, color: Color3, offset: Vector3): Part
+		local part = Instance.new("Part")
+		part.Name = name
+		part.Size = size
+		part.Color = color
+		part.Material = Enum.Material.SmoothPlastic
+		part.Anchored = true
+		part.CanCollide = false
+		part.CanQuery = false
+		part.CanTouch = false
+		part.CastShadow = false
+		part.CFrame = CFrame.new(offset)
+		part.Parent = model
+		return part
+	end
+	local box = piece("Box", Vector3.new(2.2, 1.5, 1.4), LUNCHBOX_COLOR, Vector3.zero)
+	piece("Handle", Vector3.new(1.2, 0.3, 0.3), Color3.new(1, 1, 1), Vector3.new(0, 1, 0))
+	piece("HandleLeft", Vector3.new(0.3, 0.6, 0.3), Color3.new(1, 1, 1), Vector3.new(-0.45, 0.75, 0))
+	piece("HandleRight", Vector3.new(0.3, 0.6, 0.3), Color3.new(1, 1, 1), Vector3.new(0.45, 0.75, 0))
+	model.PrimaryPart = box
+	return model
+end
+
+-- Drop a Lunchbox at `position` (only X and Z are used). Skipped if the floor already has the most.
+function PickupService.dropLunchbox(position: Vector3)
+	if #lunchboxes >= RunRules.MaxLunchboxesOnGround then
+		return
+	end
+	local onFloor = Vector3.new(position.X, floorY + LUNCHBOX_HEIGHT, position.Z)
+	local model = makeLunchbox()
+	model:PivotTo(CFrame.new(onFloor))
+	model.Parent = tipFolder
+	table.insert(lunchboxes, { position = onFloor, model = model, age = 0 })
+end
+
+-- How many Lunchboxes the chef has opened this run.
+function PickupService.getLunchboxesOpened(): number
+	return lunchboxesOpened
+end
+
+-- How many Lunchboxes are on the floor right now (tests).
+function PickupService.getLunchboxCount(): number
+	return #lunchboxes
+end
+
+-- Bob and turn the Lunchboxes, and open any the chef walks over.
+local function updateLunchboxes(deltaTime: number, chefPosition: Vector3)
+	for i = #lunchboxes, 1, -1 do
+		local lunchbox = lunchboxes[i]
+		local offset = Vector3.new(chefPosition.X - lunchbox.position.X, 0, chefPosition.Z - lunchbox.position.Z)
+		if offset.Magnitude <= RunRules.LunchboxPickupDistance then
+			lunchbox.model:Destroy()
+			table.remove(lunchboxes, i)
+			lunchboxesOpened += 1
+			UpgradeService.grantLevelUps(RunRules.EliteLunchboxUpgrades)
+		else
+			lunchbox.age += deltaTime
+			local bob = math.sin(lunchbox.age * 3) * LUNCHBOX_BOB
+			lunchbox.model:PivotTo(
+				CFrame.new(lunchbox.position + Vector3.new(0, bob, 0))
+					* CFrame.Angles(0, lunchbox.age * LUNCHBOX_TURN_SPEED, 0)
+			)
+		end
+	end
+end
+
 -- How many tips are on the floor or flying right now.
 function PickupService.getTipCount(): number
 	return #tips
@@ -197,6 +278,11 @@ function PickupService.reset()
 	end
 	table.clear(pies)
 	piesEaten = 0
+	for _, lunchbox in lunchboxes do
+		lunchbox.model:Destroy()
+	end
+	table.clear(lunchboxes)
+	lunchboxesOpened = 0
 end
 
 -- Pickup range right now: base range plus Fridge Magnet (PRD §3.3).
@@ -214,6 +300,9 @@ local function update(deltaTime: number)
 	end
 	if #pies > 0 and not RunManager.isRunOver() then
 		updatePies(chefPosition)
+	end
+	if #lunchboxes > 0 and not RunManager.isRunOver() then
+		updateLunchboxes(deltaTime, chefPosition)
 	end
 	if #tips == 0 then
 		return
@@ -278,6 +367,9 @@ function PickupService:start()
 			local pieChance = config.PieDropChance
 			if pieChance and random:NextNumber() < pieChance then
 				PickupService.dropPie(position)
+			end
+			if config.IsElite then
+				PickupService.dropLunchbox(position) -- elites always drop one (#120)
 			end
 		end
 	end)

@@ -84,8 +84,20 @@ return {
 	MaxPuddles = 10,
 	-- Sour Lemon juice blobs in the air at once (#118); past this, lemons skip a shot.
 	MaxJuiceShots = 30,
-	LunchboxUpgradesMin = 1,
-	LunchboxUpgradesMax = 3,
+	-- Lunchbox (#120): elites always drop one. Walk over it for free "Order Up!" picks.
+	EliteLunchboxUpgrades = 1,
+	LunchboxPickupDistance = 2.5, -- studs from the chef's centre
+	MaxLunchboxesOnGround = 6, -- past this, new ones aren't dropped
+
+	-- Elites (#120, PRD §3.4): bigger, tougher versions of normal enemies, on the chapter's
+	-- Elites schedule (Chapters.luau). On top of the normal per-minute scaling; speed unchanged.
+	-- An elite Rotten Tomato's puddle is EliteSizeScale wider; an elite Sour Lemon's shot does
+	-- EliteDamageScale more.
+	EliteSizeScale = 1.5,
+	EliteHpScale = 8,
+	EliteDamageScale = 1.5,
+	EliteTipScale = 5,
+	EliteGlowColor = Color3.fromRGB(255, 200, 50),
 
 	-- Revive (PRD §2.7)
 	RevivesPerRun = 1,

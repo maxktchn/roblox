@@ -122,6 +122,12 @@ function RunManager.onPhaseChanged(callback: PhaseCallback)
 	end
 end
 
+-- Which enemy types the current phase spawns (only those in RunRules.EnemyPool). EliteService
+-- picks its elites from these.
+function RunManager.getSpawnTypes(): { string }
+	return table.clone(currentEnemyTypes)
+end
+
 -- Which chapter this run is in (a key of Chapters.luau).
 function RunManager.getChapter(): string
 	return CHAPTER

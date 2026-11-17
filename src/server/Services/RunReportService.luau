@@ -17,6 +17,7 @@ local BossPowers = require(ReplicatedStorage.Config.BossPowers)
 local BossService = require(script.Parent.BossService)
 local Bosses = require(ReplicatedStorage.Config.Bosses)
 local DevAccess = require(script.Parent.Parent.DevAccess)
+local EliteService = require(script.Parent.EliteService)
 local Enemies = require(ReplicatedStorage.Config.Enemies)
 local EnemyService = require(script.Parent.EnemyService)
 local Gadgets = require(ReplicatedStorage.Config.Gadgets)
@@ -65,6 +66,7 @@ local function nameOf(id: string): string
 		or Ingredients[id]
 		or Enemies[id]
 		or Bosses[id]
+		or EnemyService.getConfigForType(id) -- elites ("Elite_MoldyBread")
 	-- Damage sources that aren't config ids.
 	local special = ({
 		BossPulse = "Boss pulse",
@@ -157,6 +159,17 @@ local function buildReport(result: string): string
 			else `still alive after {formatTime(boss.seconds)} ({detail})`
 	end
 
+	-- Elites (#120): how many were killed out of how many came, and when each died.
+	local elitesSpawned, eliteKillTimes = EliteService.getStats()
+	local eliteKills = {}
+	for _, seconds in eliteKillTimes do
+		table.insert(eliteKills, formatTime(seconds))
+	end
+	local elites = `{#eliteKillTimes}/{elitesSpawned} killed`
+	if #eliteKills > 0 then
+		elites ..= ` ({table.concat(eliteKills, ", ")})`
+	end
+
 	local lines = {
 		`RUN REPORT: {string.upper(result)} at {formatTime(endSeconds)} · Lv {level} · {kills} kills · lowest HP {if lowestHp
 				== math.huge
@@ -170,6 +183,7 @@ local function buildReport(result: string): string
 		`Kills: {breakdown(killsByType)}`,
 		`Damage dealt: {breakdown(WeaponService.getDamageByWeapon())}`,
 		`Damage taken: {breakdown(damageTakenBy)}`,
+		`Elites: {elites} · Lunchboxes opened: {PickupService.getLunchboxesOpened()}`,
 		`Pies eaten: {PickupService.getPiesEaten()}`,
 		`Slowed by puddles: {math.round(PuddleService.getSlowedSeconds())} s`,
 	}

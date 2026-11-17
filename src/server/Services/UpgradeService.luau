@@ -339,6 +339,16 @@ function UpgradeService.addTips(amount: number)
 	offerNext()
 end
 
+-- Give `count` free "Order Up!" picks without filling the tip bar (a Lunchbox, #120). They
+-- wait in line behind any level-up already waiting, and don't change the player's level.
+function UpgradeService.grantLevelUps(count: number)
+	if count <= 0 or RunManager.isRunOver() then
+		return
+	end
+	pendingLevelUps += count
+	offerNext()
+end
+
 -- Replace the open offer with a fresh draw, using up one reroll. Returns true if it worked.
 function UpgradeService.reroll(): boolean
 	if not currentOffer or rerollsLeft <= 0 then

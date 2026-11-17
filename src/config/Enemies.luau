@@ -29,6 +29,9 @@
 --   Seconds  how long it stays (it fades out over the last second)
 --   Slow     how much slower the chef walks while standing in one (0.4 = 40% slower; doesn't stack)
 --   Color    the puddle's colour
+-- CanBeElite: true = the elite schedule (Chapters.luau Elites, #120) can pick it. Elites are
+--               bigger, tougher versions (RunRules Elite... values) that drop a Lunchbox.
+-- IsElite: set only on the elite versions EnemyService makes (type "Elite_<id>"); never in this file.
 -- KeepAway: Min and Max studs from the chef for "KeepAway" movement.
 -- Shot: a ranged attack (JuiceService, Sour Lemon #118). Within Range studs of the chef it shoots
 --               every Every seconds (the first FirstDelay seconds after getting in range).
@@ -81,6 +84,8 @@ export type Enemy = {
 	DeathPuddle: DeathPuddle?,
 	KeepAway: KeepAway?,
 	Shot: Shot?,
+	CanBeElite: boolean?,
+	IsElite: boolean?,
 }
 
 local Enemies: { [string]: Enemy } = {
@@ -98,6 +103,7 @@ local Enemies: { [string]: Enemy } = {
 		Shape = "Block",
 		Color = Color3.fromRGB(150, 170, 90),
 		Movement = "Chase",
+		CanBeElite = true,
 	},
 	FruitFlies = {
 		Name = "Fruit Flies",
@@ -128,6 +134,7 @@ local Enemies: { [string]: Enemy } = {
 		Shape = "Ball",
 		Color = Color3.fromRGB(170, 60, 50),
 		Movement = "Chase",
+		CanBeElite = true,
 		-- Area denial (#117): it bursts into a puddle that slows (never hurts) the chef.
 		DeathPuddle = {
 			Width = 6,
@@ -150,6 +157,7 @@ local Enemies: { [string]: Enemy } = {
 		Shape = "Ball",
 		Color = Color3.fromRGB(120, 70, 45),
 		Movement = "Charge",
+		CanBeElite = true,
 	},
 	SourLemon = {
 		Name = "Sour Lemon",
@@ -167,6 +175,7 @@ local Enemies: { [string]: Enemy } = {
 		-- Ranged (#118): keeps its distance (slower than the chef, so it can be caught) and lobs
 		-- a slow, telegraphed blob of juice that walking sideways dodges.
 		Movement = "KeepAway",
+		CanBeElite = true,
 		KeepAway = { Min = 18, Max = 25 },
 		Shot = {
 			Every = 3,
