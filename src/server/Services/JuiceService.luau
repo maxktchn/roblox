@@ -119,6 +119,9 @@ local function fire(enemyId: number, config: Enemies.Enemy, shot: Enemies.Shot, 
 	-- Where it's going, so the playtest bot can see it coming (like a person sees it fly).
 	part:SetAttribute("Target", chef)
 	table.insert(blobs, { position = start, target = chef, shot = shot, damage = damage, part = part })
+	if shot.Plant then
+		EnemyService.plant(enemyId) -- stays where it is from now on
+	end
 end
 
 -- How many blobs are in the air right now (tests).
