@@ -332,8 +332,10 @@ function ConfigCheck.run(): { string }
 	if Saving.SaveSlot == "" then
 		fail("Saving.SaveSlot must be a non-empty string")
 	end
-	if Saving.LoadTimeoutSeconds <= 0 then
-		fail("Saving.LoadTimeoutSeconds must be more than 0")
+	-- ProfileStore takes over a save still held by a crashed server after 40 s (its SESSION_STEAL);
+	-- giving up before that would leave the player unable to save for about 10 minutes.
+	if Saving.LoadTimeoutSeconds <= 40 then
+		fail("Saving.LoadTimeoutSeconds must be more than 40 (ProfileStore's session take-over)")
 	end
 
 	return problems

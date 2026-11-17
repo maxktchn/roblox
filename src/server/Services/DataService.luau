@@ -115,12 +115,20 @@ local function load(player: Player)
 	local function isOutOfDate(): boolean
 		return player.Parent ~= Players or loadNumber[player] ~= myLoad
 	end
-	local profile = store:StartSessionAsync(`Player_{player.UserId}`, {
-		-- Stop trying when the player leaves, a newer load starts, or time is up.
-		Cancel = function(): boolean
-			return isOutOfDate() or os.clock() - started > Saving.LoadTimeoutSeconds
-		end,
-	})
+	-- pcall: if ProfileStore errors, the player plays without saving instead of being stuck
+	-- on "Loading" with no banner.
+	local ok, result = pcall(function()
+		return store:StartSessionAsync(`Player_{player.UserId}`, {
+			-- Stop trying when the player leaves, a newer load starts, or time is up.
+			Cancel = function(): boolean
+				return isOutOfDate() or os.clock() - started > Saving.LoadTimeoutSeconds
+			end,
+		})
+	end)
+	if not ok then
+		warn(`[DataService] loading {player.Name}'s save failed: {result}`)
+	end
+	local profile = if ok then result else nil
 
 	if isOutOfDate() then
 		if profile then

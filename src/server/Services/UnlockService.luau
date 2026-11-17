@@ -86,6 +86,12 @@ function UnlockService.getUnlocked(): { string }
 	return ids
 end
 
+-- The player left: forget the unlocks in memory, so a next player in this server can't have
+-- them merged into their save. (Their own unlocks are already in their save.)
+function UnlockService.forgetPlayer()
+	table.clear(unlocked)
+end
+
 -- A new run is starting: the win banner shouldn't announce the last run's unlock again.
 function UnlockService.clearJustUnlocked()
 	local player = getRunPlayer()
@@ -103,6 +109,7 @@ function UnlockService:start()
 		end
 	end)
 	Players.PlayerAdded:Connect(syncAttributes)
+	Players.PlayerRemoving:Connect(UnlockService.forgetPlayer)
 	syncAttributes()
 
 	-- The save loaded: saved unlocks join the in-memory set (ids no longer in BossPowers are
