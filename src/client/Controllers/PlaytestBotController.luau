@@ -8,7 +8,8 @@
 --     weapons hit something
 --   * away from the walls, plus a slow circle around the arena, like a person kiting
 --   * toward a pie when hurt, otherwise toward tips nearby
---   * final boss (#94): out of reach while its damage pulse is warning, away from popcorn
+--   * final boss (#94): fights from knife range (circling it, 4-8 studs from its edge, like a
+--     person would), out of reach while its damage pulse is warning, away from popcorn
 --     kernels and out of a pop's blast area, and during
 --     the spinning lasers into the middle of the gap it's in, turning with the beams
 -- and aims at the nearest enemy (a popcorn kernel first, to shoot it down). Cards are picked
@@ -44,8 +45,12 @@ local KEEP_AWAY_KERNEL = 11 -- popcorn pops 8 studs wide: stay outside that, plu
 local AIM_KERNEL_WITHIN = 25 -- aim at a popcorn kernel this close instead of the nearest enemy
 
 -- Spinning lasers (#93).
-local LASER_RADIUS_MIN = 15 -- studs from the boss to circle at (outside its keep-away)
-local LASER_RADIUS_MAX = 26
+local LASER_RADIUS_MIN = 7 -- studs from the boss's centre to dodge at: close enough to keep swinging
+local LASER_RADIUS_MAX = 12
+-- Final boss: fight from knife range (the knife reaches 10 studs past an enemy's edge).
+local BOSS_TOO_CLOSE = 4 -- studs from its edge: back off (touching it hurts)
+local BOSS_TOO_FAR = 8 -- studs from its edge: move back in
+local BOSS_CIRCLE_WEIGHT = 0.8 -- how hard to circle round it while fighting
 local LASER_WEIGHT = 5 -- how hard to head for the middle of the gap
 local LASER_DANGER = 4 -- studs from a live beam where the bot really hurries
 local LASER_LEAD = 0.4 -- seconds ahead the bot aims for, given how fast the beams turn
@@ -53,7 +58,7 @@ local SPIN_SMOOTHING = 0.35 -- seconds: how quickly the bot notices a change of 
 local POP_MARGIN = 2.5 -- studs past a pop's blast area to get to
 local PULSE_MARGIN = 3 -- studs past the boss pulse's reach to get to
 local RING_WALL_DISTANCE = 10 -- in the boss ring: start pushing back toward the middle this close to the counters
-local RING_CIRCLE_WEIGHT = 0.8 -- in the boss ring: how hard to circle round (kiting the boss)
+local RING_CIRCLE_WEIGHT = 0.2 -- in the boss ring: a slow drift round (it mostly circles the boss itself)
 -- How far the final boss's damage pulse reaches (the client sees only the growing ring).
 local PULSE_RADIUS = 0
 for _, boss in Bosses do
@@ -210,6 +215,8 @@ local function step(deltaTime: number)
 	local smallDistance = math.huge
 	local kernelAway: Vector3? = nil -- the nearest popcorn kernel, to shoot it down
 	local kernelDistance = math.huge
+	local bossAway: Vector3? = nil -- from the final boss to the chef
+	local bossDistance = math.huge -- to its edge
 	local enemies = workspace:FindFirstChild("Enemies")
 	if enemies then
 		for _, enemy in enemies:GetChildren() do
@@ -228,7 +235,11 @@ local function step(deltaTime: number)
 					if enemy.Name == "PopcornKernel" and distance < kernelDistance then
 						kernelAway, kernelDistance = away, distance
 					end
-					if distance < keep and distance < SEE_DISTANCE then
+					local boss = Bosses[enemy.Name]
+					if boss and boss.Fight then
+						-- The final boss: handled below (fought from knife range, not avoided).
+						bossAway, bossDistance = away, distance
+					elseif distance < keep and distance < SEE_DISTANCE then
 						local weight = if Bosses[enemy.Name] then BOSS_PUSH_WEIGHT else PUSH_WEIGHT[enemy.Name] or 1
 						push += away.Unit * weight * 25 / (distance * distance)
 					end
@@ -322,6 +333,16 @@ local function step(deltaTime: number)
 	local lasers = laserPush(pos, deltaTime)
 	if lasers then
 		push += lasers
+	elseif bossAway then
+		-- Fight the final boss from knife range: not too close (its touch hurts), not too far
+		-- (the knife can't reach), and keep circling it like a person kiting.
+		local out = bossAway.Unit
+		if bossDistance < BOSS_TOO_CLOSE then
+			push += out * 3
+		elseif bossDistance > BOSS_TOO_FAR then
+			push -= out * 1.5
+		end
+		push += Vector3.new(-out.Z, 0, out.X) * BOSS_CIRCLE_WEIGHT
 	end
 
 	-- player:Move works with this game's controls; Humanoid:Move gets overridden each frame.
