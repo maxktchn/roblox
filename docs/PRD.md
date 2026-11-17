@@ -255,8 +255,9 @@ All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with ga
   - **Walking turn (8 s):** phase 1 again. Summon, pulse and popcorn countdowns wait during laser turns and carry on in the next walking turn.
 
 **Spinning lasers** (#93; during each laser turn, from the boss out to the ring of counters):
-- **3 beams**, 120° apart. For the first **1.5 s** they are thin, see-through and still (the warning), starting with the chef halfway between two beams.
+- **6 beams**, 60° apart. For the first **1.5 s** they are thin, see-through and still (the warning), starting with the chef halfway between two beams.
 - Then they go live: 2 studs wide and solid, sweeping round at **25° per second** (clockwise or anticlockwise, at random each turn). At the arena's edge that's about 15 studs/s, just under the chef's 16, so you can run around with them at any distance.
+- **Halfway through** the live time they switch direction. For 0.6 s before the switch they slow to a stop and go a little paler: a hint for players who are watching, meant to be easy to miss. Then straight back to full speed the other way.
 - A live beam hits the chef for **35 damage**, at most once per second.
 
 **Homing popcorn** (#92; in phase 1 and the walking turns):

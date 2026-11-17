@@ -192,6 +192,12 @@ function ConfigCheck.run(): { string }
 			if fight.LaserWarning < 0 or fight.LaserWarning >= fight.LaserSeconds then
 				fail(`Boss {id}: LaserWarning must be 0 or more and shorter than LaserSeconds`)
 			end
+			if fight.LaserReverseAt <= 0 or fight.LaserReverseAt >= 1 then
+				fail(`Boss {id}: LaserReverseAt must be between 0 and 1 (a fraction of the live time)`)
+			end
+			if fight.LaserReverseTell < 0 then
+				fail(`Boss {id}: LaserReverseTell must be 0 or more`)
+			end
 			if fight.LaserCount ~= math.floor(fight.LaserCount) then
 				fail(`Boss {id}: LaserCount must be a whole number`)
 			end

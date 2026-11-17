@@ -9,6 +9,9 @@
 --     on top of them.
 --   * Then they go live: wide, solid, and sweeping round at Fight.LaserTurnSpeed degrees per
 --     second (clockwise or anticlockwise, picked at random each turn).
+--   * Fight.LaserReverseAt of the way through the live time they switch direction. For
+--     Fight.LaserReverseTell seconds before that they slow to a stop and go a little paler:
+--     a hint for players who are watching, not a warning sign.
 --   * A live beam touching the chef hits for Fight.LaserDamage, at most once every
 --     Fight.LaserHitCooldown seconds. Only the chef is hurt.
 --
@@ -27,6 +30,7 @@ local LaserService = {}
 
 local CHEF_RADIUS = RunRules.ChefRadius
 local BEAM_COLOR = Color3.fromRGB(255, 40, 40)
+local TELL_COLOR = Color3.fromRGB(255, 125, 125) -- the beams fade toward this before switching
 local WARNING_WIDTH = 0.4
 local WARNING_TRANSPARENCY = 0.6
 local LIVE_TRANSPARENCY = 0.15
@@ -40,6 +44,7 @@ type Lasers = {
 	fight: Bosses.BossFight,
 	angle: number, -- radians, beam 1's direction (others follow evenly)
 	spin: number, -- +1 or -1
+	reversed: boolean, -- already switched direction this turn
 	elapsed: number, -- seconds since start
 	hitCooldown: number, -- seconds until the chef can be hit again
 	beams: { Part },
@@ -158,6 +163,7 @@ function LaserService.turnOn(bossId: number, center: Vector3, ringRadius: number
 		fight = fight,
 		angle = angle,
 		spin = if random:NextNumber() < 0.5 then 1 else -1,
+		reversed = false,
 		elapsed = 0,
 		hitCooldown = 0,
 		beams = beams,
@@ -196,7 +202,25 @@ local function update(deltaTime: number)
 	lasers.elapsed += deltaTime
 	lasers.hitCooldown -= deltaTime
 	if isLive(lasers) then
-		lasers.angle += lasers.spin * math.rad(lasers.fight.LaserTurnSpeed) * deltaTime
+		local fight = lasers.fight
+		local liveTime = lasers.elapsed - fight.LaserWarning
+		local reverseTime = (fight.LaserSeconds - fight.LaserWarning) * fight.LaserReverseAt
+		local speed = 1 -- fraction of LaserTurnSpeed
+		local tell = 0 -- 0 to 1: how far into the slow-down before the switch
+		if not lasers.reversed then
+			if liveTime >= reverseTime then
+				lasers.reversed = true
+				lasers.spin = -lasers.spin -- straight back to full speed, the other way
+			elseif fight.LaserReverseTell > 0 and liveTime > reverseTime - fight.LaserReverseTell then
+				tell = 1 - (reverseTime - liveTime) / fight.LaserReverseTell
+				speed = 1 - tell
+			end
+		end
+		lasers.angle += lasers.spin * math.rad(fight.LaserTurnSpeed) * speed * deltaTime
+		local color = BEAM_COLOR:Lerp(TELL_COLOR, tell)
+		for _, beam in lasers.beams do
+			beam.Color = color
+		end
 	end
 	drawBeams(lasers, origin)
 
