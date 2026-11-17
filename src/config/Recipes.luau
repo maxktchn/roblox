@@ -80,7 +80,17 @@ local Recipes: { [string]: Recipe } = {
 			},
 		},
 	},
-	PizzaParty = { Name = "Pizza Party", Weapon = "PizzaCutter", Ingredient = "Coffee", Description = "Multiple discs" },
+	PizzaParty = {
+		Name = "Pizza Party",
+		Weapon = "PizzaCutter",
+		Ingredient = "Coffee",
+		Description = "Three discs at once, sharing the crowd",
+		Shape = "Bounce",
+		FxColor = Color3.fromRGB(255, 170, 60),
+		Levels = {
+			{ Damage = 18, Cooldown = 1.0, Range = 30, Count = 3, Speed = 40, Bounces = 8, BounceRange = 14 },
+		},
+	},
 	FondueRing = {
 		Name = "Fondue Ring",
 		Weapon = "SpinningForks",

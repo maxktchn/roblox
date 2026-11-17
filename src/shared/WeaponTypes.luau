@@ -14,7 +14,10 @@
 --   Lob        - every Cooldown, lobs Count eggs at the nearest enemies; each lands where its
 --                enemy was (RunRules.LobFlightSeconds later) and splashes everything within
 --                Radius (Egg Grenade, #129)
-export type Shape = "Arc" | "Aura" | "Orbit" | "Projectile" | "Pulse" | "Lob"
+--   Bounce     - every Cooldown, throws Count discs at the nearest enemies; after each hit a
+--                disc flies on to the nearest enemy it hasn't hit within BounceRange, up to
+--                Bounces times. All discs of one throw share one hit list (Pizza Cutter, #130)
+export type Shape = "Arc" | "Aura" | "Orbit" | "Projectile" | "Pulse" | "Lob" | "Bounce"
 
 -- Lob only: when an egg lands, Count mini-eggs pop out evenly round it, land Distance studs
 -- away (RunRules.LobClusterSeconds later) and splash again (Breakfast Bomb, #129).
@@ -37,8 +40,8 @@ export type WeaponLevel = {
 	-- Projectile: how far it looks for targets, and how far shots fly.
 	Range: number,
 	ArcDegrees: number?, -- Arc: width of the slice
-	Count: number?, -- Orbit: objects circling. Projectile: shots per attack. Lob: eggs per attack.
-	Speed: number?, -- Orbit: degrees per second. Projectile / Pulse: studs per second.
+	Count: number?, -- Orbit: objects circling. Projectile: shots per attack. Lob: eggs. Bounce: discs.
+	Speed: number?, -- Orbit: degrees per second. Projectile / Pulse / Bounce: studs per second.
 	BurnDps: number?, -- optional: burn damage per second after a hit
 	BurnSeconds: number?, -- optional: how long the burn lasts
 	CritBonus: number?, -- optional: extra crit chance for this weapon only (0.25 = +25%)
@@ -49,6 +52,8 @@ export type WeaponLevel = {
 	PullStrength: number?,
 	Radius: number?, -- Lob: splash radius, measured to each enemy's edge
 	Cluster: Cluster?, -- Lob: mini-eggs when an egg lands (see Cluster above)
+	Bounces: number?, -- Bounce: how many times a disc flies on to another enemy after its first hit
+	BounceRange: number?, -- Bounce: how far (to the next enemy's edge) a disc can fly on
 }
 
 return {}

@@ -8,6 +8,7 @@
 --   Projectile - a shot flies out                        (WeaponFx: "Launch"/"End", ...)
 --   Pulse      - a ring grows from where it was fired    (WeaponFx: origin, range, speed)
 --   Lob        - an egg arcs over, then splashes         (WeaponFx: "Lob", from, to, seconds, radius)
+--   Bounce     - a spinning disc chases one enemy part   (WeaponFx: "Disc", id, from, part, speed / "End", id)
 --   Orbit      - objects circle the chef all the time. No messages: we read the weapon's
 --                level from the player's "Weapon_<id>" attribute and use the shared server
 --                clock, so they appear exactly where the server checks for hits.
@@ -245,6 +246,58 @@ local function drawLob(color: Color3, from: Vector3, to: Vector3, seconds: numbe
 	end)
 end
 
+-- BOUNCE: one spinning disc per disc id. Each "Disc" message says where it is and which enemy
+-- part it's flying at; it follows that part until the next message or "End".
+type DiscFx = { part: Part, position: Vector3, target: BasePart?, speed: number, lastElapsed: number }
+local discFx: { [number]: DiscFx } = {}
+local spareDiscParts: { Part } = {}
+
+local function drawDiscLeg(color: Color3, discId: number, from: Vector3, target: BasePart?, speed: number)
+	local existing = discFx[discId]
+	if existing then
+		-- A new leg: it hit an enemy and flies on to the next one.
+		existing.position = from
+		existing.target = target
+		existing.speed = speed
+		return
+	end
+	local part = table.remove(spareDiscParts) or makeFxPart("Disc", color)
+	part.Shape = Enum.PartType.Cylinder
+	part.Material = Enum.Material.Metal
+	part.Color = color
+	part.Size = Vector3.new(0.25, 2, 2)
+	part.Transparency = 0
+	local disc: DiscFx = { part = part, position = from, target = target, speed = speed, lastElapsed = 0 }
+	discFx[discId] = disc
+	animate(`Disc{discId}`, function(elapsed)
+		if discFx[discId] ~= disc then
+			return false -- ended
+		end
+		local deltaTime = elapsed - disc.lastElapsed
+		disc.lastElapsed = elapsed
+		local goal = disc.target
+		if goal and goal.Position.Y > -100 then -- a dead enemy's part is parked far below
+			local toGoal = Vector3.new(goal.Position.X - disc.position.X, 0, goal.Position.Z - disc.position.Z)
+			local step = disc.speed * deltaTime
+			disc.position += if toGoal.Magnitude > step then toGoal.Unit * step else toGoal
+		end
+		-- A cylinder's length runs along X: tip it up so it lies flat, then spin it round.
+		disc.part.CFrame = CFrame.new(disc.position)
+			* CFrame.Angles(0, elapsed * 20, 0)
+			* CFrame.Angles(0, 0, math.rad(90))
+		return true
+	end)
+end
+
+local function endDisc(discId: number)
+	local disc = discFx[discId]
+	if disc then
+		discFx[discId] = nil
+		disc.part.Transparency = 1
+		table.insert(spareDiscParts, disc.part)
+	end
+end
+
 -- ORBIT: every frame, place each owned orbit weapon's objects around the chef.
 local function updateOrbits()
 	local root = getRoot()
@@ -309,6 +362,13 @@ local function onWeaponFx(weaponId: string, ...: any)
 		drawPulse(weaponId, color, ...)
 	elseif config.Shape == "Lob" then
 		drawLob(color, select(2, ...))
+	elseif config.Shape == "Bounce" then
+		local action, discId = ...
+		if action == "Disc" then
+			drawDiscLeg(color, select(2, ...))
+		elseif action == "End" then
+			endDisc(discId)
+		end
 	elseif config.Shape == "Projectile" then
 		local action, shotId = ...
 		if action == "Launch" then

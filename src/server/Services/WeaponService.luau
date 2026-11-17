@@ -2,7 +2,7 @@
 -- Fires the player's starter, gadgets and recipe weapons on cooldowns; applies ingredient stats. Server decides all damage (PRD §8.4).
 --
 -- Every weapon has a Shape in config (see Shared/WeaponTypes): Arc, Aura, Orbit, Projectile,
--- Pulse or Lob.
+-- Pulse, Lob or Bounce.
 -- There is one attack function per shape below, so new weapons are config-only (PRD §8.5).
 --
 -- Each frame, every owned weapon counts down its cooldown. At 0 it attacks: the server
@@ -487,6 +487,116 @@ local function updateEggs(deltaTime: number)
 	end
 end
 
+-- BOUNCE (Pizza Cutter, #130): discs in flight. A disc flies at its target enemy (following
+-- it), hits it, then flies on to the nearest enemy nobody in its throw has hit yet within
+-- BounceRange, until it runs out of bounces or enemies. The client follows the same target.
+type Disc = {
+	id: number,
+	weaponId: string,
+	stats: WeaponLevel,
+	position: Vector3,
+	target: number, -- enemy id it's flying at
+	bouncesLeft: number,
+	alreadyHit: { [number]: boolean }, -- shared by every disc of one throw
+	age: number,
+}
+local discs: { Disc } = {}
+local lastDiscId = 0
+local DISC_MAX_SECONDS = 6 -- a disc that somehow never arrives is dropped after this long
+
+-- The nearest enemy whose edge is within BounceRange of the disc that its throw hasn't hit.
+local function nextDiscTarget(disc: Disc): number?
+	local best, bestDistance = nil, math.huge
+	for _, enemyId in getEnemiesInReach(disc.position, disc.stats.BounceRange or 0) do
+		local position = EnemyService.getEnemyPosition(enemyId)
+		if position and not disc.alreadyHit[enemyId] then
+			local distance = distanceToEdge(enemyId, position, disc.position)
+			if distance < bestDistance then
+				best, bestDistance = enemyId, distance
+			end
+		end
+	end
+	return best
+end
+
+-- Tell the client where a disc is and which enemy (part) it's flying at now.
+local function sendDiscLeg(disc: Disc)
+	sendFx(disc.weaponId, "Disc", disc.id, disc.position, EnemyService.getEnemyPart(disc.target), disc.stats.Speed)
+end
+
+local function endDisc(index: number)
+	local disc = table.remove(discs, index)
+	if disc then
+		sendFx(disc.weaponId, "End", disc.id)
+	end
+end
+
+-- Throw `Count` discs at the nearest different enemies in range.
+local function attackBounce(weaponId: string, stats: WeaponLevel, root: BasePart)
+	local targets = getNearestTargets(root.Position, stats.Range)
+	local alreadyHit = {}
+	for i = 1, math.min(stats.Count or 1, #targets) do
+		lastDiscId += 1
+		local disc: Disc = {
+			id = lastDiscId,
+			weaponId = weaponId,
+			stats = stats,
+			position = root.Position,
+			target = targets[i].id,
+			bouncesLeft = stats.Bounces or 0,
+			alreadyHit = alreadyHit,
+			age = 0,
+		}
+		table.insert(discs, disc)
+		sendDiscLeg(disc)
+	end
+end
+
+local function updateDiscs(deltaTime: number)
+	for i = #discs, 1, -1 do
+		local disc = discs[i]
+		disc.age += deltaTime
+		local targetPosition = EnemyService.getEnemyPosition(disc.target)
+		if disc.alreadyHit[disc.target] or not targetPosition then
+			-- Its target died, or another disc of the same throw got there first: pick another
+			-- (this doesn't use up a bounce).
+			local nextTarget = nextDiscTarget(disc)
+			if not nextTarget or disc.age > DISC_MAX_SECONDS then
+				endDisc(i)
+				continue
+			end
+			disc.target = nextTarget
+			sendDiscLeg(disc)
+			targetPosition = EnemyService.getEnemyPosition(nextTarget)
+		end
+		if not targetPosition then
+			endDisc(i)
+			continue
+		end
+		local toTarget = Vector3.new(targetPosition.X - disc.position.X, 0, targetPosition.Z - disc.position.Z)
+		local step = (disc.stats.Speed or 40) * deltaTime
+		if toTarget.Magnitude > step then
+			disc.position += toTarget.Unit * step
+		else
+			disc.position = Vector3.new(targetPosition.X, disc.position.Y, targetPosition.Z)
+		end
+		if distanceToEdge(disc.target, targetPosition, disc.position) <= RunRules.ProjectileHitRadius then
+			disc.alreadyHit[disc.target] = true
+			hit(disc.target, disc.stats, disc.weaponId)
+			local nextTarget = if disc.bouncesLeft > 0 then nextDiscTarget(disc) else nil
+			if nextTarget then
+				disc.bouncesLeft -= 1
+				disc.target = nextTarget
+				sendDiscLeg(disc)
+			else
+				endDisc(i)
+			end
+		elseif disc.age > DISC_MAX_SECONDS then
+			endDisc(i)
+		end
+	end
+end
+
 -- ORBIT: `Count` objects circle the chef. Their angle comes from the shared server clock,
 -- so the client can draw them in the same spots without any messages (see WeaponFxController).
 local function updateOrbit(weaponId: string, stats: WeaponLevel, root: BasePart)
@@ -597,6 +707,7 @@ local ATTACKS: { [string]: (string, WeaponLevel, BasePart) -> () } = {
 	Projectile = attackProjectile,
 	Pulse = attackPulse,
 	Lob = attackLob,
+	Bounce = attackBounce,
 }
 
 local function update(deltaTime: number)
@@ -605,6 +716,7 @@ local function update(deltaTime: number)
 	end
 	updateShots(deltaTime)
 	updateEggs(deltaTime)
+	updateDiscs(deltaTime)
 	updatePulses(deltaTime)
 	updateBurns(deltaTime)
 	flushHitFx(deltaTime)
@@ -687,6 +799,10 @@ function WeaponService.reset()
 	end
 	table.clear(shots)
 	table.clear(eggs)
+	for _, disc in discs do
+		sendFx(disc.weaponId, "End", disc.id)
+	end
+	table.clear(discs)
 	table.clear(pulses)
 	table.clear(swings)
 	table.clear(pendingHits)

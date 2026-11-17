@@ -62,6 +62,8 @@ local STAT_LABELS: { [string]: { name: string, unit: string } } = {
 	BurnDps = { name = "Burn", unit = "/s" },
 	BurnSeconds = { name = "Burn time", unit = "s" },
 	Radius = { name = "Splash", unit = "" },
+	Bounces = { name = "Bounces", unit = "" },
+	BounceRange = { name = "Bounce range", unit = "" },
 }
 
 -- One line saying what changes between two levels of a weapon, built from its config numbers.

@@ -48,7 +48,20 @@ local Gadgets: { [string]: Gadget } = {
 			{ Damage = 20, Cooldown = 1.6, Range = 30, Count = 2, Radius = 7 },
 		},
 	},
-	PizzaCutter = { Name = "Pizza Cutter", Behavior = "Disc that bounces between enemies" },
+	-- Bounce (#130): one disc that chains through a crowd, hitting each enemy once.
+	PizzaCutter = {
+		Name = "Pizza Cutter",
+		Behavior = "Disc that bounces between enemies",
+		Shape = "Bounce",
+		FxColor = Color3.fromRGB(220, 225, 235),
+		Levels = {
+			{ Damage = 9, Cooldown = 1.5, Range = 30, Count = 1, Speed = 40, Bounces = 3, BounceRange = 12 },
+			{ Damage = 11, Cooldown = 1.5, Range = 30, Count = 1, Speed = 40, Bounces = 4, BounceRange = 12 },
+			{ Damage = 11, Cooldown = 1.3, Range = 30, Count = 1, Speed = 40, Bounces = 5, BounceRange = 13 },
+			{ Damage = 14, Cooldown = 1.3, Range = 30, Count = 1, Speed = 40, Bounces = 6, BounceRange = 13 },
+			{ Damage = 16, Cooldown = 1.1, Range = 30, Count = 1, Speed = 40, Bounces = 7, BounceRange = 14 },
+		},
+	},
 	SpinningForks = {
 		Name = "Spinning Forks",
 		Behavior = "Forks orbit you",

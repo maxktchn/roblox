@@ -69,6 +69,10 @@ function ConfigCheck.run(): { string }
 				elseif weapon.Shape == "Orbit" or weapon.Shape == "Projectile" then stats.Count and stats.Speed
 				elseif weapon.Shape == "Pulse" then (stats.Speed or 0) > 0 and stats.Range > 0
 				elseif weapon.Shape == "Lob" then (stats.Count or 0) > 0 and (stats.Radius or 0) > 0
+				elseif weapon.Shape == "Bounce" then (stats.Count or 0) > 0
+					and (stats.Speed or 0) > 0
+					and (stats.Bounces or -1) >= 0
+					and (stats.BounceRange or 0) > 0
 				else true
 			if not needs then
 				fail(`Weapon {id} Lv {i}: missing a field its {weapon.Shape} shape needs`)
