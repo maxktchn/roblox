@@ -23,6 +23,7 @@ local Gadgets = require(ReplicatedStorage.Config.Gadgets)
 local Ingredients = require(ReplicatedStorage.Config.Ingredients)
 local MiniBossService = require(script.Parent.MiniBossService)
 local PickupService = require(script.Parent.PickupService)
+local PuddleService = require(script.Parent.PuddleService)
 local Recipes = require(ReplicatedStorage.Config.Recipes)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local RunManager = require(script.Parent.RunManager)
@@ -169,6 +170,7 @@ local function buildReport(result: string): string
 		`Damage dealt: {breakdown(WeaponService.getDamageByWeapon())}`,
 		`Damage taken: {breakdown(damageTakenBy)}`,
 		`Pies eaten: {PickupService.getPiesEaten()}`,
+		`Slowed by puddles: {math.round(PuddleService.getSlowedSeconds())} s`,
 	}
 	return table.concat(lines, "\n")
 end

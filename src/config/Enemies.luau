@@ -20,6 +20,19 @@
 --               (RunRules.ChefHurtCooldown if left out; the boss hits harder but slower)
 -- SplitInto, SplitCount: when it dies, SplitCount enemies of type SplitInto appear where it
 --               died (MiniBossService, The Big Cheese #84). Left out = no split.
+-- DeathPuddle: when it dies (to anything), a puddle that slows the chef appears where it died
+--               (PuddleService, Rotten Tomato #117). Left out = no puddle.
+--   Width    studs across
+--   Seconds  how long it stays (it fades out over the last second)
+--   Slow     how much slower the chef walks while standing in one (0.4 = 40% slower; doesn't stack)
+--   Color    the puddle's colour
+
+export type DeathPuddle = {
+	Width: number,
+	Seconds: number,
+	Slow: number,
+	Color: Color3,
+}
 
 export type Enemy = {
 	Name: string,
@@ -39,6 +52,7 @@ export type Enemy = {
 	HurtCooldown: number?,
 	SplitInto: string?,
 	SplitCount: number?,
+	DeathPuddle: DeathPuddle?,
 }
 
 local Enemies: { [string]: Enemy } = {
@@ -86,6 +100,13 @@ local Enemies: { [string]: Enemy } = {
 		Shape = "Ball",
 		Color = Color3.fromRGB(170, 60, 50),
 		Movement = "Chase",
+		-- Area denial (#117): it bursts into a puddle that slows (never hurts) the chef.
+		DeathPuddle = {
+			Width = 6,
+			Seconds = 4,
+			Slow = 0.4,
+			Color = Color3.fromRGB(150, 40, 35),
+		},
 	},
 	Meatball = {
 		Name = "Meatball",

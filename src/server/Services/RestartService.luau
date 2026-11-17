@@ -15,6 +15,7 @@ local BossService = require(script.Parent.BossService)
 local EnemyService = require(script.Parent.EnemyService)
 local MiniBossService = require(script.Parent.MiniBossService)
 local PickupService = require(script.Parent.PickupService)
+local PuddleService = require(script.Parent.PuddleService)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local RunManager = require(script.Parent.RunManager)
 local RunReportService = require(script.Parent.RunReportService)
@@ -33,6 +34,7 @@ function RestartService.restart()
 	BossService.reset()
 	MiniBossService.reset()
 	PickupService.reset()
+	PuddleService.reset() -- also lets the chef walk at full speed again
 	WeaponService.reset() -- back to the starter at Lv 1, kills 0
 	StatsService.reset() -- no ingredients
 	UpgradeService.reset() -- Lv 1, rerolls back, closes any open cards

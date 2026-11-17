@@ -21,6 +21,8 @@ return {
 	-- chef (contact, where chasers stop, boss pulses). The chef's body is about 2 studs wide and
 	-- 1 deep, so 1 is a fair circle around it.
 	ChefRadius = 1,
+	-- The chef's walk speed before Butter and slows (StatsService.getWalkSpeed, #117).
+	ChefWalkSpeed = 16,
 	-- An enemy hurts the chef when it is within touching distance plus this many studs.
 	ContactReach = 0.75,
 
@@ -78,6 +80,8 @@ return {
 	PieHealFraction = 0.2, -- of max HP
 	PiePickupDistance = 2.5, -- studs from the chef's centre to the pie
 	MaxPiesOnGround = 15, -- past this, new pies aren't dropped
+	-- Rotten Tomato puddles (#117): past this many on the floor, a new one removes the oldest.
+	MaxPuddles = 10,
 	LunchboxUpgradesMin = 1,
 	LunchboxUpgradesMax = 3,
 

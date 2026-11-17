@@ -7,6 +7,9 @@
 -- How to use a stat: percent stats are fractions, so the final value is base * (1 + bonus).
 --   damage = baseDamage * (1 + StatsService.getStat("Damage"))
 -- Flat stats (Armor) are added as-is:  hit = rawDamage - StatsService.getStat("Armor")
+--
+-- The chef's walk speed is set here too, and only here (#117): base RunRules.ChefWalkSpeed,
+-- plus Butter's MoveSpeed bonus, times any slow (a Rotten Tomato puddle, PuddleService).
 
 --
 -- Owned levels are also copied onto the player as "Ingredient_<id>" attributes for the HUD.
@@ -15,11 +18,14 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Ingredients = require(ReplicatedStorage.Config.Ingredients)
+local RunRules = require(ReplicatedStorage.Config.RunRules)
 
 local StatsService = {}
 
 -- Ingredient id -> level (1 to 5). Missing = not owned.
 local ingredientLevels: { [string]: number } = {}
+-- How much slower the chef walks right now (0 = full speed, 0.4 = 40% slower).
+local slow = 0
 
 -- Copy owned ingredient levels onto the run's player (nil = not owned).
 local function syncAttributes()
@@ -31,6 +37,9 @@ local function syncAttributes()
 	end
 end
 
+-- Forward declaration: the chef's speed depends on getStat, defined below.
+local applyWalkSpeed: () -> ()
+
 -- Set an ingredient's level (UpgradeService calls this when a card is taken, #16).
 -- Level 0 removes it.
 function StatsService.setIngredientLevel(ingredientId: string, level: number)
@@ -41,6 +50,7 @@ function StatsService.setIngredientLevel(ingredientId: string, level: number)
 		ingredientLevels[ingredientId] = nil
 	end
 	syncAttributes()
+	applyWalkSpeed()
 end
 
 -- Current level of an ingredient, or nil if the player doesn't own it.
@@ -61,14 +71,54 @@ function StatsService.getStat(stat: Ingredients.Stat): number
 	return total
 end
 
+-- The chef's walk speed right now, in studs per second.
+function StatsService.getWalkSpeed(): number
+	return RunRules.ChefWalkSpeed * (1 + StatsService.getStat("MoveSpeed")) * (1 - slow)
+end
+
+-- Slow the chef down by `fraction` (0.4 = 40% slower), or 0 for full speed. Slows don't
+-- stack: the latest call wins (PuddleService, #117).
+function StatsService.setSlow(fraction: number)
+	fraction = math.clamp(fraction, 0, 0.95)
+	if fraction ~= slow then
+		slow = fraction
+		applyWalkSpeed()
+	end
+end
+
+-- Copy the walk speed onto the chef's Humanoid (it replicates to the client, which moves the chef).
+function applyWalkSpeed()
+	local player = Players:GetPlayers()[1]
+	local character = player and player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid.WalkSpeed = StatsService.getWalkSpeed()
+	end
+end
+
 -- Forget everything (start of a new run).
 function StatsService.reset()
 	table.clear(ingredientLevels)
+	slow = 0
 	syncAttributes()
+	applyWalkSpeed()
+end
+
+local function watchPlayer(player: Player)
+	syncAttributes()
+	-- A new chef (joining, or "Play again") gets the right speed too.
+	player.CharacterAdded:Connect(function(character: Model)
+		character:WaitForChild("Humanoid", 10)
+		applyWalkSpeed()
+	end)
+	applyWalkSpeed()
 end
 
 function StatsService:start()
-	Players.PlayerAdded:Connect(syncAttributes)
+	for _, player in Players:GetPlayers() do
+		watchPlayer(player)
+	end
+	Players.PlayerAdded:Connect(watchPlayer)
 end
 
 return StatsService

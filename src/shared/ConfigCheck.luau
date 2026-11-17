@@ -249,6 +249,15 @@ function ConfigCheck.run(): { string }
 		if enemy.PieDropChance and (enemy.PieDropChance < 0 or enemy.PieDropChance > 1) then
 			fail(`Enemy {id}: PieDropChance must be between 0 and 1`)
 		end
+		local puddle = enemy.DeathPuddle
+		if puddle then
+			if puddle.Width <= 0 or puddle.Seconds <= 0 then
+				fail(`Enemy {id}: DeathPuddle Width and Seconds must be more than 0`)
+			end
+			if puddle.Slow <= 0 or puddle.Slow >= 1 then
+				fail(`Enemy {id}: DeathPuddle.Slow must be between 0 and 1`)
+			end
+		end
 	end
 
 	-- Splits (The Big Cheese, #84): normal enemies and boss bodies alike.
