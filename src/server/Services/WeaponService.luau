@@ -169,6 +169,14 @@ local function flushHitFx(deltaTime: number)
 	pendingHits = {}
 end
 
+-- Coffee (#127): every weapon's Cooldown is multiplied by this (Coffee's Cooldown stat is
+-- negative: Lv 5 = -0.25, so x0.75). Starters, gadgets, recipes and boss powers alike; for an
+-- Orbit it's the per-enemy re-hit time. Burns and slows aren't shortened.
+local MIN_COOLDOWN_SCALE = 0.2
+local function cooldownScale(): number
+	return math.max(1 + StatsService.getStat("Cooldown"), MIN_COOLDOWN_SCALE)
+end
+
 -- Hit one enemy with a weapon: damage now, plus a burn if the weapon has one.
 local function hit(enemyId: number, stats: WeaponLevel, weaponId: string)
 	dealRolledDamage(enemyId, stats.Damage, stats.CritBonus, weaponId)
@@ -426,7 +434,7 @@ local function updateOrbit(weaponId: string, stats: WeaponLevel, root: BasePart)
 				and distanceToEdge(enemyId, position, forkPosition) <= RunRules.OrbitHitRadius
 			then
 				hit(enemyId, stats, weaponId)
-				hitTimes[enemyId] = now + stats.Cooldown -- one fork hit per enemy per Cooldown
+				hitTimes[enemyId] = now + stats.Cooldown * cooldownScale() -- one fork hit per enemy per Cooldown
 			end
 		end
 	end
@@ -542,7 +550,7 @@ local function update(deltaTime: number)
 		cooldowns[weaponId] = (cooldowns[weaponId] or 0) - deltaTime
 		if cooldowns[weaponId] <= 0 then
 			ATTACKS[shape](weaponId, stats, root)
-			cooldowns[weaponId] = stats.Cooldown
+			cooldowns[weaponId] = stats.Cooldown * cooldownScale()
 		end
 	end
 end

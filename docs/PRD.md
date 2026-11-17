@@ -178,10 +178,10 @@ The Pepper Shaker (and Ghost Pepper Blaster) sprays toward the nearest enemy wit
 | Ingredient | Effect per level |
 |---|---|
 | Hot Sauce | +6% damage |
-| Butter | +8% move speed |
-| Coffee | -8% weapon cooldowns |
+| Butter | +5% move speed |
+| Coffee | -5% weapon cooldowns (every weapon, boss powers too; burns and slows aren't shortened) |
 | Salt | +5% crit chance |
-| Bread | +10% max HP |
+| Bread | +6% max HP (taking a level raises current HP by the same amount) |
 | Beef Jerky | +1 armor (flat damage reduction) |
 | Fridge Magnet | +20% tip pickup range |
 

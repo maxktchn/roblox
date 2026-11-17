@@ -62,7 +62,8 @@ return {
 	-- add ids here to put more items in the game. Checked by ConfigCheck.
 	UpgradePool = {
 		Gadgets = { "PepperShaker", "SpinningForks", "Toaster" }, -- Blender removed (#83); its replacement comes in Phase 2
-		Ingredients = { "Salt", "HotSauce", "BeefJerky", "FridgeMagnet" },
+		-- Butter joins with Buttered Barrage (#132): Toaster + Butter must be playable first.
+		Ingredients = { "Salt", "HotSauce", "BeefJerky", "FridgeMagnet", "Coffee", "Bread" },
 		-- Boss powers only show up once their boss has been defeated (PRD §3.8).
 		BossPowers = { "MicrowavePulse" },
 	},

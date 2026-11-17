@@ -368,6 +368,12 @@ local function update(deltaTime: number)
 	if paused or runOver then
 		return -- "Order Up!" on screen, or the run is over: the clock stands still
 	end
+	-- A Bread card (#127) raises max HP: show it (and the HP it adds) straight away, not only
+	-- at the next hit or heal.
+	if getMaxHp() ~= lastMaxHp then
+		refreshMaxHp()
+		syncAttributes()
+	end
 	local player = Players:GetPlayers()[1]
 	if not (player and player.Character) then
 		return -- the clock starts once the chef is in the kitchen

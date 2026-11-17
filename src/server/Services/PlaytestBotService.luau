@@ -39,7 +39,8 @@ local SECONDS_BETWEEN_RUNS = 4 -- time to read the run-over screen before the ne
 local PICK_EVERY_SECONDS = 0.4 -- how often the bot looks for open cards
 
 -- Which ingredient the bot likes most (higher = picked first).
-local INGREDIENT_LIKES: { [string]: number } = { HotSauce = 4, Salt = 3, BeefJerky = 2, FridgeMagnet = 1 }
+local INGREDIENT_LIKES: { [string]: number } =
+	{ HotSauce = 4, Salt = 3, Coffee = 3, BeefJerky = 2, Bread = 2, FridgeMagnet = 1, Butter = 1 }
 
 -- Points per card kind for each strategy. The highest-scoring card is picked.
 local KIND_SCORES: { [string]: { [string]: number } } = {
