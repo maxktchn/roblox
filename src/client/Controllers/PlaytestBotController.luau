@@ -8,7 +8,8 @@
 --     weapons hit something
 --   * away from the walls, plus a slow circle around the arena, like a person kiting
 --   * toward a pie when hurt, otherwise toward tips nearby
---   * final boss (#94): away from popcorn kernels and out of a pop's blast area, and during
+--   * final boss (#94): out of reach while its damage pulse is warning, away from popcorn
+--     kernels and out of a pop's blast area, and during
 --     the spinning lasers into the middle of the gap it's in, turning with the beams
 -- and aims at the nearest enemy (a popcorn kernel first, to shoot it down). Cards are picked
 -- by the server half.
@@ -50,6 +51,16 @@ local LASER_DANGER = 4 -- studs from a live beam where the bot really hurries
 local LASER_LEAD = 0.4 -- seconds ahead the bot aims for, given how fast the beams turn
 local SPIN_SMOOTHING = 0.35 -- seconds: how quickly the bot notices a change of direction
 local POP_MARGIN = 2.5 -- studs past a pop's blast area to get to
+local PULSE_MARGIN = 3 -- studs past the boss pulse's reach to get to
+local RING_WALL_DISTANCE = 10 -- in the boss ring: start pushing back toward the middle this close to the counters
+local RING_CIRCLE_WEIGHT = 0.8 -- in the boss ring: how hard to circle round (kiting the boss)
+-- How far the final boss's damage pulse reaches (the client sees only the growing ring).
+local PULSE_RADIUS = 0
+for _, boss in Bosses do
+	if boss.Fight then
+		PULSE_RADIUS = math.max(PULSE_RADIUS, boss.Fight.PulseRadius)
+	end
+end
 
 local function flat(v: Vector3): Vector3
 	return Vector3.new(v.X, 0, v.Z)
@@ -79,6 +90,38 @@ end
 
 -- Lasers up: a push toward the middle of the gap the chef is in, a little ahead of where
 -- it's turning. Returns nil when there are no lasers.
+-- The boss ring (BossService's ring of counters), seen from its invisible walls: its middle
+-- and how far in the counters' inner face is. nil when there's no ring.
+local ringFolder: Instance? = nil
+local ringCenter = Vector3.zero
+local ringRadius = 0
+local function getBossRing(): (Vector3?, number)
+	local ring = workspace:FindFirstChild("BossRing")
+	if not ring then
+		ringFolder = nil
+		return nil, 0
+	end
+	if ring ~= ringFolder then
+		local sum, count = Vector3.zero, 0
+		local depth = 0
+		for _, part in ring:GetChildren() do
+			if part:IsA("BasePart") and part.Name == "Wall" then
+				sum += flat(part.Position)
+				count += 1
+				depth = part.Size.Z
+			end
+		end
+		if count == 0 then
+			return nil, 0
+		end
+		ringFolder = ring
+		ringCenter = sum / count
+		local wall = ring:FindFirstChild("Wall") :: BasePart
+		ringRadius = (flat(wall.Position) - ringCenter).Magnitude - depth / 2
+	end
+	return ringCenter, ringRadius
+end
+
 local function laserPush(pos: Vector3, deltaTime: number): Vector3?
 	local folder = workspace:FindFirstChild("BossLasers")
 	local beams = folder and folder:GetChildren() or {}
@@ -201,16 +244,30 @@ local function step(deltaTime: number)
 	end
 
 	-- Walls: push back toward the middle near the edges, and circle the arena slowly.
-	local map = workspace:FindFirstChild("Map")
-	local center = (map and map:GetAttribute("ArenaCenter") or Vector3.zero) :: Vector3
-	local size = (map and map:GetAttribute("ArenaSize") or Vector3.new(176, 0, 176)) :: Vector3
-	local fromCenter = flat(pos - center)
-	local edge = math.min(size.X / 2 - math.abs(fromCenter.X), size.Z / 2 - math.abs(fromCenter.Z))
-	if fromCenter.Magnitude > 1 then
-		if edge < WALL_DISTANCE then
-			push -= fromCenter.Unit * (1 - math.max(edge, 0) / WALL_DISTANCE) ^ 2 * 4
+	-- In the boss fight the ring of counters is the wall, and the bot circles inside it,
+	-- kiting the boss round like a person would, instead of getting pinned at the edge.
+	local bossRingCenter, bossRingRadius = getBossRing()
+	if bossRingCenter then
+		local fromCenter = flat(pos) - bossRingCenter
+		local edge = bossRingRadius - fromCenter.Magnitude
+		if fromCenter.Magnitude > 1 then
+			if edge < RING_WALL_DISTANCE then
+				push -= fromCenter.Unit * (1 - math.max(edge, 0) / RING_WALL_DISTANCE) ^ 2 * 8
+			end
+			push += Vector3.new(-fromCenter.Z, 0, fromCenter.X).Unit * RING_CIRCLE_WEIGHT
 		end
-		push += Vector3.new(-fromCenter.Z, 0, fromCenter.X).Unit * 0.35
+	else
+		local map = workspace:FindFirstChild("Map")
+		local center = (map and map:GetAttribute("ArenaCenter") or Vector3.zero) :: Vector3
+		local size = (map and map:GetAttribute("ArenaSize") or Vector3.new(176, 0, 176)) :: Vector3
+		local fromCenter = flat(pos - center)
+		local edge = math.min(size.X / 2 - math.abs(fromCenter.X), size.Z / 2 - math.abs(fromCenter.Z))
+		if fromCenter.Magnitude > 1 then
+			if edge < WALL_DISTANCE then
+				push -= fromCenter.Unit * (1 - math.max(edge, 0) / WALL_DISTANCE) ^ 2 * 4
+			end
+			push += Vector3.new(-fromCenter.Z, 0, fromCenter.X).Unit * 0.35
+		end
 	end
 
 	-- Pickups: pies when hurt, tips otherwise. Both live in the Tips folder (PickupService).
@@ -235,6 +292,16 @@ local function step(deltaTime: number)
 			push += pie.Unit * 1.5
 		elseif tip and tipDistance < TIP_DISTANCE and tipDistance > 0.1 then
 			push += tip.Unit * 0.4
+		end
+	end
+
+	-- Final boss: get out of reach while its damage pulse is warning (the ring is showing).
+	local pulse = workspace:FindFirstChild("BossPulse")
+	if pulse and pulse:IsA("BasePart") and pulse.Position.Y > -50 then
+		local away = flat(pos - pulse.Position)
+		if away.Magnitude < PULSE_RADIUS + PULSE_MARGIN then
+			local out = if away.Magnitude > 0.1 then away.Unit else Vector3.new(1, 0, 0)
+			push += out * 8
 		end
 	end
 
