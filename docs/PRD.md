@@ -98,7 +98,7 @@ The restaurant's food has gone rotten and come alive. You're the chef, and you h
 - The recipe card keeps showing up in every "Order Up!" until it is taken. If several are ready, they fill the 3 card slots first.
 - A recipe is a weapon with one level: it can't be upgraded further, and its old weapon never comes back.
 
-**Phase 1 recipe starting values** (tune in `Recipes.luau`):
+**Recipe starting values** (tune in `Recipes.luau`). Phase 1 shipped the first three; P2-3 (#104) added the gadget recipes below them. Each recipe adds a new trick, not just bigger numbers:
 | Recipe | Shape | Numbers |
 |---|---|---|
 | Sushi Master Blade | Arc | 30 damage, 150° slash, 13 range, every 0.45 s, +25% crit chance on this weapon |
@@ -171,7 +171,7 @@ Rewards scale with how long the player survived and how far they got:
 
 All 7 gadgets are in the MVP. The Ice Cube Tray took the removed Blender's place (#83, designed in P2-3 #104), and its recipe gave Fridge Magnet one.
 
-**Phase 1 gadget starting values** (Lv 1 → Lv 5, tune in `Gadgets.luau`):
+**Gadget starting values** (Lv 1 → Lv 5, tune in `Gadgets.luau`; the last four were added in P2-3, #104):
 | Gadget | Shape | Lv 1 | Changes by Lv 5 |
 |---|---|---|---|
 | Pepper Shaker | Arc | 4 damage, 75° cone, 9 range, every 1.2 s, burns 3/s for 2 s | 7 damage, 105° cone, 10 range, every 0.9 s, burns 6/s for 3 s |
@@ -198,6 +198,8 @@ The Pepper Shaker (and Ghost Pepper Blaster) sprays toward the nearest enemy wit
 Percent bonuses add up per level and multiply the base value (Hot Sauce Lv 3 = base damage × 1.18). Base crit chance is 0%, and a crit deals **2×** damage.
 
 Weapon ranges (and orbit and shot hit radii) are measured to the enemy's edge, not its center, so big enemies like bosses can be hit from outside touching distance. Enemies are measured by their real shape: their **thickness** toward the chef for distances (flat ones like Moldy Bread are thin) and their **width** for side-to-side checks, so a slash that crosses any part of an enemy's body hits it. A slash stays live while its blade is drawn sweeping across (0.15 s, `RunRules.SlashSeconds`): an enemy that runs into it during the sweep is hit too, once per slash.
+
+**Slowing enemies** (#128; Squeeze Bottle, Ice Cube Tray, butter slicks, Deep Freeze): a slowed enemy moves slower for a few seconds, and a frozen one can't move (it still hurts on contact). Slows don't stack: the strongest one wins. Normal enemies and elites take the full slow and can be frozen. **The Big Cheese** and its pieces take **half** and are never frozen (a freeze slows them 50%). **The Microwave Monster** can't be slowed or frozen (`SlowTaken` in the enemy config). Slowed enemies look icy, and frozen ones also shine.
 
 All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with gadgets (see 2.4).
 
@@ -314,7 +316,7 @@ Beating a chapter's final boss takes its **power**: an ability the player keeps 
 
 - **Unlock:** defeating the boss unlocks its power for good (the first time only; dying in the fight unlocks nothing). The win screen says "New power unlocked: <name>".
 - **In a run:** once unlocked, the power can show up as an "Order Up!" card, marked **BOSS POWER**. It works like a gadget: it uses one of the 6 shared slots and levels 1 to 5.
-- **Rarity:** its NEW card is rarer than a gadget's. For each "Order Up!" it has a **35%** chance to join the cards being drawn from (while you don't own it and have a free slot), so it shows up about a third as often as a gadget's NEW card (roughly 1 offer in 8 with a 4-gadget pool, a bit more often with Phase 1's 3). Once owned, its upgrade cards appear like any gadget's.
+- **Rarity:** its NEW card is rarer than a gadget's. For each "Order Up!" it has a **35%** chance to join the cards being drawn from (while you don't own it and have a free slot), so it shows up about a third as often as a gadget's NEW card (roughly 1 offer in 15 early in a run with the full pool of 7 gadgets and 7 ingredients, about 35% × 3 cards out of 16; none once all 6 slots are full). Once owned, its upgrade cards appear like any gadget's.
 - **Strength:** at Lv 1 about as strong as a normal gadget; at Lv 5 stronger than a maxed gadget.
 - **No recipes.** Boss powers never evolve.
 - **Never sold.** Only beating the boss unlocks a power (see 5.1).

@@ -2,7 +2,8 @@
 -- Developer stress test for the phone performance check (issue #12, PRD §8.3).
 --
 -- Type /stress in chat during a run (Studio, the experience's owner, or DevTools.DevUserIds):
---   * every Phase 1 weapon (starter + the 4 pool gadgets) goes to max level and keeps firing
+--   * the starter and every pool gadget go to max level and keep firing (more than the 6 slots
+--     allow, on purpose: the worst case)
 --   * spawning runs flat out, so RunRules.MaxAliveEnemies enemies stay alive
 --   * the run clock is held in the final phase: all Phase 1 enemies, no boss
 --   * the chef is healed every frame, and no level-ups happen (no "Order Up!" pauses)
