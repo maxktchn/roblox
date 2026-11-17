@@ -38,6 +38,9 @@ local bossId: number? = nil -- the big one, for its HP bar
 local hpFill: Frame? = nil
 local fightSeconds: number? = nil -- nil until a fight starts this run
 local fightOver = false
+-- A piece was removed without being killed (DEV: Wipe, or BOSS NOW clearing the kitchen), so an
+-- ended fight wasn't really beaten. Only the run report cares.
+local piecesLost = false
 local random = Random.new()
 
 local function getPlayer(): Player?
@@ -85,6 +88,7 @@ local function startFight()
 	RunManager.setClockHeld(true)
 	fightSeconds = 0
 	fightOver = false
+	piecesLost = false
 
 	local angle = random:NextNumber(0, 2 * math.pi)
 	local offset = Vector3.new(math.cos(angle), 0, math.sin(angle)) * SPAWN_DISTANCE
@@ -149,6 +153,7 @@ local function update(deltaTime: number)
 		if not EnemyService.getEnemyPosition(id) then
 			pieces[id] = nil
 			pieceCount -= 1
+			piecesLost = true
 		end
 	end
 	if pieceCount <= 0 then
@@ -166,9 +171,15 @@ local function update(deltaTime: number)
 end
 
 -- How long this run's mini-boss fight took (or has taken so far), in seconds without pauses,
--- and whether it's over. nil if the fight hasn't started this run. Used by the run report.
-function MiniBossService.getFightSeconds(): (number?, boolean)
-	return fightSeconds, fightOver
+-- whether it's over, and whether it was beaten (every piece killed, not removed by a DEV
+-- tool). nil seconds if the fight hasn't started this run. Used by the run report.
+function MiniBossService.getFightSeconds(): (number?, boolean, boolean)
+	return fightSeconds, fightOver, fightOver and not piecesLost
+end
+
+-- Whether a mini-boss fight is going on right now (DEV: CHEESE NOW won't start a second one).
+function MiniBossService.isFightOn(): boolean
+	return pieceCount > 0
 end
 
 -- A new run is starting (RestartService): forget the fight. RunManager.reset() frees the
@@ -182,6 +193,7 @@ function MiniBossService.reset()
 	hpFill = nil
 	fightSeconds = nil
 	fightOver = false
+	piecesLost = false
 	local player = getPlayer()
 	if player then
 		player:SetAttribute("MiniBoss", nil)

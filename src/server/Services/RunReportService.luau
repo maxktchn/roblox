@@ -137,10 +137,11 @@ local function buildReport(result: string): string
 	end
 
 	-- The mini-boss fight (#84). The clock holds during it, so its length isn't in endSeconds.
-	local fightSeconds, fightOver = MiniBossService.getFightSeconds()
+	local fightSeconds, fightOver, fightBeaten = MiniBossService.getFightSeconds()
 	local miniBoss = if fightSeconds == nil
 		then "not reached"
-		elseif fightOver then `beaten in {formatTime(fightSeconds)}`
+		elseif fightBeaten then `beaten in {formatTime(fightSeconds)}`
+		elseif fightOver then `removed by a DEV tool after {formatTime(fightSeconds)}`
 		else `still alive after {formatTime(fightSeconds)}`
 
 	-- The final boss fight (#91-#94): how long, when phase 2 started, how many laser turns.

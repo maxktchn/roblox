@@ -271,6 +271,20 @@ function ConfigCheck.run(): { string }
 			checkSplit(id, boss.Body)
 		end
 	end
+	-- No loops (A splits into B, B into A): the fight would never end. Follow each enemy's
+	-- chain of SplitInto; reaching an enemy already in the chain is a loop.
+	for id in Enemies do
+		local seen: { [string]: boolean } = {}
+		local current: string? = id
+		while current and Enemies[current] do
+			if seen[current] then
+				fail(`{id}: SplitInto goes round in a loop (back to "{current}")`)
+				break
+			end
+			seen[current] = true
+			current = Enemies[current].SplitInto
+		end
+	end
 
 	for _, id in RunRules.EnemyPool do
 		if not Enemies[id] then
