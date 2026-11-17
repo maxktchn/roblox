@@ -175,6 +175,17 @@ function ConfigCheck.run(): { string }
 	end
 
 	for id, boss in Bosses do
+		local trail = boss.Trail
+		if trail then
+			if not boss.Body then
+				fail(`Boss {id}: has a Trail but no Body`)
+			end
+			for _, field in { "Spacing", "Seconds", "Width", "Damage", "HitCooldown" } do
+				if (trail :: any)[field] <= 0 then
+					fail(`Boss {id}: Trail.{field} must be more than 0`)
+				end
+			end
+		end
 		if boss.Power and not BossPowers[boss.Power] then
 			fail(`Boss {id}: unknown Power "{boss.Power}"`)
 		end

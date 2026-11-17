@@ -40,6 +40,13 @@
 --   LaserReverseTell   seconds before the switch that the beams slow to a stop and go a
 --                      little paler: a hint, meant to be easy to miss
 -- Power: the boss power (id in BossPowers.luau) that defeating this boss unlocks (PRD §3.8).
+-- Trail: a damaging trail of puddles the boss leaves as it walks (TrailService, #99).
+--   Spacing       studs walked between puddles
+--   Seconds       how long a puddle stays (it fades out over the last second)
+--   Width         studs across a puddle
+--   Damage        damage to the chef for stepping in one, before armor
+--   HitCooldown   seconds before the trail can hurt the chef again
+--   Color         the puddles' colour
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -76,6 +83,15 @@ export type BossFight = {
 	LaserReverseTell: number,
 }
 
+export type BossTrail = {
+	Spacing: number,
+	Seconds: number,
+	Width: number,
+	Damage: number,
+	HitCooldown: number,
+	Color: Color3,
+}
+
 export type Boss = {
 	Name: string,
 	Mechanics: string,
@@ -83,13 +99,14 @@ export type Boss = {
 	Body: Enemies.Enemy?,
 	Fight: BossFight?,
 	Power: string?,
+	Trail: BossTrail?,
 }
 
 local Bosses: { [string]: Boss } = {
 	-- Mini-boss at 3:00 (MiniBossService): the run clock holds at 3:00 until every piece is gone.
 	BigCheese = {
 		Name = "The Big Cheese",
-		Mechanics = "Splits on death: 1 -> 3 Cheese Wedges -> 6 Cheese Cubes",
+		Mechanics = "Leaves a melted cheese trail; splits on death: 1 -> 3 Cheese Wedges -> 6 Cheese Cubes",
 		Mvp = true,
 		Body = {
 			Name = "The Big Cheese",
@@ -107,6 +124,16 @@ local Bosses: { [string]: Boss } = {
 			Movement = "Chase",
 			SplitInto = "CheeseWedge",
 			SplitCount = 3,
+		},
+		-- Melted cheese (#99): stepping in it hurts, so it can't be kited round the same ground.
+		-- Only the big one leaves a trail, not its Wedges or Cubes.
+		Trail = {
+			Spacing = 1.5,
+			Seconds = 4,
+			Width = 3,
+			Damage = 20,
+			HitCooldown = 1,
+			Color = Color3.fromRGB(255, 205, 40),
 		},
 	},
 	MicrowaveMonster = {
