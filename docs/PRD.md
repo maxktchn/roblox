@@ -112,7 +112,7 @@ The restaurant's food has gone rotten and come alive. You're the chef, and you h
 | Pie | Heals 20% max HP. Moldy Bread, Meatballs and other bigger enemies have a 4.5% chance to drop one (Fruit Flies never do), about 13 a run. Walk over it to eat it (2.5 studs); it stays on the floor while you're at full HP. At most 15 on the floor. |
 | Tip Jar | Pulls every tip on the map to the player |
 | Fire Extinguisher | Clears all normal enemies on screen |
-| Lunchbox | Dropped by elites and bosses. Gives 1 to 3 free upgrades. |
+| Lunchbox | Every elite drops one (#120). Walk over it (2.5 studs) for **1 free upgrade**: the normal "Order Up!" card screen, without changing your level (`RunRules.EliteLunchboxUpgrades`). It stays on the floor until picked up; at most 6. Bosses may drop one with 3 upgrades later. |
 
 ### 2.7 Revive
 - One revive per run
@@ -202,7 +202,11 @@ All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with ga
 | Spaghetti Monster | Disabler | Slows the player when touching | No |
 | Burnt Toast | Tank | Slow, high HP | No |
 
-**Elites:** Larger, glowing versions of normal enemies with more HP. They always drop a Lunchbox.
+**Elites** (#120, tune the `Elite...` values in `RunRules.luau` and the schedule in `Chapters.luau`): larger, glowing versions of normal enemies. One arrives at each scheduled time (Chapter 1: **1:50, 2:40, 3:40, 4:15, 5:00, 5:40**), picked at random from the current phase's enemies that can be elite (Moldy Bread, Rotten Tomato, Meatball, Sour Lemon; never Fruit Flies). An elite is **1.5x the size** with **x8 HP, x1.5 contact damage and x5 tips**, on top of the run-time scaling below; speed is unchanged. An elite tomato's puddle is 1.5x wider and an elite lemon's shot does x1.5 damage. It has a gold outline and glow, always shows its health bar, ignores the alive cap, and always drops a Lunchbox. The clock holds during The Big Cheese, so held time doesn't move the schedule.
+
+**Rotten Tomato puddle** (#117, tune `DeathPuddle` in `Enemies.luau`): whenever a tomato dies, a red puddle **6 studs** across appears where it died for **4 s** (fading over the last second). The chef standing in any puddle walks **40% slower** (doesn't stack; full speed straight away after leaving). It never hurts, and enemies aren't slowed. At most 10 on the floor (`RunRules.MaxPuddles`); a new one removes the oldest.
+
+**Sour Lemon** (#118, tune `KeepAway` and `Shot` in `Enemies.luau`): keeps **18-25 studs** from the chef, backing away when you get closer (it's slower than you, so it can be caught). Within 30 studs it shoots every **3 s** (the first 1.5 s after getting in range). Tell: it swells to 1.3x for **0.5 s**, then a yellow blob flies flat at **20 studs/s** to where the chef was and stops there. Walking sideways dodges it. A hit does **8 damage** (before armor; grows over the run like contact damage). At most 30 blobs in the air (`RunRules.MaxJuiceShots`).
 
 **Contact damage:** the chef starts with **100 HP** (Bread adds %). An enemy hurts the chef when it touches them (distance check: within 0.75 studs of touching, using the chef's body (1 stud from its centre, `RunRules.ChefRadius`) and the enemy's real thickness toward the chef). After a hit, the chef can't be hurt again for **0.5 s**, and only the strongest touching enemy's damage counts. Armor (Beef Jerky) is subtracted from each hit, minimum 1. At 0 HP the run is lost.
 
@@ -228,7 +232,7 @@ All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with ga
 | Cheese Wedge | 3 | 240 | 10 | 8 | 6 |
 | Cheese Cube | 6 | 80 | 15 | 5 | 3 |
 
-**Movement (Phase 1):** Fruit Flies spawn in groups of 6. Meatballs roll straight at where the chef was, and turn to aim again after overshooting by 25 studs or hitting a wall. Before every charge (when it spawns and each time it re-aims) a Meatball stops and wobbles for **0.4 s** (#119, `RunRules.ChargeWindupSeconds`), so a charge can be seen coming and dodged. Everything else walks straight at the chef. Enemies push each other apart so the swarm spreads into a crowd instead of stacking on one spot.
+**Movement:** Fruit Flies spawn in groups of 6. Meatballs roll straight at where the chef was, and turn to aim again after overshooting by 25 studs or hitting a wall. Before every charge (when it spawns and each time it re-aims) a Meatball stops and wobbles for **0.4 s** (#119, `RunRules.ChargeWindupSeconds`), so a charge can be seen coming and dodged. Sour Lemons keep their distance (above). Everything else walks straight at the chef. Enemies push each other apart so the swarm spreads into a crowd instead of stacking on one spot.
 
 **Scaling over the run:** enemies get tougher the longer the run goes, so a strong build still meets resistance late. Every minute of run time (paused time doesn't count), new enemies get **+20% HP** and **+8.5% contact damage**, compounding. That's x1.7 HP at 3:00 and x3.0 at 6:00, and x1.6 damage at 6:00. This is well below the player's growth (about 10-20x damage from Lv 1 knife to a maxed build), so the player still pulls ahead. Speed and tips don't scale. The boss doesn't scale either (its numbers are in 3.5), but its minions do. Tune in `RunRules.luau` (`EnemyHpGrowthPerMinute`, `EnemyDamageGrowthPerMinute`).
 
@@ -272,15 +276,17 @@ All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with ga
 |---|---|
 | 0:00 to 0:40 | Moldy Bread only (warm-up: time to level up before the fast Fruit Flies) |
 | 0:40 to 1:15 | Add Fruit Flies |
-| 1:15 to 3:00 | Add Rotten Tomatoes and Meatballs. First elite at 1:50. |
+| 1:15 to 3:00 | Add Rotten Tomatoes and Meatballs. Elites at 1:50 and 2:40. |
 | 3:00 | The Big Cheese (mini-boss) |
-| 3:00 to 5:25 | Add Sour Lemons. Larger waves and a "dinner rush" swarm event at 4:30. |
+| 3:00 to 5:25 | Add Sour Lemons (only after The Big Cheese is beaten: the clock holds until then). Larger waves and the dinner rush at 4:30. Elites at 3:40, 4:15, 5:00. |
 | 5:25 to 6:00 | Final heavy wave |
 | 6:00 | Microwave Monster in the closed arena |
 
 **Spawn rate per phase** (spawn groups per second, tune in `Chapters.luau`; most enemies spawn alone, Fruit Flies in groups of 6): 0.6 until 1:15 (Moldy Bread only until 0:40), 1 until 3:00, 1.4 until 5:25, 2 until 6:00. Normal spawns stop at 6:00.
 
-**Phase 1:** only the Phase 1 enemies (Moldy Bread, Fruit Flies, Meatball, set in `RunRules.EnemyPool`) spawn from this timeline. The Big Cheese mini-boss arrives at 3:00 (#84): spawns stop and the clock holds at 3:00 until all its pieces are defeated, then the timeline carries on. Elites and the dinner rush wait for later. At 6:00 the Microwave Monster arrives; defeating it wins the run.
+**Dinner rush** (#121, tune `Rushes` in `Chapters.luau`): from **4:30 to 4:50**, normal spawns run **3x** faster (1.4 to 4.2 spawn groups a second) from every side of the chef, still capped at `RunRules.MaxAliveEnemies`. A big "DINNER RUSH!" banner shows 2 s before it starts and stays (smaller) until it ends. A bell sound can be added later (`SoundId`).
+
+**Enemies in the timeline:** all five Chapter 1 enemies spawn (`RunRules.EnemyPool`, since P2-2 #122). The Big Cheese mini-boss arrives at 3:00 (#84): spawns stop and the clock holds at 3:00 until all its pieces are defeated, then the timeline carries on. At 6:00 the Microwave Monster arrives; defeating it wins the run.
 
 ### 3.7 Chapters (maps)
 - Chapters unlock in order. Beat a chapter's final boss to unlock the next one.
