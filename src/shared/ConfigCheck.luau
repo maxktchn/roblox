@@ -249,6 +249,40 @@ function ConfigCheck.run(): { string }
 		if enemy.PieDropChance and (enemy.PieDropChance < 0 or enemy.PieDropChance > 1) then
 			fail(`Enemy {id}: PieDropChance must be between 0 and 1`)
 		end
+		if enemy.Movement == "KeepAway" then
+			local keep = enemy.KeepAway
+			if not keep then
+				fail(`Enemy {id}: "KeepAway" movement needs KeepAway`)
+			elseif keep.Min <= 0 or keep.Max <= keep.Min then
+				fail(`Enemy {id}: KeepAway needs 0 < Min < Max`)
+			end
+		end
+		local shot = enemy.Shot
+		if shot then
+			for _, field in { "Every", "Windup", "Swell", "Speed", "Damage", "Range", "Size" } do
+				if (shot :: any)[field] <= 0 then
+					fail(`Enemy {id}: Shot.{field} must be more than 0`)
+				end
+			end
+			if shot.FirstDelay < 0 then
+				fail(`Enemy {id}: Shot.FirstDelay can't be negative`)
+			end
+		end
+		if enemy.IsElite then
+			fail(`Enemy {id}: IsElite is set by EnemyService, not in Enemies.luau`)
+		end
+		if enemy.CanBeElite and enemy.GroupSize and enemy.GroupSize > 1 then
+			fail(`Enemy {id}: enemies that spawn in groups can't be elites`)
+		end
+		local puddle = enemy.DeathPuddle
+		if puddle then
+			if puddle.Width <= 0 or puddle.Seconds <= 0 then
+				fail(`Enemy {id}: DeathPuddle Width and Seconds must be more than 0`)
+			end
+			if puddle.Slow <= 0 or puddle.Slow >= 1 then
+				fail(`Enemy {id}: DeathPuddle.Slow must be between 0 and 1`)
+			end
+		end
 	end
 
 	-- Splits (The Big Cheese, #84): normal enemies and boss bodies alike.
@@ -301,6 +335,28 @@ function ConfigCheck.run(): { string }
 			fail(`Chapter {id}: unknown mini-boss "{chapter.MiniBoss}"`)
 		elseif chapter.MiniBoss and not Bosses[chapter.MiniBoss].Body then
 			fail(`Chapter {id}: mini-boss "{chapter.MiniBoss}" has no Body`)
+		end
+		if chapter.Elites then
+			local last = -1
+			for _, seconds in chapter.Elites do
+				if seconds <= last or seconds < 0 or seconds >= RunRules.RunLengthSeconds then
+					fail(`Chapter {id}: Elites times must be in order and inside the run`)
+					break
+				end
+				last = seconds
+			end
+		end
+		if chapter.Rushes then
+			local lastEnd = -math.huge
+			for index, rush in chapter.Rushes do
+				if rush.Seconds <= 0 or rush.SpawnScale <= 0 or rush.Warning < 0 then
+					fail(`Chapter {id}: rush {index} needs Seconds and SpawnScale above 0, Warning 0 or more`)
+				end
+				if rush.At - rush.Warning < lastEnd or rush.At + rush.Seconds > RunRules.RunLengthSeconds then
+					fail(`Chapter {id}: rush {index} overlaps another or runs past the end of the run`)
+				end
+				lastEnd = rush.At + rush.Seconds
+			end
 		end
 		if chapter.Timeline then
 			-- Phases must run back to back from 0:00 to the end of the shift, with no gaps.

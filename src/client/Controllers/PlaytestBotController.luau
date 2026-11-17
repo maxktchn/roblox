@@ -7,7 +7,9 @@
 --   * toward the nearest small enemy (or the mini-boss) when it's far and HP is fine, so
 --     weapons hit something
 --   * away from the walls, plus a slow circle around the arena, like a person kiting
---   * toward a pie when hurt, otherwise toward tips nearby
+--   * toward a pie when hurt, otherwise toward tips nearby; always toward a Lunchbox (#120)
+--   * sideways out of the path of a Sour Lemon's juice blob, and out of Rotten Tomato
+--     puddles when there's another way (#122); elites are dodged like Meatballs, never chased
 --   * final boss (#94): fights from knife range (circling it, 4-8 studs from its edge, like a
 --     person would), out of reach while its damage pulse is warning, away from popcorn
 --     kernels and out of a pop's blast area, and during
@@ -43,6 +45,14 @@ local PUSH_WEIGHT: { [string]: number } = { Meatball = 3, FruitFlies = 0.6, Popc
 local BOSS_PUSH_WEIGHT = 6
 local KEEP_AWAY_KERNEL = 11 -- popcorn pops 8 studs wide: stay outside that, plus a bit
 local AIM_KERNEL_WITHIN = 25 -- aim at a popcorn kernel this close instead of the nearest enemy
+-- Chapter 1 enemies (#122).
+local ELITE_PUSH_WEIGHT = 3
+local JUICE_SEE = 14 -- studs: blobs closer than this are watched
+local JUICE_MISS = 3 -- studs: a blob whose path passes closer than this will hit, so step aside
+local JUICE_WEIGHT = 6
+local PUDDLE_MARGIN = 1.5 -- studs past a slowing puddle's edge to keep to
+local PUDDLE_WEIGHT = 2.5 -- gentle: getting slowed is better than walking into the swarm
+local LUNCHBOX_WEIGHT = 1.5
 
 -- Spinning lasers (#93).
 local LASER_RADIUS_MIN = 7 -- studs from the boss's centre to dodge at: close enough to keep swinging
@@ -75,9 +85,13 @@ end
 -- (The Big Cheese, #84) is slow and only hurts by touch, so the bot chases it like a small
 -- enemy and fights it in knife range: the clock holds until it's beaten, so running from
 -- it forever would stall the run.
+local function isElite(name: string): boolean
+	return string.sub(name, 1, 6) == "Elite_"
+end
+
 local function isBig(name: string): boolean
 	local boss = Bosses[name]
-	return name == "Meatball" or name == "PopcornKernel" or (boss ~= nil and boss.Fight ~= nil)
+	return name == "Meatball" or name == "PopcornKernel" or isElite(name) or (boss ~= nil and boss.Fight ~= nil)
 end
 
 -- What the bot has seen of the lasers: beam 1's angle last frame and how fast they turn.
@@ -240,7 +254,10 @@ local function step(deltaTime: number)
 						-- The final boss: handled below (fought from knife range, not avoided).
 						bossAway, bossDistance = away, distance
 					elseif distance < keep and distance < SEE_DISTANCE then
-						local weight = if Bosses[enemy.Name] then BOSS_PUSH_WEIGHT else PUSH_WEIGHT[enemy.Name] or 1
+						local weight = if Bosses[enemy.Name]
+							then BOSS_PUSH_WEIGHT
+							elseif isElite(enemy.Name) then ELITE_PUSH_WEIGHT
+							else PUSH_WEIGHT[enemy.Name] or 1
 						push += away.Unit * weight * 25 / (distance * distance)
 					end
 					if not big and distance < smallDistance then
@@ -299,10 +316,59 @@ local function step(deltaTime: number)
 				end
 			end
 		end
+		local lunchbox: Vector3? = nil
+		for _, model in pickups:GetChildren() do
+			if model:IsA("Model") and model.Name == "Lunchbox" then
+				local toward = flat(model:GetPivot().Position - pos)
+				if toward.Magnitude > 0.1 and (not lunchbox or toward.Magnitude < lunchbox.Magnitude) then
+					lunchbox = toward
+				end
+			end
+		end
+		if lunchbox then
+			push += lunchbox.Unit * LUNCHBOX_WEIGHT
+		end
 		if pie and hp < maxHp * PIE_BELOW_HP and pieDistance > 0.1 then
 			push += pie.Unit * 1.5
 		elseif tip and tipDistance < TIP_DISTANCE and tipDistance > 0.1 then
 			push += tip.Unit * 0.4
+		end
+	end
+
+	-- Sour Lemon juice (#118): a blob shows where it's going (its "Target"). If its path passes
+	-- through the chef, step sideways off it, like a person dodging.
+	local juice = workspace:FindFirstChild("JuiceShots")
+	if juice then
+		for _, blob in juice:GetChildren() do
+			local target = blob:GetAttribute("Target")
+			if blob:IsA("BasePart") and blob.Position.Y > -50 and typeof(target) == "Vector3" then
+				local from = flat(blob.Position)
+				local path = flat(target) - from
+				local toChef = flat(pos) - from
+				if toChef.Magnitude < JUICE_SEE and path.Magnitude > 0.1 then
+					local along = math.clamp(toChef:Dot(path.Unit), 0, path.Magnitude)
+					local closest = from + path.Unit * along
+					local off = flat(pos) - closest
+					if off.Magnitude < JUICE_MISS then
+						local side = if off.Magnitude > 0.1 then off.Unit else Vector3.new(-path.Unit.Z, 0, path.Unit.X)
+						push += side * JUICE_WEIGHT
+					end
+				end
+			end
+		end
+	end
+
+	-- Rotten Tomato puddles (#117): step out of them when nothing worse is pushing.
+	local puddles = workspace:FindFirstChild("SlowPuddles")
+	if puddles then
+		for _, puddle in puddles:GetChildren() do
+			if puddle:IsA("BasePart") then
+				local away = flat(pos - puddle.Position)
+				local radius = puddle.Size.Y / 2 -- a flat disc: its width is Size.Y and Size.Z
+				if away.Magnitude < radius + PUDDLE_MARGIN and away.Magnitude > 0.1 then
+					push += away.Unit * PUDDLE_WEIGHT
+				end
+			end
 		end
 	end
 

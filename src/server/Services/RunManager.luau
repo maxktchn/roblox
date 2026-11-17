@@ -11,6 +11,8 @@
 --   "Hp", "MaxHp"  the chef's HP (#9)
 --   "RunSeconds"   run timer in whole seconds (#6)
 --   "RunState"     "Playing", "Lost" (#9) or "Won" (final boss defeated, #11)
+--   "Rush", "RushStage", "RushSound"  a swarm event (the dinner rush, #121): its name, "Warning"
+--                  or "On", and its sound id; all nil when there's none
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -77,6 +79,11 @@ local miniBossCallbacks: { () -> () } = {}
 local miniBossStarted = false
 -- While held, the clock stands still and nothing new spawns (the mini-boss fight).
 local clockHeld = false
+-- The dinner rush (#121): how much faster spawns run right now (1 = normal), and which rush
+-- is warning or on (nil = none).
+local rushScale = 1
+local rushShown: Chapters.Rush? = nil
+local rushStage: "Warning" | "On" | nil = nil
 
 local function getTimeline(): { Chapters.Phase }
 	return Chapters[CHAPTER].Timeline or {}
@@ -106,7 +113,7 @@ local function setPhase(index: number)
 				table.insert(currentEnemyTypes, enemyType)
 			end
 		end
-		currentSpawnsPerSecond = phase.SpawnsPerSecond
+		currentSpawnsPerSecond = phase.SpawnsPerSecond * rushScale
 	end
 	for _, callback in phaseCallbacks do
 		task.spawn(callback, table.clone(currentEnemyTypes), currentSpawnsPerSecond)
@@ -120,6 +127,54 @@ function RunManager.onPhaseChanged(callback: PhaseCallback)
 	if phaseIndex > 0 then
 		task.spawn(callback, table.clone(currentEnemyTypes), currentSpawnsPerSecond)
 	end
+end
+
+-- Copy the dinner rush onto the player for the HUD.
+local function syncRush()
+	local player = Players:GetPlayers()[1]
+	if player then
+		local rush = rushShown
+		player:SetAttribute("Rush", rush and rush.Name)
+		player:SetAttribute("RushStage", rushStage)
+		player:SetAttribute("RushSound", rush and rush.SoundId)
+	end
+end
+
+-- Work out whether a rush is warning or on at the current clock time, and when its spawn rate
+-- changes, tell the phase listeners again (they get the rate times SpawnScale).
+local function updateRush()
+	local scale = 1
+	local shown: Chapters.Rush? = nil
+	local stage: "Warning" | "On" | nil = nil
+	local rushes: { Chapters.Rush } = Chapters[CHAPTER].Rushes or {}
+	for _, rush in rushes do
+		if runSeconds >= rush.At and runSeconds < rush.At + rush.Seconds then
+			scale, shown, stage = rush.SpawnScale, rush, "On"
+		elseif runSeconds >= rush.At - rush.Warning and runSeconds < rush.At then
+			shown, stage = rush, "Warning"
+		end
+	end
+	if shown ~= rushShown or stage ~= rushStage then
+		rushShown, rushStage = shown, stage
+		syncRush()
+	end
+	if scale ~= rushScale then
+		rushScale = scale
+		if phaseIndex > 0 and not clockHeld then
+			setPhase(phaseIndex)
+		end
+	end
+end
+
+-- True while a swarm event (the dinner rush) is on.
+function RunManager.isRushOn(): boolean
+	return rushStage == "On"
+end
+
+-- Which enemy types the current phase spawns (only those in RunRules.EnemyPool). EliteService
+-- picks its elites from these.
+function RunManager.getSpawnTypes(): { string }
+	return table.clone(currentEnemyTypes)
 end
 
 -- Which chapter this run is in (a key of Chapters.luau).
@@ -222,6 +277,8 @@ local function endRun(runResult: "Won" | "Lost")
 	runOver = true
 	result = runResult
 	paused = true
+	rushShown, rushStage = nil, nil -- the banner goes with the run
+	syncRush()
 	syncAttributes()
 end
 
@@ -296,6 +353,9 @@ function RunManager.reset()
 	finalBossStarted = false
 	miniBossStarted = false
 	clockHeld = false
+	rushScale = 1
+	rushShown, rushStage = nil, nil
+	syncRush()
 	syncAttributes()
 end
 
@@ -339,6 +399,7 @@ local function update(deltaTime: number)
 	if index ~= phaseIndex then
 		setPhase(index)
 	end
+	updateRush()
 
 	if miniBossNow then
 		for _, callback in miniBossCallbacks do

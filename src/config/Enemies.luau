@@ -13,6 +13,9 @@
 --   "Charge" winds up (stops and wobbles, RunRules.ChargeWindupSeconds), then picks a
 --            direction toward the chef and rolls straight; winds up and re-aims after it
 --            overshoots the chef or reaches a wall
+--   "KeepAway" keeps between KeepAway.Min and KeepAway.Max studs from the chef: walks in when
+--            further, backs away when closer (always facing the chef), stands still in between
+--            (Sour Lemon #118). Needs KeepAway.
 -- GroupSize: how many spawn together in one cluster (1 if left out)
 -- PieDropChance: chance (0 to 1) it drops a Pie that heals the chef (PRD §2.6). Left out = never.
 --                 Bigger enemies only: Fruit Flies come in swarms, so pies from them would be everywhere.
@@ -20,6 +23,45 @@
 --               (RunRules.ChefHurtCooldown if left out; the boss hits harder but slower)
 -- SplitInto, SplitCount: when it dies, SplitCount enemies of type SplitInto appear where it
 --               died (MiniBossService, The Big Cheese #84). Left out = no split.
+-- DeathPuddle: when it dies (to anything), a puddle that slows the chef appears where it died
+--               (PuddleService, Rotten Tomato #117). Left out = no puddle.
+--   Width    studs across
+--   Seconds  how long it stays (it fades out over the last second)
+--   Slow     how much slower the chef walks while standing in one (0.4 = 40% slower; doesn't stack)
+--   Color    the puddle's colour
+-- CanBeElite: true = the elite schedule (Chapters.luau Elites, #120) can pick it. Elites are
+--               bigger, tougher versions (RunRules Elite... values) that drop a Lunchbox.
+-- IsElite: set only on the elite versions EnemyService makes (type "Elite_<id>"); never in this file.
+-- KeepAway: Min and Max studs from the chef for "KeepAway" movement.
+-- Shot: a ranged attack (JuiceService, Sour Lemon #118). Within Range studs of the chef it shoots
+--               every Every seconds (the first FirstDelay seconds after getting in range).
+--               Tell: it swells to Swell times its size for Windup seconds, then a blob (Size
+--               studs, Color) flies flat at Speed studs/s to where the chef was, and stops there.
+--               Damage is before armor, and grows over the run like contact damage.
+
+export type DeathPuddle = {
+	Width: number,
+	Seconds: number,
+	Slow: number,
+	Color: Color3,
+}
+
+export type KeepAway = {
+	Min: number,
+	Max: number,
+}
+
+export type Shot = {
+	Every: number,
+	FirstDelay: number,
+	Windup: number,
+	Swell: number,
+	Speed: number,
+	Damage: number,
+	Range: number,
+	Size: number,
+	Color: Color3,
+}
 
 export type Enemy = {
 	Name: string,
@@ -33,12 +75,17 @@ export type Enemy = {
 	Size: Vector3,
 	Shape: "Block" | "Ball",
 	Color: Color3,
-	Movement: "Chase" | "Charge",
+	Movement: "Chase" | "Charge" | "KeepAway",
 	GroupSize: number?,
 	PieDropChance: number?,
 	HurtCooldown: number?,
 	SplitInto: string?,
 	SplitCount: number?,
+	DeathPuddle: DeathPuddle?,
+	KeepAway: KeepAway?,
+	Shot: Shot?,
+	CanBeElite: boolean?,
+	IsElite: boolean?,
 }
 
 local Enemies: { [string]: Enemy } = {
@@ -56,6 +103,7 @@ local Enemies: { [string]: Enemy } = {
 		Shape = "Block",
 		Color = Color3.fromRGB(150, 170, 90),
 		Movement = "Chase",
+		CanBeElite = true,
 	},
 	FruitFlies = {
 		Name = "Fruit Flies",
@@ -86,6 +134,14 @@ local Enemies: { [string]: Enemy } = {
 		Shape = "Ball",
 		Color = Color3.fromRGB(170, 60, 50),
 		Movement = "Chase",
+		CanBeElite = true,
+		-- Area denial (#117): it bursts into a puddle that slows (never hurts) the chef.
+		DeathPuddle = {
+			Width = 6,
+			Seconds = 4,
+			Slow = 0.4,
+			Color = Color3.fromRGB(150, 40, 35),
+		},
 	},
 	Meatball = {
 		Name = "Meatball",
@@ -101,6 +157,7 @@ local Enemies: { [string]: Enemy } = {
 		Shape = "Ball",
 		Color = Color3.fromRGB(120, 70, 45),
 		Movement = "Charge",
+		CanBeElite = true,
 	},
 	SourLemon = {
 		Name = "Sour Lemon",
@@ -115,7 +172,22 @@ local Enemies: { [string]: Enemy } = {
 		Size = Vector3.new(2.8, 2.8, 2.8),
 		Shape = "Ball",
 		Color = Color3.fromRGB(245, 220, 60),
-		Movement = "Chase",
+		-- Ranged (#118): keeps its distance (slower than the chef, so it can be caught) and lobs
+		-- a slow, telegraphed blob of juice that walking sideways dodges.
+		Movement = "KeepAway",
+		CanBeElite = true,
+		KeepAway = { Min = 18, Max = 25 },
+		Shot = {
+			Every = 3,
+			FirstDelay = 1.5,
+			Windup = 0.5,
+			Swell = 1.3,
+			Speed = 20,
+			Damage = 8,
+			Range = 30,
+			Size = 1.2,
+			Color = Color3.fromRGB(255, 235, 50),
+		},
 	},
 	SpaghettiMonster = {
 		Name = "Spaghetti Monster",

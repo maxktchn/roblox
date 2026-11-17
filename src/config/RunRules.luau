@@ -21,6 +21,8 @@ return {
 	-- chef (contact, where chasers stop, boss pulses). The chef's body is about 2 studs wide and
 	-- 1 deep, so 1 is a fair circle around it.
 	ChefRadius = 1,
+	-- The chef's walk speed before Butter and slows (StatsService.getWalkSpeed, #117).
+	ChefWalkSpeed = 16,
 	-- An enemy hurts the chef when it is within touching distance plus this many studs.
 	ContactReach = 0.75,
 
@@ -78,8 +80,24 @@ return {
 	PieHealFraction = 0.2, -- of max HP
 	PiePickupDistance = 2.5, -- studs from the chef's centre to the pie
 	MaxPiesOnGround = 15, -- past this, new pies aren't dropped
-	LunchboxUpgradesMin = 1,
-	LunchboxUpgradesMax = 3,
+	-- Rotten Tomato puddles (#117): past this many on the floor, a new one removes the oldest.
+	MaxPuddles = 10,
+	-- Sour Lemon juice blobs in the air at once (#118); past this, lemons skip a shot.
+	MaxJuiceShots = 30,
+	-- Lunchbox (#120): elites always drop one. Walk over it for free "Order Up!" picks.
+	EliteLunchboxUpgrades = 1,
+	LunchboxPickupDistance = 2.5, -- studs from the chef's centre
+	MaxLunchboxesOnGround = 6, -- past this, new ones aren't dropped
+
+	-- Elites (#120, PRD §3.4): bigger, tougher versions of normal enemies, on the chapter's
+	-- Elites schedule (Chapters.luau). On top of the normal per-minute scaling; speed unchanged.
+	-- An elite Rotten Tomato's puddle is EliteSizeScale wider; an elite Sour Lemon's shot does
+	-- EliteDamageScale more.
+	EliteSizeScale = 1.5,
+	EliteHpScale = 8,
+	EliteDamageScale = 1.5,
+	EliteTipScale = 5,
+	EliteGlowColor = Color3.fromRGB(255, 200, 50),
 
 	-- Revive (PRD §2.7)
 	RevivesPerRun = 1,
@@ -99,7 +117,7 @@ return {
 	-- Enemy spawning (PRD §2.1, §8.3). How many spawn per second is set per timeline phase in Chapters.luau.
 	-- Which enemies can spawn at all. Phase 1 picks (PRD §9); the timeline skips anything not listed.
 	-- Add ids here to put more enemies in the game. Checked by ConfigCheck.
-	EnemyPool = { "MoldyBread", "FruitFlies", "Meatball" },
+	EnemyPool = { "MoldyBread", "FruitFlies", "RottenTomato", "Meatball", "SourLemon" },
 	-- Enemies appear on a ring this far from the chef, just outside the camera view.
 	-- With the camera above (pitch 55, distance 45, FOV 50) the farthest visible ground,
 	-- a corner of a wide phone screen, is about 85 studs away. Retune if the camera changes.
