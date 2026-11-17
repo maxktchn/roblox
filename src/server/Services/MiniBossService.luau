@@ -8,6 +8,8 @@
 --   3. When a cheese piece dies, the pieces in its config's SplitInto appear where it died
 --      (Big Cheese -> 3 Wedges -> 6 Cubes). They ignore the alive cap so a split always happens.
 --   4. When the last piece is gone, the clock runs again and normal spawns come back.
+-- A mini-boss with a Trail in Bosses.luau leaves it as it walks (TrailService, #99): The Big
+-- Cheese's melted cheese. Only the big one; its pieces don't.
 --
 -- Player attribute set here (read by the HUD):
 --   "MiniBoss"  the mini-boss's name while the fight is on, otherwise nil
@@ -21,6 +23,7 @@ local Bosses = require(ReplicatedStorage.Config.Bosses)
 local Chapters = require(ReplicatedStorage.Config.Chapters)
 local EnemyService = require(script.Parent.EnemyService)
 local RunManager = require(script.Parent.RunManager)
+local TrailService = require(script.Parent.TrailService)
 
 local MiniBossService = {}
 
@@ -92,6 +95,9 @@ local function startFight()
 	end
 	bossId = id
 	addPiece(id)
+	if boss.Trail then
+		TrailService.follow(id, boss.Trail)
+	end
 	local part = EnemyService.getEnemyPart(id)
 	if part then
 		hpFill = BossHpBar.attach(part, boss.Name)
@@ -168,6 +174,7 @@ end
 -- A new run is starting (RestartService): forget the fight. RunManager.reset() frees the
 -- clock, and EnemyService.clearAll() already removed the pieces (without kill callbacks).
 function MiniBossService.reset()
+	TrailService.reset()
 	table.clear(pieces)
 	pieceCount = 0
 	bossId = nil

@@ -220,6 +220,8 @@ All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with ga
 
 **The Big Cheese's pieces** (mini-boss, see 3.5; tune in `Bosses.luau` and `Enemies.luau`). They never spawn in the normal waves and don't get the run-time scaling below. The Big Cheese always drops a pie when it splits.
 
+**Melted cheese trail** (#99, tune `Trail` in `Bosses.luau`): The Big Cheese drops a cheese-yellow puddle every 1.5 studs it walks. Each puddle is 3 studs wide and lasts 4 s (fading over the last second). Stepping in one does **20 damage**, at most once a second. Only the big one leaves a trail, not its Wedges or Cubes; puddles already down fade normally after it splits.
+
 | Piece | Count | HP | Speed | Damage | Tips |
 |---|---|---|---|---|---|
 | The Big Cheese | 1 | 600 | 6 | 12 | 20 |
@@ -233,7 +235,7 @@ All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with ga
 ### 3.5 Bosses
 | Boss | When | Mechanics | Power (see 3.8) | MVP |
 |---|---|---|---|---|
-| The Big Cheese | 3:00 mini-boss (Chapter 1) | Splits on death: 1 → 3 Cheese Wedges → 6 Cheese Cubes. Normal spawns stop and the run clock holds at 3:00 until every piece is defeated | None (mini-boss) | Yes |
+| The Big Cheese | 3:00 mini-boss (Chapter 1) | Leaves a melted cheese trail that hurts (20). Splits on death: 1 → 3 Cheese Wedges → 6 Cheese Cubes. Normal spawns stop and the run clock holds at 3:00 until every piece is defeated | None (mini-boss) | Yes |
 | Microwave Monster | 6:00 final boss (Chapter 1) | Two HP phases. Phase 1: walks at the chef, summons minions, sends out damage pulses, fires homing popcorn. Below half HP: takes turns between spinning lasers in the middle of the arena and a walking turn (phase 1 again) | **Microwave Pulse** | Yes |
 | Doughzilla | Final boss (Chapter 2, Bakery) | Giant dough that grows bigger by absorbing flour clouds | TBD | No |
 | Kraken Roll | Final boss (Chapter 3, Sushi Bar) | Sushi kraken that grabs the player from the conveyor belts | TBD | No |

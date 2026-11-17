@@ -64,8 +64,15 @@ local function nameOf(id: string): string
 		or Ingredients[id]
 		or Enemies[id]
 		or Bosses[id]
-	if id == "BossPulse" then
-		return "Boss pulse"
+	-- Damage sources that aren't config ids.
+	local special = ({
+		BossPulse = "Boss pulse",
+		BossLaser = "Boss lasers",
+		Popcorn = "Popcorn pop",
+		CheeseTrail = "Cheese trail",
+	} :: { [string]: string })[id]
+	if special then
+		return special
 	end
 	return if config and config.Name then config.Name else id
 end
