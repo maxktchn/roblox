@@ -10,6 +10,8 @@
 --   "Hp", "MaxHp"                   RunManager, the chef's HP (#9)
 --   "RunState"                      RunManager: "Playing", "Lost" or "Won" (shows the run-over banner)
 --   "JustUnlocked"                  UnlockService: a boss power this run unlocked (line on the banner)
+--   "SaveStatus"                    DataService: "Off" shows the not-saving banner (P2-1, #114)
+-- Until the lobby exists (#109), the "Test build" note (Config.Saving.TestBuild) sits here too.
 -- If Hp/MaxHp are missing the HP bar shows the Humanoid's health instead, and the
 -- timer shows "--:--" until RunSeconds exists.
 -- Pause button: not in Phase 1 yet (the run already pauses during "Order Up!").
@@ -22,6 +24,7 @@ local Gadgets = require(ReplicatedStorage.Config.Gadgets)
 local Ingredients = require(ReplicatedStorage.Config.Ingredients)
 local Recipes = require(ReplicatedStorage.Config.Recipes)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Saving = require(ReplicatedStorage.Config.Saving)
 local Starters = require(ReplicatedStorage.Config.Starters)
 
 local HUDController = {}
@@ -36,6 +39,8 @@ local COLORS = {
 	hpHigh = Color3.fromRGB(70, 190, 80),
 	hpLow = Color3.fromRGB(220, 60, 50),
 	cheese = Color3.fromRGB(255, 200, 60), -- the mini-boss line (#84)
+	saveOff = Color3.fromRGB(150, 30, 30), -- the not-saving banner (#114)
+	note = Color3.fromRGB(190, 190, 190), -- the small test-build note
 }
 
 -- Icon colours by item type (same idea as the Order Up! cards).
@@ -62,6 +67,7 @@ local tipText: TextLabel
 local timerLabel: TextLabel
 local miniBossLabel: TextLabel -- "Defeat The Big Cheese!" while the mini-boss fight is on
 local killsLabel: TextLabel
+local saveBanner: Frame -- "Progress isn't saving right now" while SaveStatus is "Off" (#114)
 local iconRow: Frame
 local hpBillboard: BillboardGui
 local hpFill: Frame
@@ -151,6 +157,32 @@ local function buildScreen()
 	miniBossLabel.Size = UDim2.fromOffset(320, 28)
 	miniBossLabel.TextColor3 = COLORS.cheese
 	miniBossLabel.Visible = false
+
+	-- Under the mini-boss line: shown only while the save couldn't load (DataService, #114).
+	saveBanner = Instance.new("Frame")
+	saveBanner.Name = "SaveBanner"
+	saveBanner.AnchorPoint = Vector2.new(0.5, 0)
+	saveBanner.Position = UDim2.new(0.5, 0, 0, 118)
+	saveBanner.Size = UDim2.fromOffset(300, 28)
+	saveBanner.BackgroundColor3 = COLORS.saveOff
+	saveBanner.BorderSizePixel = 0
+	saveBanner.Visible = false
+	saveBanner.Parent = gui
+	corner(saveBanner, UDim.new(0, 8))
+	local saveText = makeLabel(saveBanner, "Text", 18)
+	saveText.Size = UDim2.fromScale(1, 1)
+	saveText.TextColor3 = Color3.new(1, 1, 1)
+	saveText.Text = "Progress isn't saving right now"
+
+	-- Bottom-right corner, small: saves may be wiped until launch (Config.Saving.TestBuild).
+	local testNote = makeLabel(gui, "TestBuildNote", 14)
+	testNote.AnchorPoint = Vector2.new(1, 1)
+	testNote.Position = UDim2.new(1, -8, 1, -8)
+	testNote.Size = UDim2.fromOffset(260, 18)
+	testNote.TextXAlignment = Enum.TextXAlignment.Right
+	testNote.TextColor3 = COLORS.note
+	testNote.Text = "Test build: progress may be reset"
+	testNote.Visible = Saving.TestBuild
 
 	killsLabel = makeLabel(gui, "Kills", 22)
 	killsLabel.AnchorPoint = Vector2.new(1, 0)
@@ -281,6 +313,8 @@ local function updateNumbers()
 	local miniBoss = player:GetAttribute("MiniBoss")
 	miniBossLabel.Visible = type(miniBoss) == "string"
 	miniBossLabel.Text = if type(miniBoss) == "string" then `Defeat {miniBoss}!` else ""
+
+	saveBanner.Visible = player:GetAttribute("SaveStatus") == "Off"
 end
 
 -- HP: RunManager's attributes if it sets them (#9), otherwise the Humanoid's health.

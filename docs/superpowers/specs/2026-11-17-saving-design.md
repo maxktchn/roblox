@@ -71,7 +71,7 @@ Phase 2's goal (PRD §9) is that a new player can go from their first run to unl
 - When the lobby is built, the test-build note moves there.
 
 ## Code shape (for the builder)
-- **ProfileStore** is copied into the repo as one file (`src/server/ProfileStore.luau`, or a `Packages` folder), with its MIT licence header and the version noted. It's third-party code, so it's left out of our `--!strict`, stylua and selene rules (add it to their ignore lists) instead of being rewritten.
+- **ProfileStore** is copied into the repo unchanged as `vendor/ProfileStore.luau` (Rojo maps it to `ServerScriptService.ProfileStore`), with its Apache-2.0 licence in `vendor/LICENSE-ProfileStore` and the source commit noted in a header. It sits outside `src/`, so our `--!strict`, stylua and selene rules (which only check `src`) skip it.
 - **`DataService`** owns ProfileStore and everything above.
 - **`UnlockService`** gets load-and-save through DataService.
 - **Lifetime stats** are updated by DataService at run end from the `Kills` attribute, `RunState` and `RunSeconds`.

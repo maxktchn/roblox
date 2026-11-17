@@ -13,6 +13,7 @@ local Gadgets = require(Config.Gadgets)
 local Ingredients = require(Config.Ingredients)
 local Recipes = require(Config.Recipes)
 local RunRules = require(Config.RunRules)
+local Saving = require(Config.Saving)
 local Starters = require(Config.Starters)
 local WeaponTypes = require(ReplicatedStorage.Shared.WeaponTypes)
 
@@ -325,6 +326,16 @@ function ConfigCheck.run(): { string }
 				fail(`Chapter {id}: timeline ends at {expectedFrom}, RunLengthSeconds is {RunRules.RunLengthSeconds}`)
 			end
 		end
+	end
+
+	-- Saving (P2-1, #102): the save slot names the DataStore, so it can't be empty.
+	if Saving.SaveSlot == "" then
+		fail("Saving.SaveSlot must be a non-empty string")
+	end
+	-- ProfileStore takes over a save still held by a crashed server after 40 s (its SESSION_STEAL);
+	-- giving up before that would leave the player unable to save for about 10 minutes.
+	if Saving.LoadTimeoutSeconds <= 40 then
+		fail("Saving.LoadTimeoutSeconds must be more than 40 (ProfileStore's session take-over)")
 	end
 
 	return problems

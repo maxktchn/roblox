@@ -492,6 +492,11 @@ For now the lobby is a set of **menu screens inside the run place** (see 8.1), s
 - Use a session-locked data library such as **ProfileStore** instead of writing DataStore code from scratch. It prevents lost or duplicated data when players switch servers.
 - Save: currencies, gear inventory, equipped gear, talents, account level, unlocks, chapter progress, missions, battle pass progress, stats for leaderboards
 - Run rewards are given by the run server and saved before teleporting the player back
+- **Decided in #102** (design: `docs/superpowers/specs/2026-11-17-saving-design.md`):
+  - **ProfileStore**, used only through `DataService`. Other services read and change their own section of the save.
+  - **Quitting mid-run loses that run.** Nothing a run earns is saved until the run ends (won or lost).
+  - **Load fails:** after `Saving.LoadTimeoutSeconds` (45 s, longer than ProfileStore's 40 s take-over of a save held by a crashed server) the player plays without saving, with a "Progress isn't saving right now" banner. Their real save is never written that session.
+  - **Wipes before launch:** change `Saving.SaveSlot` (`PlayerData_v1`). A "Test build: progress may be reset" note is shown until launch. Studio uses its own store (`_Studio`).
 
 ### 8.3 Performance (enemy swarms on mobile)
 This is the biggest technical risk. Rules:

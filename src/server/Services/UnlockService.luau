@@ -3,10 +3,10 @@
 -- power named by its `Power` in Bosses.luau. Only a defeated boss unlocks it: the boss dying
 -- fires EnemyService.onEnemyKilled, which a lost fight or a cleared arena never does.
 --
--- Phase 1: unlocks live in memory, so they last until the server closes and survive
--- "Play again". Phase 2 saving: DataService loads the saved list into this service when the
--- player joins and saves it when it changes. This is the only place that knows unlocks, so
--- nothing else needs to change.
+-- Saved (P2-1, #112): the in-memory set below is what the game uses. When the player's save
+-- loads (DataService.onLoaded), saved unlocks join it, and any unlocked before the load finished
+-- are written into the save. unlock() and lock() also update the save's BossPowers section.
+-- The run-end save writes it: a power unlocks when the boss dies, which is when the run ends.
 --
 -- Player attributes set here:
 --   "Unlocked_<id>" = true          for every unlocked power (UI can show what's unlocked)
@@ -18,6 +18,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local BossPowers = require(ReplicatedStorage.Config.BossPowers)
 local Bosses = require(ReplicatedStorage.Config.Bosses)
+local DataService = require(script.Parent.DataService)
 local EnemyService = require(script.Parent.EnemyService)
 
 local UnlockService = {}
@@ -46,6 +47,10 @@ function UnlockService.unlock(id: string): boolean
 	end
 	unlocked[id] = true
 	local player = getRunPlayer()
+	local data = player and DataService.get(player)
+	if data then
+		data.BossPowers[id] = true
+	end
 	if player then
 		player:SetAttribute(`Unlocked_{id}`, true)
 		player:SetAttribute("JustUnlocked", power.Name)
@@ -58,6 +63,10 @@ end
 function UnlockService.lock(id: string)
 	unlocked[id] = nil
 	local player = getRunPlayer()
+	local data = player and DataService.get(player)
+	if data then
+		data.BossPowers[id] = nil
+	end
 	if player then
 		player:SetAttribute(`Unlocked_{id}`, nil)
 	end
@@ -77,6 +86,12 @@ function UnlockService.getUnlocked(): { string }
 	return ids
 end
 
+-- The player left: forget the unlocks in memory, so a next player in this server can't have
+-- them merged into their save. (Their own unlocks are already in their save.)
+function UnlockService.forgetPlayer()
+	table.clear(unlocked)
+end
+
 -- A new run is starting: the win banner shouldn't announce the last run's unlock again.
 function UnlockService.clearJustUnlocked()
 	local player = getRunPlayer()
@@ -94,7 +109,22 @@ function UnlockService:start()
 		end
 	end)
 	Players.PlayerAdded:Connect(syncAttributes)
+	Players.PlayerRemoving:Connect(UnlockService.forgetPlayer)
 	syncAttributes()
+
+	-- The save loaded: saved unlocks join the in-memory set (ids no longer in BossPowers are
+	-- left in the save but not unlocked), and unlocks gained before the load are saved too.
+	DataService.onLoaded(function(_player, data)
+		for id in data.BossPowers do
+			if BossPowers[id] then
+				unlocked[id] = true
+			end
+		end
+		for id in unlocked do
+			data.BossPowers[id] = true
+		end
+		syncAttributes()
+	end)
 end
 
 return UnlockService
