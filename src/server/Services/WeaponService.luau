@@ -51,16 +51,18 @@ local burns: { [number]: Burn } = {}
 -- Orbit weapons: weapon id -> (enemy id -> time it can be hit again).
 local orbitHitTimes: { [string]: { [number]: number } } = {}
 
--- Shots in flight (Toaster). The client draws its own copy of each one.
+-- Shots in flight (Toaster, Ice Cube Tray). The client draws its own copy of each one.
 type Shot = {
 	id: number,
 	weaponId: string,
+	stats: WeaponLevel,
 	position: Vector3,
 	direction: Vector3,
 	speed: number,
 	traveled: number,
 	maxDistance: number,
-	damage: number,
+	hitsLeft: number, -- Pierce: enemies it can still hit
+	alreadyHit: { [number]: boolean }, -- a piercing shot hits each enemy once
 }
 local shots: { Shot } = {}
 local lastShotId = 0
@@ -355,6 +357,116 @@ local function attackAura(weaponId: string, stats: WeaponLevel, root: BasePart)
 	sendFx(weaponId, stats.Range)
 end
 
+-- SPLATS: flat puddles on the floor that slow enemies standing on them and may hurt them
+-- (Squeeze Bottle's trail #131, Buttered Barrage's butter slicks #132). Each weapon keeps its
+-- own list, capped; the client draws them ("Splat"/"End" messages).
+type Splat = {
+	id: number,
+	position: Vector3,
+	radius: number,
+	timeLeft: number,
+	slow: number,
+	damage: number, -- per TrailTickSeconds; 0 = slows only (butter)
+	canCrit: boolean,
+}
+type SplatGroup = { splats: { Splat }, slowTimer: number, tickTimer: number }
+local splatGroups: { [string]: SplatGroup } = {}
+local lastSplatId = 0
+local floorY = 0 -- the arena floor's height (Map's ArenaCenter), set in init
+local SPLAT_SLOW_CHECK = 0.1 -- seconds between checks for enemies standing on splats
+
+local function dropSplat(
+	weaponId: string,
+	position: Vector3,
+	width: number,
+	seconds: number,
+	slow: number,
+	damage: number,
+	canCrit: boolean,
+	maxCount: number
+)
+	local group = splatGroups[weaponId]
+	if not group then
+		group = { splats = {}, slowTimer = 0, tickTimer = RunRules.TrailTickSeconds }
+		splatGroups[weaponId] = group
+	end
+	if #group.splats >= maxCount then
+		local oldest = table.remove(group.splats, 1)
+		if oldest then
+			sendFx(weaponId, "SplatEnd", oldest.id)
+		end
+	end
+	lastSplatId += 1
+	local flat = Vector3.new(position.X, floorY, position.Z)
+	table.insert(group.splats, {
+		id = lastSplatId,
+		position = flat,
+		radius = width / 2,
+		timeLeft = seconds,
+		slow = slow,
+		damage = damage,
+		canCrit = canCrit,
+	})
+	sendFx(weaponId, "Splat", lastSplatId, flat, width, seconds)
+end
+
+-- Every enemy standing on any of a group's splats (each once), with the strongest splat's numbers.
+local function enemiesOnSplats(group: SplatGroup): { [number]: Splat }
+	local found: { [number]: Splat } = {}
+	for _, splat in group.splats do
+		for _, enemyId in getEnemiesInReach(splat.position, splat.radius) do
+			local current = found[enemyId]
+			if not current or splat.slow > current.slow then
+				found[enemyId] = splat
+			end
+		end
+	end
+	return found
+end
+
+-- Every frame: age splats out, slow the enemies on them, and tick their damage.
+local function updateSplats(deltaTime: number)
+	for weaponId, group in splatGroups do
+		for i = #group.splats, 1, -1 do
+			local splat = group.splats[i]
+			splat.timeLeft -= deltaTime
+			if splat.timeLeft <= 0 then
+				table.remove(group.splats, i)
+				sendFx(weaponId, "SplatEnd", splat.id)
+			end
+		end
+		if #group.splats == 0 then
+			group.tickTimer = RunRules.TrailTickSeconds
+			continue
+		end
+		group.slowTimer -= deltaTime
+		group.tickTimer -= deltaTime
+		local slowNow = group.slowTimer <= 0
+		local tickNow = group.tickTimer <= 0
+		if slowNow or tickNow then
+			local onSplats = enemiesOnSplats(group)
+			if slowNow then
+				group.slowTimer = SPLAT_SLOW_CHECK
+				for enemyId, splat in onSplats do
+					EnemyService.slow(enemyId, splat.slow, RunRules.TrailSlowSeconds)
+				end
+			end
+			if tickNow then
+				group.tickTimer += RunRules.TrailTickSeconds
+				for enemyId, splat in onSplats do
+					if splat.damage > 0 then
+						if splat.canCrit then
+							dealRolledDamage(enemyId, splat.damage, nil, weaponId)
+						else
+							dealDamage(enemyId, splat.damage * (1 + StatsService.getStat("Damage")), "Hit", weaponId)
+						end
+					end
+				end
+			end
+		end
+	end
+end
+
 -- The enemies within `range` of `origin`, nearest edge first.
 type Target = { id: number, position: Vector3, distance: number }
 local function getNearestTargets(origin: Vector3, range: number): { Target }
@@ -374,45 +486,94 @@ local function getNearestTargets(origin: Vector3, range: number): { Target }
 	return targets
 end
 
--- PROJECTILE: fire one shot at each of the nearest `Count` enemies in range.
+local function launchShot(weaponId: string, stats: WeaponLevel, origin: Vector3, direction: Vector3)
+	lastShotId += 1
+	local shot: Shot = {
+		id = lastShotId,
+		weaponId = weaponId,
+		stats = stats,
+		position = origin,
+		direction = direction,
+		speed = stats.Speed or 40,
+		traveled = 0,
+		maxDistance = stats.Range,
+		hitsLeft = stats.Pierce or 1,
+		alreadyHit = {},
+	}
+	table.insert(shots, shot)
+	sendFx(weaponId, "Launch", shot.id, origin, shot.direction, shot.speed, shot.maxDistance)
+end
+
+-- PROJECTILE: fire one shot at each of the nearest `Count` enemies in range, or (Spread)
+-- `Count` shots fanned out toward the nearest one.
 local function attackProjectile(weaponId: string, stats: WeaponLevel, root: BasePart)
 	local origin = root.Position
 	local targets = getNearestTargets(origin, stats.Range)
-	for i = 1, math.min(stats.Count or 1, #targets) do
+	local count = stats.Count or 1
+	if stats.Spread then
+		local nearest = targets[1]
+		local toTarget = nearest and Vector3.new(nearest.position.X - origin.X, 0, nearest.position.Z - origin.Z)
+		if toTarget and toTarget.Magnitude > 0.01 then
+			for i = 1, count do
+				local degrees = (i - (count + 1) / 2) * stats.Spread
+				local direction = CFrame.fromAxisAngle(Vector3.yAxis, math.rad(degrees))
+					:VectorToWorldSpace(toTarget.Unit)
+				launchShot(weaponId, stats, origin, direction)
+			end
+		end
+		return
+	end
+	for i = 1, math.min(count, #targets) do
 		local toTarget = targets[i].position - origin
 		if toTarget.Magnitude > 0.01 then
-			lastShotId += 1
-			local shot: Shot = {
-				id = lastShotId,
-				weaponId = weaponId,
-				position = origin,
-				direction = toTarget.Unit,
-				speed = stats.Speed or 40,
-				traveled = 0,
-				maxDistance = stats.Range,
-				damage = stats.Damage,
-			}
-			table.insert(shots, shot)
-			sendFx(weaponId, "Launch", shot.id, origin, shot.direction, shot.speed, shot.maxDistance)
+			launchShot(weaponId, stats, origin, toTarget.Unit)
 		end
 	end
 end
 
--- Move every shot; a shot hits the first enemy it comes close to, or ends at max distance.
+-- Move every shot. It hits enemies it comes close to (each once), up to its Pierce (1 = the
+-- first one stops it), slowing, freezing or leaving butter as its weapon says; it ends at
+-- max distance.
 local function updateShots(deltaTime: number)
 	-- Walk backwards so removing a shot doesn't skip the next one.
 	for i = #shots, 1, -1 do
 		local shot = shots[i]
+		local stats = shot.stats
 		local step = shot.speed * deltaTime
 		shot.position += shot.direction * step
 		shot.traveled += step
 
-		local targets = getEnemiesInReach(shot.position, RunRules.ProjectileHitRadius)
-		local target = targets[1]
-		if target then
-			dealRolledDamage(target, shot.damage, nil, shot.weaponId)
+		for _, target in getEnemiesInReach(shot.position, RunRules.ProjectileHitRadius) do
+			if shot.hitsLeft <= 0 then
+				break
+			end
+			if not shot.alreadyHit[target] then
+				shot.alreadyHit[target] = true
+				shot.hitsLeft -= 1
+				local position = EnemyService.getEnemyPosition(target)
+				hit(target, stats, shot.weaponId)
+				if stats.Slow then
+					EnemyService.slow(target, stats.Slow, stats.SlowSeconds or 1.5)
+				end
+				if stats.Freeze then
+					EnemyService.freeze(target, stats.Freeze, stats.FrozenBonus)
+				end
+				local slick = stats.Slick
+				if slick and position then
+					dropSplat(
+						shot.weaponId,
+						position,
+						slick.Width,
+						slick.Seconds,
+						slick.Slow,
+						0,
+						false,
+						RunRules.MaxSlicks
+					)
+				end
+			end
 		end
-		if target or shot.traveled >= shot.maxDistance then
+		if shot.hitsLeft <= 0 or shot.traveled >= shot.maxDistance then
 			table.remove(shots, i)
 			sendFx(shot.weaponId, "End", shot.id)
 		end
@@ -593,116 +754,6 @@ local function updateDiscs(deltaTime: number)
 			end
 		elseif disc.age > DISC_MAX_SECONDS then
 			endDisc(i)
-		end
-	end
-end
-
--- SPLATS: flat puddles on the floor that slow enemies standing on them and may hurt them
--- (Squeeze Bottle's trail #131, Buttered Barrage's butter slicks #132). Each weapon keeps its
--- own list, capped; the client draws them ("Splat"/"End" messages).
-type Splat = {
-	id: number,
-	position: Vector3,
-	radius: number,
-	timeLeft: number,
-	slow: number,
-	damage: number, -- per TrailTickSeconds; 0 = slows only (butter)
-	canCrit: boolean,
-}
-type SplatGroup = { splats: { Splat }, slowTimer: number, tickTimer: number }
-local splatGroups: { [string]: SplatGroup } = {}
-local lastSplatId = 0
-local floorY = 0 -- the arena floor's height (Map's ArenaCenter), set in init
-local SPLAT_SLOW_CHECK = 0.1 -- seconds between checks for enemies standing on splats
-
-local function dropSplat(
-	weaponId: string,
-	position: Vector3,
-	width: number,
-	seconds: number,
-	slow: number,
-	damage: number,
-	canCrit: boolean,
-	maxCount: number
-)
-	local group = splatGroups[weaponId]
-	if not group then
-		group = { splats = {}, slowTimer = 0, tickTimer = RunRules.TrailTickSeconds }
-		splatGroups[weaponId] = group
-	end
-	if #group.splats >= maxCount then
-		local oldest = table.remove(group.splats, 1)
-		if oldest then
-			sendFx(weaponId, "End", oldest.id)
-		end
-	end
-	lastSplatId += 1
-	local flat = Vector3.new(position.X, floorY, position.Z)
-	table.insert(group.splats, {
-		id = lastSplatId,
-		position = flat,
-		radius = width / 2,
-		timeLeft = seconds,
-		slow = slow,
-		damage = damage,
-		canCrit = canCrit,
-	})
-	sendFx(weaponId, "Splat", lastSplatId, flat, width, seconds)
-end
-
--- Every enemy standing on any of a group's splats (each once), with the strongest splat's numbers.
-local function enemiesOnSplats(group: SplatGroup): { [number]: Splat }
-	local found: { [number]: Splat } = {}
-	for _, splat in group.splats do
-		for _, enemyId in getEnemiesInReach(splat.position, splat.radius) do
-			local current = found[enemyId]
-			if not current or splat.slow > current.slow then
-				found[enemyId] = splat
-			end
-		end
-	end
-	return found
-end
-
--- Every frame: age splats out, slow the enemies on them, and tick their damage.
-local function updateSplats(deltaTime: number)
-	for weaponId, group in splatGroups do
-		for i = #group.splats, 1, -1 do
-			local splat = group.splats[i]
-			splat.timeLeft -= deltaTime
-			if splat.timeLeft <= 0 then
-				table.remove(group.splats, i)
-				sendFx(weaponId, "End", splat.id)
-			end
-		end
-		if #group.splats == 0 then
-			group.tickTimer = RunRules.TrailTickSeconds
-			continue
-		end
-		group.slowTimer -= deltaTime
-		group.tickTimer -= deltaTime
-		local slowNow = group.slowTimer <= 0
-		local tickNow = group.tickTimer <= 0
-		if slowNow or tickNow then
-			local onSplats = enemiesOnSplats(group)
-			if slowNow then
-				group.slowTimer = SPLAT_SLOW_CHECK
-				for enemyId, splat in onSplats do
-					EnemyService.slow(enemyId, splat.slow, RunRules.TrailSlowSeconds)
-				end
-			end
-			if tickNow then
-				group.tickTimer += RunRules.TrailTickSeconds
-				for enemyId, splat in onSplats do
-					if splat.damage > 0 then
-						if splat.canCrit then
-							dealRolledDamage(enemyId, splat.damage, nil, weaponId)
-						else
-							dealDamage(enemyId, splat.damage * (1 + StatsService.getStat("Damage")), "Hit", weaponId)
-						end
-					end
-				end
-			end
 		end
 	end
 end
@@ -956,7 +1007,7 @@ function WeaponService.reset()
 	table.clear(discs)
 	for weaponId, group in splatGroups do
 		for _, splat in group.splats do
-			sendFx(weaponId, "End", splat.id)
+			sendFx(weaponId, "SplatEnd", splat.id)
 		end
 	end
 	table.clear(splatGroups)

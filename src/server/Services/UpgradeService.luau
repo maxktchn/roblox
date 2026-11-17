@@ -68,6 +68,9 @@ local STAT_LABELS: { [string]: { name: string, unit: string, percent: boolean? }
 	Width = { name = "Width", unit = "" },
 	Seconds = { name = "Lasts", unit = "s" },
 	Slow = { name = "Slow", unit = "%", percent = true },
+	SlowSeconds = { name = "Slow time", unit = "s" },
+	Pierce = { name = "Pierce", unit = "" },
+	Freeze = { name = "Freeze", unit = "s" },
 }
 
 -- One line saying what changes between two levels of a weapon, built from its config numbers.

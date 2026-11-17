@@ -105,6 +105,8 @@ The restaurant's food has gone rotten and come alive. You're the chef, and you h
 | Ghost Pepper Blaster | Arc | 7 damage, 120° cone, 13 range, every 0.7 s, burns 8/s for 3 s |
 | Fondue Ring | Orbit | 6 forks on a 9-stud circle, 260°/s, 9 damage, burns 4/s for 2 s |
 | Condiment Flood | Trail | 6-stud splats that last 4 s, slow 50% and do 8 every 0.5 s; its ticks can crit; also drops one every 0.6 s while the chef stands still |
+| Buttered Barrage | Projectile | 6 toasts every 1.0 s, 16 damage, each hits up to 3 enemies; every hit leaves a 4-stud butter slick for 3 s that slows enemies 30% (no damage, at most 20) |
+| Deep Freeze | Projectile | 5 cubes fanned 15° apart every 1.0 s, 20 damage, 40 studs, pierce everything; every enemy hit is frozen 1.5 s and takes +25% damage from everything while frozen |
 | Pizza Party | Bounce | 3 discs every 1.0 s at different enemies, 18 damage, 8 bounces within 14 studs; the 3 discs share one hit list, so they spread across the crowd |
 | Breakfast Bomb | Lob | 3 eggs every 1.4 s, 26 damage, 7-stud splash; each egg then pops 4 mini-eggs that land 6 studs away and splash again (12 damage, 4 studs) |
 
@@ -165,8 +167,9 @@ Rewards scale with how long the player survived and how far they got:
 | Spinning Forks | Forks orbit you | + Beef Jerky = **Fondue Ring** (burning orbit) |
 | Toaster | Launches toast at the nearest enemies | + Butter = **Buttered Barrage** |
 | Squeeze Bottle | Drops a ketchup trail that slows enemies | + Salt = **Condiment Flood** |
+| Ice Cube Tray | Slides ice cubes that pierce through enemies and slow them | + Fridge Magnet = **Deep Freeze** (freezes enemies solid) |
 
-All 6 gadgets are in the MVP, plus a 7th that takes the removed Blender's place (designed in Phase 2, #83). Fridge Magnet has no recipe until then; the new gadget's recipe can use it.
+All 7 gadgets are in the MVP. The Ice Cube Tray took the removed Blender's place (#83, designed in P2-3 #104), and its recipe gave Fridge Magnet one.
 
 **Phase 1 gadget starting values** (Lv 1 → Lv 5, tune in `Gadgets.luau`):
 | Gadget | Shape | Lv 1 | Changes by Lv 5 |
@@ -175,6 +178,7 @@ All 6 gadgets are in the MVP, plus a 7th that takes the removed Blender's place 
 | Spinning Forks | Orbit | 2 forks on a 7-stud circle, 180°/s, 4 damage, each enemy hit at most every 0.6 s | 4 forks, 8 studs, 240°/s, 8 damage |
 | Toaster | Projectile | 1 toast every 1.4 s at the nearest enemy within 40 studs, 8 damage, 45 studs/s | 4 toasts every 1.2 s, 14 damage |
 | Squeeze Bottle | Trail | while the chef walks, a 3-stud ketchup splat every 0.3 s that lasts 2 s; enemies on it are 30% slower and take 2 every 0.5 s (can't crit); at most 40 | 4 studs, lasts 3.5 s, 40% slower, 5 every 0.5 s |
+| Ice Cube Tray | Projectile | 1 cube every 1.6 s toward the nearest enemy, slides 30 studs at 35 studs/s through every enemy in its path, 9 damage, slows each 25% for 1.5 s | 3 cubes fanned 15° apart every 1.2 s, 15 damage, 35 studs, 35% slow |
 | Pizza Cutter | Bounce | 1 disc every 1.5 s at the nearest enemy within 30 studs, 9 damage, 40 studs/s; after each hit it flies on to the nearest enemy it hasn't hit within 12 studs, 3 times | 16 damage, every 1.1 s, 7 bounces within 14 studs |
 | Egg Grenade | Lob | 1 egg every 2.0 s at the nearest enemy within 30 studs, lands 0.6 s later where it was, 12 damage to everything within 5 studs | 2 eggs every 1.6 s, 20 damage, 7 studs |
 

@@ -8,7 +8,10 @@
 --   Aura       - hits everything in a circle around the chef, every Cooldown (no Phase 1 weapon
 --                uses it since the Blender was removed, #83; kept for later gadgets)
 --   Orbit      - Count objects circle the chef and hit what they touch (Spinning Forks)
---   Projectile - fires Count shots at the nearest enemies (Toaster)
+--   Projectile - fires Count shots at the nearest enemies (Toaster). Optional: Pierce (a shot
+--                hits that many enemies before it stops), Spread (shots fan out from the
+--                nearest enemy's direction instead), Slow/Freeze on hit, Slick (Ice Cube Tray,
+--                Deep Freeze, Buttered Barrage, #132)
 --   Pulse      - every Cooldown, a ring grows out from where the chef stands, hitting each
 --                enemy once as it passes and knocking it back (Microwave Pulse, a boss power)
 --   Lob        - every Cooldown, lobs Count eggs at the nearest enemies; each lands where its
@@ -21,6 +24,14 @@
 --                on any splat are slowed by Slow and take Damage every RunRules.TrailTickSeconds
 --                (Squeeze Bottle, #131). Always on, like Orbit.
 export type Shape = "Arc" | "Aura" | "Orbit" | "Projectile" | "Pulse" | "Lob" | "Bounce" | "Trail"
+
+-- Projectile only: a butter slick left wherever a shot hits (Buttered Barrage, #132). It's a
+-- splat like a Trail's, with no damage.
+export type Slick = {
+	Width: number,
+	Seconds: number,
+	Slow: number,
+}
 
 -- Lob only: when an egg lands, Count mini-eggs pop out evenly round it, land Distance studs
 -- away (RunRules.LobClusterSeconds later) and splash again (Breakfast Bomb, #129).
@@ -59,7 +70,13 @@ export type WeaponLevel = {
 	BounceRange: number?, -- Bounce: how far (to the next enemy's edge) a disc can fly on
 	Width: number?, -- Trail: studs across one splat
 	Seconds: number?, -- Trail: how long a splat stays
-	Slow: number?, -- Trail: how much slower enemies on a splat move (0.3 = 30%)
+	Slow: number?, -- Trail: how much slower enemies on a splat move (0.3 = 30%). Projectile: slow on hit.
+	SlowSeconds: number?, -- Projectile: how long its Slow lasts (1.5 if left out)
+	Pierce: number?, -- Projectile: how many enemies one shot hits before it stops (1 if left out)
+	Spread: number?, -- Projectile: degrees between shots fanned toward the nearest enemy
+	Freeze: number?, -- Projectile: seconds each enemy hit is frozen (Deep Freeze)
+	FrozenBonus: number?, -- Projectile: extra damage frozen enemies take from everything (0.25 = +25%)
+	Slick: Slick?, -- Projectile: a butter slick where each shot hits
 	StillEvery: number?, -- Trail: also drop a splat this often while the chef stands still
 	CanCrit: boolean?, -- Trail: its damage ticks can crit (burns and plain trails can't)
 }

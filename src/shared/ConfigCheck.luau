@@ -88,6 +88,19 @@ function ConfigCheck.run(): { string }
 			if stats.PullStrength and stats.PullStrength <= 0 then
 				fail(`Weapon {id} Lv {i}: PullStrength must be more than 0`)
 			end
+			if stats.Pierce and stats.Pierce < 1 then
+				fail(`Weapon {id} Lv {i}: Pierce must be 1 or more`)
+			end
+			if (stats.Spread and stats.Spread <= 0) or (stats.Freeze and stats.Freeze <= 0) then
+				fail(`Weapon {id} Lv {i}: Spread and Freeze must be more than 0`)
+			end
+			if weapon.Shape == "Projectile" and stats.Slow and (stats.Slow <= 0 or stats.Slow >= 1) then
+				fail(`Weapon {id} Lv {i}: Slow must be between 0 and 1`)
+			end
+			local slick = stats.Slick
+			if slick and (slick.Width <= 0 or slick.Seconds <= 0 or slick.Slow <= 0 or slick.Slow >= 1) then
+				fail(`Weapon {id} Lv {i}: Slick needs Width and Seconds above 0 and Slow between 0 and 1`)
+			end
 			local cluster = stats.Cluster
 			if
 				cluster and (cluster.Count < 1 or cluster.Distance <= 0 or cluster.Damage <= 0 or cluster.Radius <= 0)

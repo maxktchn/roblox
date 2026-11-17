@@ -51,6 +51,7 @@ return {
 	TrailSlowSeconds = 0.3, -- a splat's slow lasts this long after the enemy steps off
 	TrailMoveSpeed = 2, -- studs per second: slower than this counts as standing still
 	MaxTrailSplats = 40, -- per trail weapon; a new splat removes the oldest
+	MaxSlicks = 20, -- Buttered Barrage's butter slicks (#132); a new one removes the oldest
 
 	-- Loadout (PRD §2.4)
 	StarterMaxLevel = 5,
@@ -69,9 +70,16 @@ return {
 	-- Which gadgets and ingredients can show up as cards. Phase 1 picks (PRD §9);
 	-- add ids here to put more items in the game. Checked by ConfigCheck.
 	UpgradePool = {
-		Gadgets = { "PepperShaker", "SpinningForks", "Toaster", "EggGrenade", "PizzaCutter", "SqueezeBottle" },
-		-- Butter joins with Buttered Barrage (#132): Toaster + Butter must be playable first.
-		Ingredients = { "Salt", "HotSauce", "BeefJerky", "FridgeMagnet", "Coffee", "Bread" },
+		Gadgets = {
+			"PepperShaker",
+			"SpinningForks",
+			"Toaster",
+			"EggGrenade",
+			"PizzaCutter",
+			"SqueezeBottle",
+			"IceCubeTray",
+		},
+		Ingredients = { "Salt", "HotSauce", "BeefJerky", "FridgeMagnet", "Coffee", "Bread", "Butter" },
 		-- Boss powers only show up once their boss has been defeated (PRD §3.8).
 		BossPowers = { "MicrowavePulse" },
 	},

@@ -14,6 +14,7 @@ export type Gadget = {
 	Shape: WeaponTypes.Shape?,
 	Levels: { WeaponTypes.WeaponLevel }?,
 	FxColor: Color3?, -- colour of its effect
+	ShotSize: Vector3?, -- Projectile only: size of the flying part (a toast slice if left out)
 	-- Arc only: attack toward the nearest enemy instead of the way the chef walks (which is
 	-- usually away from the enemies). Falls back to the chef's facing when nothing is near.
 	AimAtNearest: boolean?,
@@ -86,6 +87,22 @@ local Gadgets: { [string]: Gadget } = {
 			{ Damage = 10, Cooldown = 1.4, Range = 40, Count = 2, Speed = 45 },
 			{ Damage = 10, Cooldown = 1.2, Range = 40, Count = 3, Speed = 45 },
 			{ Damage = 14, Cooldown = 1.2, Range = 40, Count = 4, Speed = 45 },
+		},
+	},
+	-- The 7th gadget (#132, replacing the Blender): piercing ice cubes that slow. Best down a
+	-- line of enemies, where the Toaster is best on single ones.
+	IceCubeTray = {
+		Name = "Ice Cube Tray",
+		Behavior = "Slides ice cubes that pierce through enemies and slow them",
+		Shape = "Projectile",
+		FxColor = Color3.fromRGB(170, 225, 255),
+		ShotSize = Vector3.new(1.3, 1.3, 1.3),
+		Levels = {
+			{ Damage = 9, Cooldown = 1.6, Range = 30, Count = 1, Speed = 35, Pierce = 99, Spread = 15, Slow = 0.25 },
+			{ Damage = 11, Cooldown = 1.6, Range = 32, Count = 1, Speed = 35, Pierce = 99, Spread = 15, Slow = 0.25 },
+			{ Damage = 11, Cooldown = 1.4, Range = 32, Count = 2, Speed = 35, Pierce = 99, Spread = 15, Slow = 0.3 },
+			{ Damage = 13, Cooldown = 1.4, Range = 35, Count = 2, Speed = 35, Pierce = 99, Spread = 15, Slow = 0.3 },
+			{ Damage = 15, Cooldown = 1.2, Range = 35, Count = 3, Speed = 35, Pierce = 99, Spread = 15, Slow = 0.35 },
 		},
 	},
 	-- Trail (#131): rewards kiting. Nothing is dropped while the chef stands still.

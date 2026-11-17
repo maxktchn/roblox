@@ -9,7 +9,7 @@
 --   Pulse      - a ring grows from where it was fired    (WeaponFx: origin, range, speed)
 --   Lob        - an egg arcs over, then splashes         (WeaponFx: "Lob", from, to, seconds, radius)
 --   Bounce     - a spinning disc chases one enemy part   (WeaponFx: "Disc", id, from, part, speed / "End", id)
---   Trail      - flat splats on the floor that fade       (WeaponFx: "Splat", id, position, width, seconds / "End", id)
+--   Trail      - flat splats on the floor that fade       (WeaponFx: "Splat", id, position, width, seconds / "SplatEnd", id)
 --                (Buttered Barrage's butter slicks use the same messages)
 --   Orbit      - objects circle the chef all the time. No messages: we read the weapon's
 --                level from the player's "Weapon_<id>" attribute and use the shared server
@@ -41,7 +41,12 @@ local PULSE_SECONDS = 0.3 -- Aura: how long one ring pulse lasts
 
 local folder: Folder -- holds every effect part
 
-type WeaponConfig = { Shape: WeaponTypes.Shape?, Levels: { WeaponTypes.WeaponLevel }?, FxColor: Color3? }
+type WeaponConfig = {
+	Shape: WeaponTypes.Shape?,
+	Levels: { WeaponTypes.WeaponLevel }?,
+	FxColor: Color3?,
+	ShotSize: Vector3?,
+}
 
 local function getConfig(weaponId: string): WeaponConfig?
 	return (Starters[weaponId] or Gadgets[weaponId] or Recipes[weaponId] or BossPowers[weaponId]) :: any
@@ -174,6 +179,7 @@ end
 
 local function drawShot(
 	color: Color3,
+	size: Vector3,
 	shotId: number,
 	origin: Vector3,
 	direction: Vector3,
@@ -183,7 +189,7 @@ local function drawShot(
 	local part = table.remove(spareShotParts) or makeFxPart("Shot", color)
 	part.Color = color
 	part.Material = Enum.Material.SmoothPlastic
-	part.Size = Vector3.new(1.4, 0.4, 1.4) -- a slice of toast
+	part.Size = size
 	part.Transparency = 0
 	shotParts[shotId] = part
 	animate(`Shot{shotId}`, function(elapsed)
@@ -396,6 +402,16 @@ local function onWeaponFx(weaponId: string, ...: any)
 		return
 	end
 	local color = config.FxColor or Color3.new(1, 1, 1)
+	-- Most shapes send an action and an id first ("Launch", shotId; "Splat", splatId; ...).
+	local action, id = ...
+	if action == "Splat" then
+		-- A Trail's splat or a butter slick (any weapon can leave them).
+		drawSplat(color, select(2, ...))
+		return
+	elseif action == "SplatEnd" then
+		endSplat(id)
+		return
+	end
 	if config.Shape == "Arc" then
 		drawArc(weaponId, color, ...)
 	elseif config.Shape == "Aura" then
@@ -404,26 +420,17 @@ local function onWeaponFx(weaponId: string, ...: any)
 		drawPulse(weaponId, color, ...)
 	elseif config.Shape == "Lob" then
 		drawLob(color, select(2, ...))
-	elseif config.Shape == "Trail" then
-		local action, splatId = ...
-		if action == "Splat" then
-			drawSplat(color, select(2, ...))
-		elseif action == "End" then
-			endSplat(splatId)
-		end
 	elseif config.Shape == "Bounce" then
-		local action, discId = ...
 		if action == "Disc" then
 			drawDiscLeg(color, select(2, ...))
 		elseif action == "End" then
-			endDisc(discId)
+			endDisc(id)
 		end
 	elseif config.Shape == "Projectile" then
-		local action, shotId = ...
 		if action == "Launch" then
-			drawShot(color, select(2, ...))
+			drawShot(color, config.ShotSize or Vector3.new(1.4, 0.4, 1.4), select(2, ...)) -- toast by default
 		elseif action == "End" then
-			endShot(shotId)
+			endShot(id)
 		end
 	end
 end

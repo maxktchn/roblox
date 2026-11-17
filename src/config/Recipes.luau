@@ -20,6 +20,7 @@ export type Recipe = {
 	Shape: WeaponTypes.Shape?,
 	Levels: { WeaponTypes.WeaponLevel }?,
 	FxColor: Color3?,
+	ShotSize: Vector3?, -- Projectile only, like Gadgets
 	Aimed: boolean?, -- a starter's recipe stays aimed like the starter (PRD §3.1)
 	AimAtNearest: boolean?, -- sprays at the nearest enemy, like its gadget (see Gadgets.luau)
 }
@@ -102,7 +103,47 @@ local Recipes: { [string]: Recipe } = {
 			{ Damage = 9, Cooldown = 0.5, Range = 9, Count = 6, Speed = 260, BurnDps = 4, BurnSeconds = 2 },
 		},
 	},
-	ButteredBarrage = { Name = "Buttered Barrage", Weapon = "Toaster", Ingredient = "Butter" },
+	ButteredBarrage = {
+		Name = "Buttered Barrage",
+		Weapon = "Toaster",
+		Ingredient = "Butter",
+		Description = "Toast pierces and leaves slippery butter",
+		Shape = "Projectile",
+		FxColor = Color3.fromRGB(255, 215, 90),
+		Levels = {
+			{
+				Damage = 16,
+				Cooldown = 1.0,
+				Range = 40,
+				Count = 6,
+				Speed = 45,
+				Pierce = 3,
+				Slick = { Width = 4, Seconds = 3, Slow = 0.3 },
+			},
+		},
+	},
+	DeepFreeze = {
+		Name = "Deep Freeze",
+		Weapon = "IceCubeTray",
+		Ingredient = "FridgeMagnet",
+		Description = "Freezes enemies solid; frozen ones take +25% damage",
+		Shape = "Projectile",
+		FxColor = Color3.fromRGB(110, 190, 255),
+		ShotSize = Vector3.new(1.6, 1.6, 1.6),
+		Levels = {
+			{
+				Damage = 20,
+				Cooldown = 1.0,
+				Range = 40,
+				Count = 5,
+				Speed = 35,
+				Pierce = 99,
+				Spread = 15,
+				Freeze = 1.5,
+				FrozenBonus = 0.25,
+			},
+		},
+	},
 	CondimentFlood = {
 		Name = "Condiment Flood",
 		Weapon = "SqueezeBottle",
