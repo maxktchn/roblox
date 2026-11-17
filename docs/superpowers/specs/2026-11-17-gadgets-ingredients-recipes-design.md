@@ -13,6 +13,7 @@ Phase 2's MVP needs the full upgrade pool: 7 Kitchen Gadgets, 7 Ingredients and 
   - Bread +10% → **+6%** max HP
 
   Butter and Coffee would be exactly 4.8%; they're rounded to 5% so the cards read cleanly.
+- **Slows by enemy kind:** normal enemies and elites take the full slow and can be frozen. The mini-boss (The Big Cheese) takes **half** and is never frozen. The final boss (Microwave Monster) is **immune**.
 - **Sharing ingredients is fine:**
   - Salt feeds Sushi Master Blade and Condiment Flood.
   - Bread feeds Steamroller and Breakfast Bomb.
@@ -44,7 +45,8 @@ New gadgets aim for the same band. Crowd gadgets do less per hit than single-tar
 Squeeze Bottle, Ice Cube Tray, Buttered Barrage and Deep Freeze all slow enemies, and nothing in the game can slow an enemy yet.
 - **`EnemyService.slow(id, fraction, seconds)`:** the enemy moves at `(1 − fraction)` speed until the time runs out. Slows **don't stack**: the strongest one wins. A longer slow of the same strength extends the time.
 - **`EnemyService.freeze(id, seconds)`:** the enemy can't move at all; it's a slow of 1.0. A frozen enemy still hurts on contact; freezing stops it chasing you, not hurting you.
-- **Bosses** (The Big Cheese pieces and the Microwave Monster) take **half the slow** and are **never frozen** (a freeze slows them 50% instead). Same idea as bosses ignoring knockback.
+- **The mini-boss** (The Big Cheese and its pieces) takes **half the slow** and is **never frozen**: a freeze slows it 50% instead.
+- **The final boss** (the Microwave Monster) is **immune**: no slows and no freezes. Same idea as bosses ignoring knockback. Its popcorn kernels are normal enemies and can be slowed.
 - **Elites** are slowed and frozen like normal enemies.
 - **Look:** a slowed enemy gets a light blue tint and a frozen one a stronger tint. This is done by changing the pooled part's colour, so there are no new parts, and the colour goes back when the slow ends or the part is reused.
 - **Meatball charges** are slowed too: a slowed Meatball rolls slower but still goes straight.
@@ -139,7 +141,7 @@ Squeeze Bottle, Ice Cube Tray, Buttered Barrage and Deep Freeze all slow enemies
 
 **Deep Freeze** (Ice Cube Tray + Fridge Magnet), the trick being a **freeze**:
 - It fires 5 cubes in a fan every 1.0 s; each does 20 damage, pierces, and reaches 40 studs.
-- Every enemy hit is **frozen solid for 1.5 s**: it can't move (bosses are slowed 50% instead).
+- Every enemy hit is **frozen solid for 1.5 s**: it can't move (the mini-boss is slowed 50% instead, and the final boss is immune).
 - A frozen enemy takes **+25% damage** from everything, so it pairs with any build.
 
 **New fields on any `Projectile`:**
@@ -176,7 +178,7 @@ Each card says what changes at its level, as today (UpgradeService already lists
   - check the hit list really is once per enemy per throw
 - **Each recipe:** the recipe card appears once the gadget is Lv 5 and its ingredient is owned, it replaces the gadget in the same slot, and the trick works (cluster eggs land, 3 discs share a hit list, the flood crits, freezes hold enemies still, slicks slow).
 - **Coffee:** a weapon's real time between attacks is `Cooldown × (1 − 0.05 × level)` (measure the Toaster at Coffee Lv 5: 1.2 s → 0.9 s).
-- **Slows:** the strongest slow wins, bosses take half and never freeze, and the colour goes back afterwards and on pooled reuse.
+- **Slows:** the strongest slow wins, the Big Cheese takes half and never freezes, the Microwave Monster ignores slows and freezes, and the colour goes back afterwards and on pooled reuse.
 - **Phone performance:** 150 enemies plus a Lv 5 Squeeze Bottle trail, Pizza Party and Deep Freeze, without frame drops (the `StressTest` setup).
 - **Bot comparison:** 6 bot runs before and after the full pool, like #122, to see the new pool doesn't make runs much easier or harder.
 
