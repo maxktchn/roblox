@@ -2,7 +2,7 @@
 -- Fires the player's starter, gadgets and recipe weapons on cooldowns; applies ingredient stats. Server decides all damage (PRD §8.4).
 --
 -- Every weapon has a Shape in config (see Shared/WeaponTypes): Arc, Aura, Orbit, Projectile,
--- Pulse, Lob or Bounce.
+-- Pulse, Lob, Bounce or Trail.
 -- There is one attack function per shape below, so new weapons are config-only (PRD §8.5).
 --
 -- Each frame, every owned weapon counts down its cooldown. At 0 it attacks: the server
@@ -597,6 +597,145 @@ local function updateDiscs(deltaTime: number)
 	end
 end
 
+-- SPLATS: flat puddles on the floor that slow enemies standing on them and may hurt them
+-- (Squeeze Bottle's trail #131, Buttered Barrage's butter slicks #132). Each weapon keeps its
+-- own list, capped; the client draws them ("Splat"/"End" messages).
+type Splat = {
+	id: number,
+	position: Vector3,
+	radius: number,
+	timeLeft: number,
+	slow: number,
+	damage: number, -- per TrailTickSeconds; 0 = slows only (butter)
+	canCrit: boolean,
+}
+type SplatGroup = { splats: { Splat }, slowTimer: number, tickTimer: number }
+local splatGroups: { [string]: SplatGroup } = {}
+local lastSplatId = 0
+local floorY = 0 -- the arena floor's height (Map's ArenaCenter), set in init
+local SPLAT_SLOW_CHECK = 0.1 -- seconds between checks for enemies standing on splats
+
+local function dropSplat(
+	weaponId: string,
+	position: Vector3,
+	width: number,
+	seconds: number,
+	slow: number,
+	damage: number,
+	canCrit: boolean,
+	maxCount: number
+)
+	local group = splatGroups[weaponId]
+	if not group then
+		group = { splats = {}, slowTimer = 0, tickTimer = RunRules.TrailTickSeconds }
+		splatGroups[weaponId] = group
+	end
+	if #group.splats >= maxCount then
+		local oldest = table.remove(group.splats, 1)
+		if oldest then
+			sendFx(weaponId, "End", oldest.id)
+		end
+	end
+	lastSplatId += 1
+	local flat = Vector3.new(position.X, floorY, position.Z)
+	table.insert(group.splats, {
+		id = lastSplatId,
+		position = flat,
+		radius = width / 2,
+		timeLeft = seconds,
+		slow = slow,
+		damage = damage,
+		canCrit = canCrit,
+	})
+	sendFx(weaponId, "Splat", lastSplatId, flat, width, seconds)
+end
+
+-- Every enemy standing on any of a group's splats (each once), with the strongest splat's numbers.
+local function enemiesOnSplats(group: SplatGroup): { [number]: Splat }
+	local found: { [number]: Splat } = {}
+	for _, splat in group.splats do
+		for _, enemyId in getEnemiesInReach(splat.position, splat.radius) do
+			local current = found[enemyId]
+			if not current or splat.slow > current.slow then
+				found[enemyId] = splat
+			end
+		end
+	end
+	return found
+end
+
+-- Every frame: age splats out, slow the enemies on them, and tick their damage.
+local function updateSplats(deltaTime: number)
+	for weaponId, group in splatGroups do
+		for i = #group.splats, 1, -1 do
+			local splat = group.splats[i]
+			splat.timeLeft -= deltaTime
+			if splat.timeLeft <= 0 then
+				table.remove(group.splats, i)
+				sendFx(weaponId, "End", splat.id)
+			end
+		end
+		if #group.splats == 0 then
+			group.tickTimer = RunRules.TrailTickSeconds
+			continue
+		end
+		group.slowTimer -= deltaTime
+		group.tickTimer -= deltaTime
+		local slowNow = group.slowTimer <= 0
+		local tickNow = group.tickTimer <= 0
+		if slowNow or tickNow then
+			local onSplats = enemiesOnSplats(group)
+			if slowNow then
+				group.slowTimer = SPLAT_SLOW_CHECK
+				for enemyId, splat in onSplats do
+					EnemyService.slow(enemyId, splat.slow, RunRules.TrailSlowSeconds)
+				end
+			end
+			if tickNow then
+				group.tickTimer += RunRules.TrailTickSeconds
+				for enemyId, splat in onSplats do
+					if splat.damage > 0 then
+						if splat.canCrit then
+							dealRolledDamage(enemyId, splat.damage, nil, weaponId)
+						else
+							dealDamage(enemyId, splat.damage * (1 + StatsService.getStat("Damage")), "Hit", weaponId)
+						end
+					end
+				end
+			end
+		end
+	end
+end
+
+-- TRAIL (Squeeze Bottle, #131): while the chef walks, a splat at their feet every Cooldown;
+-- standing still drops nothing unless the weapon has StillEvery (Condiment Flood pools).
+local trailTimers: { [string]: number } = {}
+local lastChefPosition: Vector3? = nil
+local chefMoving = false
+
+local function updateTrail(weaponId: string, stats: WeaponLevel, root: BasePart, deltaTime: number)
+	local timer = (trailTimers[weaponId] or 0) - deltaTime
+	if timer <= 0 then
+		local every = if chefMoving then stats.Cooldown else stats.StillEvery
+		if every then
+			dropSplat(
+				weaponId,
+				root.Position,
+				stats.Width or 3,
+				stats.Seconds or 2,
+				stats.Slow or 0,
+				stats.Damage,
+				stats.CanCrit == true,
+				RunRules.MaxTrailSplats
+			)
+			timer = every * cooldownScale()
+		else
+			timer = 0 -- standing still: drop one as soon as the chef moves
+		end
+	end
+	trailTimers[weaponId] = timer
+end
+
 -- ORBIT: `Count` objects circle the chef. Their angle comes from the shared server clock,
 -- so the client can draw them in the same spots without any messages (see WeaponFxController).
 local function updateOrbit(weaponId: string, stats: WeaponLevel, root: BasePart)
@@ -717,6 +856,7 @@ local function update(deltaTime: number)
 	updateShots(deltaTime)
 	updateEggs(deltaTime)
 	updateDiscs(deltaTime)
+	updateSplats(deltaTime)
 	updatePulses(deltaTime)
 	updateBurns(deltaTime)
 	flushHitFx(deltaTime)
@@ -726,6 +866,12 @@ local function update(deltaTime: number)
 		return -- no living chef: weapons wait
 	end
 	updateSwings(deltaTime, root)
+	-- Is the chef walking? (Trail weapons only drop splats while they are.)
+	local flatNow = Vector3.new(root.Position.X, 0, root.Position.Z)
+	chefMoving = lastChefPosition ~= nil
+		and deltaTime > 0
+		and (flatNow - lastChefPosition).Magnitude / deltaTime > RunRules.TrailMoveSpeed
+	lastChefPosition = flatNow
 	for weaponId, level in levels do
 		local shape, weaponLevels = getWeaponConfig(weaponId)
 		local stats = weaponLevels and weaponLevels[level]
@@ -737,6 +883,10 @@ local function update(deltaTime: number)
 		end
 		if shape == "Orbit" then
 			updateOrbit(weaponId, stats, root) -- always on, no cooldown to wait for
+			continue
+		end
+		if shape == "Trail" then
+			updateTrail(weaponId, stats, root, deltaTime) -- always on: drops splats as the chef walks
 			continue
 		end
 		cooldowns[weaponId] = (cooldowns[weaponId] or 0) - deltaTime
@@ -779,6 +929,7 @@ function WeaponService.replaceWeapon(oldId: string, newId: string)
 	levels[oldId] = nil
 	cooldowns[oldId] = nil
 	orbitHitTimes[oldId] = nil
+	trailTimers[oldId] = nil
 	levels[newId] = 1
 	syncAttributes()
 end
@@ -803,6 +954,14 @@ function WeaponService.reset()
 		sendFx(disc.weaponId, "End", disc.id)
 	end
 	table.clear(discs)
+	for weaponId, group in splatGroups do
+		for _, splat in group.splats do
+			sendFx(weaponId, "End", splat.id)
+		end
+	end
+	table.clear(splatGroups)
+	table.clear(trailTimers)
+	lastChefPosition = nil
 	table.clear(pulses)
 	table.clear(swings)
 	table.clear(pendingHits)
@@ -834,6 +993,11 @@ end
 
 function WeaponService:init()
 	maxEnemyHalfWidth = EnemyService.getMaxEnemyWidth() / 2
+	local map = workspace:FindFirstChild("Map")
+	local center = map and map:GetAttribute("ArenaCenter")
+	if typeof(center) == "Vector3" then
+		floorY = center.Y
+	end
 	table.clear(levels)
 	levels[RunRules.Starter] = 1
 end

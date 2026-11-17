@@ -103,7 +103,26 @@ local Recipes: { [string]: Recipe } = {
 		},
 	},
 	ButteredBarrage = { Name = "Buttered Barrage", Weapon = "Toaster", Ingredient = "Butter" },
-	CondimentFlood = { Name = "Condiment Flood", Weapon = "SqueezeBottle", Ingredient = "Salt" },
+	CondimentFlood = {
+		Name = "Condiment Flood",
+		Weapon = "SqueezeBottle",
+		Ingredient = "Salt",
+		Description = "A wide trail that can crit, and pools while you stand still",
+		Shape = "Trail",
+		FxColor = Color3.fromRGB(240, 120, 20),
+		Levels = {
+			{
+				Damage = 8,
+				Cooldown = 0.3,
+				Range = 0,
+				Width = 6,
+				Seconds = 4,
+				Slow = 0.5,
+				StillEvery = 0.6,
+				CanCrit = true,
+			},
+		},
+	},
 }
 
 return Recipes

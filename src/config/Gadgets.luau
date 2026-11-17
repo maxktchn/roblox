@@ -88,7 +88,20 @@ local Gadgets: { [string]: Gadget } = {
 			{ Damage = 14, Cooldown = 1.2, Range = 40, Count = 4, Speed = 45 },
 		},
 	},
-	SqueezeBottle = { Name = "Squeeze Bottle", Behavior = "Drops a ketchup trail that slows enemies" },
+	-- Trail (#131): rewards kiting. Nothing is dropped while the chef stands still.
+	SqueezeBottle = {
+		Name = "Squeeze Bottle",
+		Behavior = "Drops a ketchup trail that slows enemies",
+		Shape = "Trail",
+		FxColor = Color3.fromRGB(200, 30, 30),
+		Levels = {
+			{ Damage = 2, Cooldown = 0.3, Range = 0, Width = 3, Seconds = 2.0, Slow = 0.3 },
+			{ Damage = 3, Cooldown = 0.3, Range = 0, Width = 3, Seconds = 2.5, Slow = 0.3 },
+			{ Damage = 3, Cooldown = 0.3, Range = 0, Width = 3.5, Seconds = 2.5, Slow = 0.35 },
+			{ Damage = 4, Cooldown = 0.3, Range = 0, Width = 3.5, Seconds = 3.0, Slow = 0.35 },
+			{ Damage = 5, Cooldown = 0.3, Range = 0, Width = 4, Seconds = 3.5, Slow = 0.4 },
+		},
+	},
 }
 
 return Gadgets

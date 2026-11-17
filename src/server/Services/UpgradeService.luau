@@ -52,7 +52,8 @@ local function tipsNeeded(fromLevel: number): number
 end
 
 -- How config field names appear on cards. Fields not listed here show their own name.
-local STAT_LABELS: { [string]: { name: string, unit: string } } = {
+-- `percent` fields are fractions shown as percentages (0.3 -> 30%).
+local STAT_LABELS: { [string]: { name: string, unit: string, percent: boolean? } } = {
 	Damage = { name = "Damage", unit = "" },
 	Cooldown = { name = "Cooldown", unit = "s" },
 	Range = { name = "Range", unit = "" },
@@ -64,6 +65,9 @@ local STAT_LABELS: { [string]: { name: string, unit: string } } = {
 	Radius = { name = "Splash", unit = "" },
 	Bounces = { name = "Bounces", unit = "" },
 	BounceRange = { name = "Bounce range", unit = "" },
+	Width = { name = "Width", unit = "" },
+	Seconds = { name = "Lasts", unit = "s" },
+	Slow = { name = "Slow", unit = "%", percent = true },
 }
 
 -- One line saying what changes between two levels of a weapon, built from its config numbers.
@@ -78,8 +82,13 @@ local function describeChange(before: { [string]: any }, after: { [string]: any 
 	table.sort(keys)
 	local parts = {}
 	for _, key in keys do
-		local label = STAT_LABELS[key] or { name = key, unit = "" }
-		table.insert(parts, `{label.name} {before[key]}{label.unit} → {after[key]}{label.unit}`)
+		local label = STAT_LABELS[key] or { name = key, unit = "", percent = false }
+		local from, to = before[key], after[key]
+		if label.percent then
+			from = if type(from) == "number" then math.round(from * 100) else from
+			to = math.round(to * 100)
+		end
+		table.insert(parts, `{label.name} {from}{label.unit} → {to}{label.unit}`)
 	end
 	return if #parts > 0 then table.concat(parts, ", ") else "Level up"
 end

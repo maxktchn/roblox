@@ -9,6 +9,8 @@
 --   Pulse      - a ring grows from where it was fired    (WeaponFx: origin, range, speed)
 --   Lob        - an egg arcs over, then splashes         (WeaponFx: "Lob", from, to, seconds, radius)
 --   Bounce     - a spinning disc chases one enemy part   (WeaponFx: "Disc", id, from, part, speed / "End", id)
+--   Trail      - flat splats on the floor that fade       (WeaponFx: "Splat", id, position, width, seconds / "End", id)
+--                (Buttered Barrage's butter slicks use the same messages)
 --   Orbit      - objects circle the chef all the time. No messages: we read the weapon's
 --                level from the player's "Weapon_<id>" attribute and use the shared server
 --                clock, so they appear exactly where the server checks for hits.
@@ -298,6 +300,46 @@ local function endDisc(discId: number)
 	end
 end
 
+-- SPLATS (Trail weapons, butter slicks): a flat disc on the floor that fades over its last
+-- half second, or straight away on "End". Parts are reused.
+local SPLAT_FADE_SECONDS = 0.5
+local splatParts: { [number]: Part } = {}
+local spareSplatParts: { Part } = {}
+
+local function endSplat(splatId: number)
+	local part = splatParts[splatId]
+	if part then
+		splatParts[splatId] = nil
+		part.Transparency = 1
+		table.insert(spareSplatParts, part)
+	end
+end
+
+local function drawSplat(color: Color3, splatId: number, position: Vector3, width: number, seconds: number)
+	local part = table.remove(spareSplatParts) or makeFxPart("Splat", color)
+	part.Shape = Enum.PartType.Cylinder
+	part.Material = Enum.Material.SmoothPlastic
+	part.Color = color
+	part.Size = Vector3.new(0.1, width, width)
+	part.CFrame = CFrame.new(position + Vector3.new(0, 0.08, 0)) * CFrame.Angles(0, 0, math.rad(90))
+	part.Transparency = 0.25
+	splatParts[splatId] = part
+	animate(`Splat{splatId}`, function(elapsed)
+		if splatParts[splatId] ~= part then
+			return false -- ended early (the oldest of a full trail)
+		end
+		local left = seconds - elapsed
+		if left <= 0 then
+			endSplat(splatId)
+			return false
+		end
+		if left < SPLAT_FADE_SECONDS then
+			part.Transparency = 0.25 + 0.75 * (1 - left / SPLAT_FADE_SECONDS)
+		end
+		return true
+	end)
+end
+
 -- ORBIT: every frame, place each owned orbit weapon's objects around the chef.
 local function updateOrbits()
 	local root = getRoot()
@@ -362,6 +404,13 @@ local function onWeaponFx(weaponId: string, ...: any)
 		drawPulse(weaponId, color, ...)
 	elseif config.Shape == "Lob" then
 		drawLob(color, select(2, ...))
+	elseif config.Shape == "Trail" then
+		local action, splatId = ...
+		if action == "Splat" then
+			drawSplat(color, select(2, ...))
+		elseif action == "End" then
+			endSplat(splatId)
+		end
 	elseif config.Shape == "Bounce" then
 		local action, discId = ...
 		if action == "Disc" then

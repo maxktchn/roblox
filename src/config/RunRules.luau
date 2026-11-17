@@ -46,6 +46,11 @@ return {
 	LobFlightSeconds = 0.6, -- a lobbed egg (Lob shape, #129) is in the air this long
 	LobClusterSeconds = 0.3, -- Breakfast Bomb's mini-eggs are in the air this long
 	LobHeight = 6, -- studs: how high an egg's arc goes (drawing only)
+	-- Trail weapons (Squeeze Bottle, #131) and butter slicks (#132).
+	TrailTickSeconds = 0.5, -- enemies on a splat take its damage this often
+	TrailSlowSeconds = 0.3, -- a splat's slow lasts this long after the enemy steps off
+	TrailMoveSpeed = 2, -- studs per second: slower than this counts as standing still
+	MaxTrailSplats = 40, -- per trail weapon; a new splat removes the oldest
 
 	-- Loadout (PRD §2.4)
 	StarterMaxLevel = 5,
@@ -64,7 +69,7 @@ return {
 	-- Which gadgets and ingredients can show up as cards. Phase 1 picks (PRD §9);
 	-- add ids here to put more items in the game. Checked by ConfigCheck.
 	UpgradePool = {
-		Gadgets = { "PepperShaker", "SpinningForks", "Toaster", "EggGrenade", "PizzaCutter" }, -- Blender removed (#83)
+		Gadgets = { "PepperShaker", "SpinningForks", "Toaster", "EggGrenade", "PizzaCutter", "SqueezeBottle" },
 		-- Butter joins with Buttered Barrage (#132): Toaster + Butter must be playable first.
 		Ingredients = { "Salt", "HotSauce", "BeefJerky", "FridgeMagnet", "Coffee", "Bread" },
 		-- Boss powers only show up once their boss has been defeated (PRD §3.8).

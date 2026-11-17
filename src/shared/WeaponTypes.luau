@@ -17,7 +17,10 @@
 --   Bounce     - every Cooldown, throws Count discs at the nearest enemies; after each hit a
 --                disc flies on to the nearest enemy it hasn't hit within BounceRange, up to
 --                Bounces times. All discs of one throw share one hit list (Pizza Cutter, #130)
-export type Shape = "Arc" | "Aura" | "Orbit" | "Projectile" | "Pulse" | "Lob" | "Bounce"
+--   Trail      - while the chef walks, drops a flat splat behind them every Cooldown; enemies
+--                on any splat are slowed by Slow and take Damage every RunRules.TrailTickSeconds
+--                (Squeeze Bottle, #131). Always on, like Orbit.
+export type Shape = "Arc" | "Aura" | "Orbit" | "Projectile" | "Pulse" | "Lob" | "Bounce" | "Trail"
 
 -- Lob only: when an egg lands, Count mini-eggs pop out evenly round it, land Distance studs
 -- away (RunRules.LobClusterSeconds later) and splash again (Breakfast Bomb, #129).
@@ -32,7 +35,7 @@ export type Cluster = {
 -- What Cooldown and Range mean depends on the shape:
 export type WeaponLevel = {
 	Damage: number, -- per hit, before Hot Sauce and crits
-	-- Arc / Projectile / Pulse: seconds between attacks.
+	-- Arc / Projectile / Pulse / Lob / Bounce: seconds between attacks. Trail: seconds between splats.
 	-- Aura: seconds between damage ticks. Orbit: seconds before one enemy can be hit again.
 	Cooldown: number,
 	-- Arc: reach. Aura: circle radius. Orbit: radius the objects circle at.
@@ -54,6 +57,11 @@ export type WeaponLevel = {
 	Cluster: Cluster?, -- Lob: mini-eggs when an egg lands (see Cluster above)
 	Bounces: number?, -- Bounce: how many times a disc flies on to another enemy after its first hit
 	BounceRange: number?, -- Bounce: how far (to the next enemy's edge) a disc can fly on
+	Width: number?, -- Trail: studs across one splat
+	Seconds: number?, -- Trail: how long a splat stays
+	Slow: number?, -- Trail: how much slower enemies on a splat move (0.3 = 30%)
+	StillEvery: number?, -- Trail: also drop a splat this often while the chef stands still
+	CanCrit: boolean?, -- Trail: its damage ticks can crit (burns and plain trails can't)
 }
 
 return {}

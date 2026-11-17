@@ -69,6 +69,11 @@ function ConfigCheck.run(): { string }
 				elseif weapon.Shape == "Orbit" or weapon.Shape == "Projectile" then stats.Count and stats.Speed
 				elseif weapon.Shape == "Pulse" then (stats.Speed or 0) > 0 and stats.Range > 0
 				elseif weapon.Shape == "Lob" then (stats.Count or 0) > 0 and (stats.Radius or 0) > 0
+				elseif weapon.Shape == "Trail" then (stats.Width or 0) > 0
+					and (stats.Seconds or 0) > 0
+					and (stats.Slow or 0) >= 0
+					and (stats.Slow or 0) < 1
+					and stats.Cooldown > 0
 				elseif weapon.Shape == "Bounce" then (stats.Count or 0) > 0
 					and (stats.Speed or 0) > 0
 					and (stats.Bounces or -1) >= 0
