@@ -237,6 +237,7 @@ local function spawnWithConfig(enemyType: string, config: Enemies.Enemy, positio
 		direction = direction,
 		windup = if config.Movement == "Charge" then RunRules.ChargeWindupSeconds else 0,
 	}
+	enemy.part.Size = config.Size -- a pooled part may have been swollen (a Sour Lemon's tell, #118)
 	enemy.part.CFrame = CFrame.lookAt(standing, standing + direction)
 	enemy.part:SetAttribute("HpFraction", nil) -- a pooled part may still carry its last enemy's
 	alive[enemy.id] = enemy
@@ -535,6 +536,18 @@ local function moveEnemy(enemy: EnemyRecord, deltaTime: number, chefPosition: Ve
 		-- Stop at the chef's edge instead of walking inside them.
 		local stopDistance = CHEF_RADIUS + EnemyService.getHalfDepth(config)
 		step = math.min(step, math.max(distance - stopDistance, 0))
+	elseif config.Movement == "KeepAway" then
+		-- Keep a distance from the chef, always facing them (Sour Lemon, #118).
+		if distance > 0.01 then
+			enemy.direction = toChef / distance
+		end
+		local keep = config.KeepAway
+		if keep and distance < keep.Min then
+			enemy.position = clampToArena(enemy.position - enemy.direction * step) -- back away
+			return
+		elseif keep and distance <= keep.Max then
+			return -- in range: stand still (JuiceService shoots)
+		end
 	elseif config.Movement == "Charge" then
 		if enemy.windup > 0 then
 			-- Winding up (#119): stand still, turning to face the chef, then roll at where

@@ -82,6 +82,8 @@ return {
 	MaxPiesOnGround = 15, -- past this, new pies aren't dropped
 	-- Rotten Tomato puddles (#117): past this many on the floor, a new one removes the oldest.
 	MaxPuddles = 10,
+	-- Sour Lemon juice blobs in the air at once (#118); past this, lemons skip a shot.
+	MaxJuiceShots = 30,
 	LunchboxUpgradesMin = 1,
 	LunchboxUpgradesMax = 3,
 

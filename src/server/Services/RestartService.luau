@@ -13,6 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local BossService = require(script.Parent.BossService)
 local EnemyService = require(script.Parent.EnemyService)
+local JuiceService = require(script.Parent.JuiceService)
 local MiniBossService = require(script.Parent.MiniBossService)
 local PickupService = require(script.Parent.PickupService)
 local PuddleService = require(script.Parent.PuddleService)
@@ -35,6 +36,7 @@ function RestartService.restart()
 	MiniBossService.reset()
 	PickupService.reset()
 	PuddleService.reset() -- also lets the chef walk at full speed again
+	JuiceService.reset()
 	WeaponService.reset() -- back to the starter at Lv 1, kills 0
 	StatsService.reset() -- no ingredients
 	UpgradeService.reset() -- Lv 1, rerolls back, closes any open cards

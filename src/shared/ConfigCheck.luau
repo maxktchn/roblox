@@ -249,6 +249,25 @@ function ConfigCheck.run(): { string }
 		if enemy.PieDropChance and (enemy.PieDropChance < 0 or enemy.PieDropChance > 1) then
 			fail(`Enemy {id}: PieDropChance must be between 0 and 1`)
 		end
+		if enemy.Movement == "KeepAway" then
+			local keep = enemy.KeepAway
+			if not keep then
+				fail(`Enemy {id}: "KeepAway" movement needs KeepAway`)
+			elseif keep.Min <= 0 or keep.Max <= keep.Min then
+				fail(`Enemy {id}: KeepAway needs 0 < Min < Max`)
+			end
+		end
+		local shot = enemy.Shot
+		if shot then
+			for _, field in { "Every", "Windup", "Swell", "Speed", "Damage", "Range", "Size" } do
+				if (shot :: any)[field] <= 0 then
+					fail(`Enemy {id}: Shot.{field} must be more than 0`)
+				end
+			end
+			if shot.FirstDelay < 0 then
+				fail(`Enemy {id}: Shot.FirstDelay can't be negative`)
+			end
+		end
 		local puddle = enemy.DeathPuddle
 		if puddle then
 			if puddle.Width <= 0 or puddle.Seconds <= 0 then

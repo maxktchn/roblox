@@ -71,6 +71,7 @@ local function nameOf(id: string): string
 		BossLaser = "Boss lasers",
 		Popcorn = "Popcorn pop",
 		CheeseTrail = "Cheese trail",
+		LemonJuice = "Lemon juice",
 	} :: { [string]: string })[id]
 	if special then
 		return special
