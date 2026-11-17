@@ -14,6 +14,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local BossPowers = require(ReplicatedStorage.Config.BossPowers)
+local BossService = require(script.Parent.BossService)
 local Bosses = require(ReplicatedStorage.Config.Bosses)
 local DevAccess = require(script.Parent.Parent.DevAccess)
 local Enemies = require(ReplicatedStorage.Config.Enemies)
@@ -135,6 +136,17 @@ local function buildReport(result: string): string
 		elseif fightOver then `beaten in {formatTime(fightSeconds)}`
 		else `still alive after {formatTime(fightSeconds)}`
 
+	-- The final boss fight (#91-#94): how long, when phase 2 started, how many laser turns.
+	local finalBoss = "not reached"
+	local boss = BossService.getFightStats()
+	if boss then
+		local phase2 = if boss.phase2At then `phase 2 at {formatTime(boss.phase2At)}` else "no phase 2"
+		local detail = `{phase2}, {boss.laserTurns} laser turns`
+		finalBoss = if boss.over
+			then `beaten in {formatTime(boss.seconds)} ({detail})`
+			else `still alive after {formatTime(boss.seconds)} ({detail})`
+	end
+
 	local lines = {
 		`RUN REPORT: {string.upper(result)} at {formatTime(endSeconds)} · Lv {level} · {kills} kills · lowest HP {if lowestHp
 				== math.huge
@@ -142,6 +154,7 @@ local function buildReport(result: string): string
 			else math.round(lowestHp)}`,
 		`Progress: {table.concat(checkpoints, ", ")}`,
 		`Big Cheese: {miniBoss}`,
+		`Microwave Monster: {finalBoss}`,
 		`Level-ups: {eventList(levelUps)}`,
 		`Items: {eventList(itemsGained)}`,
 		`Kills: {breakdown(killsByType)}`,

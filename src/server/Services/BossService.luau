@@ -89,6 +89,15 @@ type ActiveFight = {
 }
 
 local active: ActiveFight? = nil
+
+-- This run's fight so far, for the run report (#94). Kept after the boss dies; reset() clears it.
+export type FightStats = {
+	seconds: number, -- fight length so far (paused time doesn't count)
+	phase2At: number?, -- seconds into the fight when phase 2 started
+	laserTurns: number, -- laser turns where the lasers fired
+	over: boolean, -- the boss is dead
+}
+local stats: FightStats? = nil
 local pulsePart: Part
 local hpFill: Frame? = nil
 local display: TextLabel? = nil -- the microwave's little screen ("DING")
@@ -306,6 +315,7 @@ local function startFight()
 		part:SetAttribute("BossStage", "Phase1")
 	end
 
+	stats = { seconds = 0, phase2At = nil, laserTurns = 0, over = false }
 	active = {
 		bossId = bossId,
 		fight = fight,
@@ -374,6 +384,9 @@ end
 -- Phase 2 starts: the boss stops and flashes, its bar turns orange and its screen says HOT!
 local function startPhaseChange(current: ActiveFight)
 	setStage(current, "PhaseChange")
+	if stats then
+		stats.phase2At = stats.seconds
+	end
 	current.stageTimer = current.fight.PhaseChangeSeconds
 	cancelWarnings(current) -- also switches the face to HOT!
 	EnemyService.setMoveTarget(current.bossId, EnemyService.getEnemyPosition(current.bossId), 0)
@@ -493,6 +506,9 @@ local function update(deltaTime: number)
 	if not current or RunManager.isPaused() or RunManager.isRunOver() then
 		return
 	end
+	if stats then
+		stats.seconds += deltaTime
+	end
 	local bossPosition = EnemyService.getEnemyPosition(current.bossId)
 	if not bossPosition then
 		return -- the boss just died; onEnemyKilled ends the fight
@@ -537,6 +553,9 @@ local function update(deltaTime: number)
 				-- the counters' inner face.
 				current.arrived = true
 				current.stageTimer = fight.LaserSeconds
+				if stats then
+					stats.laserTurns += 1
+				end
 				LaserService.turnOn(current.bossId, current.center, fight.ArenaRadius - COUNTER_DEPTH / 2, fight)
 			end
 		elseif current.stageTimer <= 0 then
@@ -556,11 +575,17 @@ function BossService.getStage(): Stage?
 	return if active then active.stage else nil
 end
 
+-- This run's final boss fight so far (a copy), or nil if it hasn't started. For the run report.
+function BossService.getFightStats(): FightStats?
+	return if stats then table.clone(stats) else nil
+end
+
 -- End any boss fight without a winner (a new run is starting, #50): forget the fight,
 -- take down the ring and its walls, and let enemies roam the whole kitchen again.
 -- The boss itself is an enemy: RestartService removes it with EnemyService.clearAll().
 function BossService.reset()
 	active = nil
+	stats = nil
 	BossHpBar.remove(hpFill)
 	hpFill = nil
 	display = nil
@@ -596,6 +621,9 @@ function BossService:start()
 	-- The boss is defeated: the chapter is cleared.
 	EnemyService.onEnemyKilled(function(enemyId)
 		if active and enemyId == active.bossId then
+			if stats then
+				stats.over = true
+			end
 			active = nil
 			BossHpBar.remove(hpFill)
 			hpFill = nil

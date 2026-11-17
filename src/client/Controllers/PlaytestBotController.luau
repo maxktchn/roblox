@@ -8,7 +8,15 @@
 --     weapons hit something
 --   * away from the walls, plus a slow circle around the arena, like a person kiting
 --   * toward a pie when hurt, otherwise toward tips nearby
--- and aims at the nearest enemy. Cards are picked by the server half.
+--   * final boss (#94): fights from knife range (circling it, 4-8 studs from its edge, like a
+--     person would), out of reach while its damage pulse is warning, away from popcorn
+--     kernels and out of a pop's blast area, and during
+--     the spinning lasers into the middle of the gap it's in, turning with the beams
+-- and aims at the nearest enemy (a popcorn kernel first, to shoot it down). Cards are picked
+-- by the server half.
+--
+-- The bot only knows what the client sees (the beam parts, the pop discs), and it notices
+-- the lasers switching direction by watching them, a moment late, like a person.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -31,8 +39,33 @@ local PIE_BELOW_HP = 0.75 -- go for pies below this share of max HP
 local TIP_DISTANCE = 40 -- go for tips this close
 
 -- How hard each enemy type pushes the chef away (1 if not listed).
-local PUSH_WEIGHT: { [string]: number } = { Meatball = 3, FruitFlies = 0.6 }
+local PUSH_WEIGHT: { [string]: number } = { Meatball = 3, FruitFlies = 0.6, PopcornKernel = 4 }
 local BOSS_PUSH_WEIGHT = 6
+local KEEP_AWAY_KERNEL = 11 -- popcorn pops 8 studs wide: stay outside that, plus a bit
+local AIM_KERNEL_WITHIN = 25 -- aim at a popcorn kernel this close instead of the nearest enemy
+
+-- Spinning lasers (#93).
+local LASER_RADIUS_MIN = 7 -- studs from the boss's centre to dodge at: close enough to keep swinging
+local LASER_RADIUS_MAX = 12
+-- Final boss: fight from knife range (the knife reaches 10 studs past an enemy's edge).
+local BOSS_TOO_CLOSE = 4 -- studs from its edge: back off (touching it hurts)
+local BOSS_TOO_FAR = 8 -- studs from its edge: move back in
+local BOSS_CIRCLE_WEIGHT = 0.8 -- how hard to circle round it while fighting
+local LASER_WEIGHT = 5 -- how hard to head for the middle of the gap
+local LASER_DANGER = 4 -- studs from a live beam where the bot really hurries
+local LASER_LEAD = 0.4 -- seconds ahead the bot aims for, given how fast the beams turn
+local SPIN_SMOOTHING = 0.35 -- seconds: how quickly the bot notices a change of direction
+local POP_MARGIN = 2.5 -- studs past a pop's blast area to get to
+local PULSE_MARGIN = 3 -- studs past the boss pulse's reach to get to
+local RING_WALL_DISTANCE = 10 -- in the boss ring: start pushing back toward the middle this close to the counters
+local RING_CIRCLE_WEIGHT = 0.2 -- in the boss ring: a slow drift round (it mostly circles the boss itself)
+-- How far the final boss's damage pulse reaches (the client sees only the growing ring).
+local PULSE_RADIUS = 0
+for _, boss in Bosses do
+	if boss.Fight then
+		PULSE_RADIUS = math.max(PULSE_RADIUS, boss.Fight.PulseRadius)
+	end
+end
 
 local function flat(v: Vector3): Vector3
 	return Vector3.new(v.X, 0, v.Z)
@@ -44,10 +77,124 @@ end
 -- it forever would stall the run.
 local function isBig(name: string): boolean
 	local boss = Bosses[name]
-	return name == "Meatball" or (boss ~= nil and boss.Fight ~= nil)
+	return name == "Meatball" or name == "PopcornKernel" or (boss ~= nil and boss.Fight ~= nil)
 end
 
-local function step()
+-- What the bot has seen of the lasers: beam 1's angle last frame and how fast they turn.
+local lastBeamAngle: number? = nil
+local spinRate = 0 -- radians per second (+ = toward larger angles)
+
+local function angleOf(v: Vector3): number
+	return math.atan2(v.Z, v.X)
+end
+
+-- -pi..pi
+local function wrap(angle: number): number
+	return (angle + math.pi) % (2 * math.pi) - math.pi
+end
+
+-- Lasers up: a push toward the middle of the gap the chef is in, a little ahead of where
+-- it's turning. Returns nil when there are no lasers.
+-- The boss ring (BossService's ring of counters), seen from its invisible walls: its middle
+-- and how far in the counters' inner face is. nil when there's no ring.
+local ringFolder: Instance? = nil
+local ringCenter = Vector3.zero
+local ringRadius = 0
+local function getBossRing(): (Vector3?, number)
+	local ring = workspace:FindFirstChild("BossRing")
+	if not ring then
+		ringFolder = nil
+		return nil, 0
+	end
+	if ring ~= ringFolder then
+		local sum, count = Vector3.zero, 0
+		local depth = 0
+		for _, part in ring:GetChildren() do
+			if part:IsA("BasePart") and part.Name == "Wall" then
+				sum += flat(part.Position)
+				count += 1
+				depth = part.Size.Z
+			end
+		end
+		if count == 0 then
+			return nil, 0
+		end
+		ringFolder = ring
+		ringCenter = sum / count
+		local wall = ring:FindFirstChild("Wall") :: BasePart
+		ringRadius = (flat(wall.Position) - ringCenter).Magnitude - depth / 2
+	end
+	return ringCenter, ringRadius
+end
+
+local function laserPush(pos: Vector3, deltaTime: number): Vector3?
+	local folder = workspace:FindFirstChild("BossLasers")
+	local beams = folder and folder:GetChildren() or {}
+	if #beams == 0 then
+		lastBeamAngle = nil
+		spinRate = 0
+		return nil
+	end
+	local origin: Vector3? = nil
+	local angles = {}
+	local live = false
+	local first: number? = nil
+	for _, beam in beams do
+		if beam:IsA("BasePart") then
+			local direction = flat(beam.CFrame.LookVector)
+			if direction.Magnitude > 0.01 then
+				direction = direction.Unit
+				origin = flat(beam.Position) - direction * (beam.Size.Z / 2)
+				table.insert(angles, angleOf(direction))
+				live = live or beam.Size.X > 1
+				if beam.Name == "Laser1" then
+					first = angleOf(direction)
+				end
+			end
+		end
+	end
+	if not origin or #angles == 0 then
+		return nil
+	end
+
+	-- How fast they turn, smoothed: a switch of direction takes a moment to notice.
+	if first and lastBeamAngle and deltaTime > 0 then
+		local measured = wrap(first - lastBeamAngle) / deltaTime
+		local blend = math.clamp(deltaTime / SPIN_SMOOTHING, 0, 1)
+		spinRate += (measured - spinRate) * blend
+	end
+	lastBeamAngle = first
+
+	-- Which gap the chef is in: the nearest beam on each side.
+	local fromBoss = flat(pos) - origin
+	local radius = fromBoss.Magnitude
+	local chefAngle = angleOf(fromBoss)
+	local before, after = -math.huge, math.huge -- signed angles of the neighbouring beams
+	local nearestBeam = math.huge
+	for _, angle in angles do
+		local offset = wrap(angle - chefAngle)
+		nearestBeam = math.min(nearestBeam, math.abs(offset))
+		if offset <= 0 and offset > before then
+			before = offset
+		elseif offset > 0 and offset < after then
+			after = offset
+		end
+	end
+	if before == -math.huge or after == math.huge then
+		return nil
+	end
+	local middle = chefAngle + (before + after) / 2 + (if live then spinRate * LASER_LEAD else 0)
+	local targetRadius = math.clamp(radius, LASER_RADIUS_MIN, LASER_RADIUS_MAX)
+	local target = origin + Vector3.new(math.cos(middle), 0, math.sin(middle)) * targetRadius
+	local toward = target - flat(pos)
+	if toward.Magnitude < 0.5 then
+		return Vector3.zero
+	end
+	local danger = live and nearestBeam * math.max(radius, 1) < LASER_DANGER
+	return toward.Unit * (if danger then LASER_WEIGHT * 2 else LASER_WEIGHT)
+end
+
+local function step(deltaTime: number)
 	if not player:GetAttribute("BotRunning") then
 		return
 	end
@@ -66,6 +213,10 @@ local function step()
 	local nearestDistance = math.huge
 	local smallAway: Vector3? = nil
 	local smallDistance = math.huge
+	local kernelAway: Vector3? = nil -- the nearest popcorn kernel, to shoot it down
+	local kernelDistance = math.huge
+	local bossAway: Vector3? = nil -- from the final boss to the chef
+	local bossDistance = math.huge -- to its edge
 	local enemies = workspace:FindFirstChild("Enemies")
 	if enemies then
 		for _, enemy in enemies:GetChildren() do
@@ -77,8 +228,18 @@ local function step()
 						nearestAway, nearestDistance = away, distance
 					end
 					local big = isBig(enemy.Name)
-					local keep = if big then KEEP_AWAY_BIG else KEEP_AWAY_SMALL
-					if distance < keep and distance < SEE_DISTANCE then
+					local keep = if enemy.Name == "PopcornKernel"
+						then KEEP_AWAY_KERNEL
+						elseif big then KEEP_AWAY_BIG
+						else KEEP_AWAY_SMALL
+					if enemy.Name == "PopcornKernel" and distance < kernelDistance then
+						kernelAway, kernelDistance = away, distance
+					end
+					local boss = Bosses[enemy.Name]
+					if boss and boss.Fight then
+						-- The final boss: handled below (fought from knife range, not avoided).
+						bossAway, bossDistance = away, distance
+					elseif distance < keep and distance < SEE_DISTANCE then
 						local weight = if Bosses[enemy.Name] then BOSS_PUSH_WEIGHT else PUSH_WEIGHT[enemy.Name] or 1
 						push += away.Unit * weight * 25 / (distance * distance)
 					end
@@ -94,16 +255,30 @@ local function step()
 	end
 
 	-- Walls: push back toward the middle near the edges, and circle the arena slowly.
-	local map = workspace:FindFirstChild("Map")
-	local center = (map and map:GetAttribute("ArenaCenter") or Vector3.zero) :: Vector3
-	local size = (map and map:GetAttribute("ArenaSize") or Vector3.new(176, 0, 176)) :: Vector3
-	local fromCenter = flat(pos - center)
-	local edge = math.min(size.X / 2 - math.abs(fromCenter.X), size.Z / 2 - math.abs(fromCenter.Z))
-	if fromCenter.Magnitude > 1 then
-		if edge < WALL_DISTANCE then
-			push -= fromCenter.Unit * (1 - math.max(edge, 0) / WALL_DISTANCE) ^ 2 * 4
+	-- In the boss fight the ring of counters is the wall, and the bot circles inside it,
+	-- kiting the boss round like a person would, instead of getting pinned at the edge.
+	local bossRingCenter, bossRingRadius = getBossRing()
+	if bossRingCenter then
+		local fromCenter = flat(pos) - bossRingCenter
+		local edge = bossRingRadius - fromCenter.Magnitude
+		if fromCenter.Magnitude > 1 then
+			if edge < RING_WALL_DISTANCE then
+				push -= fromCenter.Unit * (1 - math.max(edge, 0) / RING_WALL_DISTANCE) ^ 2 * 8
+			end
+			push += Vector3.new(-fromCenter.Z, 0, fromCenter.X).Unit * RING_CIRCLE_WEIGHT
 		end
-		push += Vector3.new(-fromCenter.Z, 0, fromCenter.X).Unit * 0.35
+	else
+		local map = workspace:FindFirstChild("Map")
+		local center = (map and map:GetAttribute("ArenaCenter") or Vector3.zero) :: Vector3
+		local size = (map and map:GetAttribute("ArenaSize") or Vector3.new(176, 0, 176)) :: Vector3
+		local fromCenter = flat(pos - center)
+		local edge = math.min(size.X / 2 - math.abs(fromCenter.X), size.Z / 2 - math.abs(fromCenter.Z))
+		if fromCenter.Magnitude > 1 then
+			if edge < WALL_DISTANCE then
+				push -= fromCenter.Unit * (1 - math.max(edge, 0) / WALL_DISTANCE) ^ 2 * 4
+			end
+			push += Vector3.new(-fromCenter.Z, 0, fromCenter.X).Unit * 0.35
+		end
 	end
 
 	-- Pickups: pies when hurt, tips otherwise. Both live in the Tips folder (PickupService).
@@ -131,12 +306,52 @@ local function step()
 		end
 	end
 
+	-- Final boss: get out of reach while its damage pulse is warning (the ring is showing).
+	local pulse = workspace:FindFirstChild("BossPulse")
+	if pulse and pulse:IsA("BasePart") and pulse.Position.Y > -50 then
+		local away = flat(pos - pulse.Position)
+		if away.Magnitude < PULSE_RADIUS + PULSE_MARGIN then
+			local out = if away.Magnitude > 0.1 then away.Unit else Vector3.new(1, 0, 0)
+			push += out * 8
+		end
+	end
+
+	-- Final boss: get out of popcorn blast areas, and keep to the gaps between the lasers.
+	local pops = workspace:FindFirstChild("PopcornPops")
+	if pops then
+		for _, area in pops:GetChildren() do
+			if area:IsA("BasePart") and area.Name == "PopcornPopArea" then
+				local away = flat(pos - area.Position)
+				local radius = area.Size.Y / 2 -- a flat disc: its width is Size.Y and Size.Z
+				if away.Magnitude < radius + POP_MARGIN then
+					local out = if away.Magnitude > 0.1 then away.Unit else Vector3.new(1, 0, 0)
+					push += out * 8
+				end
+			end
+		end
+	end
+	local lasers = laserPush(pos, deltaTime)
+	if lasers then
+		push += lasers
+	elseif bossAway then
+		-- Fight the final boss from knife range: not too close (its touch hurts), not too far
+		-- (the knife can't reach), and keep circling it like a person kiting.
+		local out = bossAway.Unit
+		if bossDistance < BOSS_TOO_CLOSE then
+			push += out * 3
+		elseif bossDistance > BOSS_TOO_FAR then
+			push -= out * 1.5
+		end
+		push += Vector3.new(-out.Z, 0, out.X) * BOSS_CIRCLE_WEIGHT
+	end
+
 	-- player:Move works with this game's controls; Humanoid:Move gets overridden each frame.
 	player:Move(if push.Magnitude > 0.05 then push.Unit else Vector3.zero, false)
 
 	-- Aim like the mobile aim stick does: screen offset (+X right, +Y down) = world X, Z.
-	if nearestAway then
-		AimController.setAimFromStick(Vector2.new(-nearestAway.X, -nearestAway.Z).Unit * 50)
+	local aimAway = if kernelAway and kernelDistance < AIM_KERNEL_WITHIN then kernelAway else nearestAway
+	if aimAway then
+		AimController.setAimFromStick(Vector2.new(-aimAway.X, -aimAway.Z).Unit * 50)
 	end
 end
 
