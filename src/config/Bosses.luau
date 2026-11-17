@@ -12,6 +12,33 @@
 --   PulseWarning  seconds the pulse ring grows (the warning) before it hits
 --   PulseRadius   studs from the boss's center that the pulse reaches
 --   PulseDamage   damage to the chef if inside the pulse, before armor
+-- Two HP phases (#91): phase 1 is the walking, summoning and pulsing above. Below Phase2At the
+-- boss takes turns: a laser turn (runs to the middle of the ring and stands there; no pulses
+-- or new minions) then a walking turn (phase 1 again), over and over until it dies.
+--   Phase2At           fraction of max HP where phase 2 starts (0.5 = at half HP)
+--   PhaseChangeSeconds the boss stops and flashes this long when phase 2 starts
+--   LaserWalkSpeed     studs per second on its way to the middle for a laser turn
+--   LaserSeconds       how long each laser turn lasts once it reaches the middle
+--   WalkingSeconds     how long each walking turn lasts
+-- Homing popcorn (#92), in phase 1 and the walking turns:
+--   PopcornEvery       seconds between kernels
+--   PopcornWarning     seconds the microwave door glows before a kernel flies out
+--   PopcornEnemy       which enemy it fires (an id from Enemies.luau)
+--   PopcornSeconds     a kernel pops on its own after this long
+--   PopWarning         seconds the pop's warning ring grows before it hits
+--   PopRadius          studs from the kernel that the pop reaches
+--   PopDamage          damage to the chef if inside the pop, before armor
+-- Spinning lasers (#93), during each laser turn once the boss is in the middle:
+--   LaserCount         beams, evenly spaced (6 = 60 degrees apart)
+--   LaserWarning       seconds of thin see-through beams first (part of LaserSeconds)
+--   LaserTurnSpeed     degrees per second the beams sweep once live
+--   LaserWidth         studs wide when live
+--   LaserDamage        damage to the chef per hit, before armor
+--   LaserHitCooldown   seconds before the lasers can hit the chef again
+--   LaserReverseAt     when the beams switch direction, as a fraction of the live time
+--                      (0.5 = halfway through)
+--   LaserReverseTell   seconds before the switch that the beams slow to a stop and go a
+--                      little paler: a hint, meant to be easy to miss
 -- Power: the boss power (id in BossPowers.luau) that defeating this boss unlocks (PRD §3.8).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -27,6 +54,26 @@ export type BossFight = {
 	PulseWarning: number,
 	PulseRadius: number,
 	PulseDamage: number,
+	Phase2At: number,
+	PhaseChangeSeconds: number,
+	LaserWalkSpeed: number,
+	LaserSeconds: number,
+	WalkingSeconds: number,
+	PopcornEvery: number,
+	PopcornWarning: number,
+	PopcornEnemy: string,
+	PopcornSeconds: number,
+	PopWarning: number,
+	PopRadius: number,
+	PopDamage: number,
+	LaserCount: number,
+	LaserWarning: number,
+	LaserTurnSpeed: number,
+	LaserWidth: number,
+	LaserDamage: number,
+	LaserHitCooldown: number,
+	LaserReverseAt: number,
+	LaserReverseTell: number,
 }
 
 export type Boss = {
@@ -64,14 +111,14 @@ local Bosses: { [string]: Boss } = {
 	},
 	MicrowaveMonster = {
 		Name = "Microwave Monster",
-		Mechanics = "Summons minions and sends out damage pulses",
+		Mechanics = "Summons minions, sends out damage pulses and fires homing popcorn; below half HP, takes turns with spinning lasers in the middle",
 		Mvp = true,
 		Body = {
 			Name = "Microwave Monster",
 			Role = "Final boss",
 			Behavior = "Walks slowly at the chef",
 			Mvp = true,
-			Hp = 3500, -- lowered for 6-minute runs (weaker builds by the boss)
+			Hp = 5000, -- two HP phases (#91): aiming for a fight of about 60 s
 			Speed = 5,
 			Damage = 25, -- 4 touches take a full-HP chef (100)
 			HurtCooldown = 1, -- at most one touch hit per second
@@ -93,6 +140,28 @@ local Bosses: { [string]: Boss } = {
 			PulseWarning = 1.2,
 			PulseRadius = 16,
 			PulseDamage = 20,
+			Phase2At = 0.5,
+			PhaseChangeSeconds = 1,
+			LaserWalkSpeed = 15, -- 3x its walk, still just slower than the chef (16)
+			LaserSeconds = 8,
+			WalkingSeconds = 8,
+			PopcornEvery = 10,
+			PopcornWarning = 0.6,
+			PopcornEnemy = "PopcornKernel",
+			PopcornSeconds = 8,
+			PopWarning = 0.5,
+			PopRadius = 8,
+			PopDamage = 20,
+			LaserCount = 6, -- was 3: too easy in playtest
+			LaserWarning = 1.5,
+			-- At the ring's edge (~35 studs out) 25 degrees/s is ~15 studs/s: just under the
+			-- chef's 16, so you can run around with the beams anywhere in the arena.
+			LaserTurnSpeed = 25,
+			LaserWidth = 2,
+			LaserDamage = 35,
+			LaserHitCooldown = 1,
+			LaserReverseAt = 0.5,
+			LaserReverseTell = 0.6,
 		},
 	},
 	Doughzilla = {

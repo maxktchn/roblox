@@ -184,6 +184,50 @@ function ConfigCheck.run(): { string }
 		if boss.Fight and not boss.Body then
 			fail(`Boss {id}: has a Fight but no Body`)
 		end
+		local fight = boss.Fight
+		if fight then
+			if fight.Phase2At <= 0 or fight.Phase2At >= 1 then
+				fail(`Boss {id}: Phase2At must be between 0 and 1 (a fraction of max HP)`)
+			end
+			if fight.LaserWarning < 0 or fight.LaserWarning >= fight.LaserSeconds then
+				fail(`Boss {id}: LaserWarning must be 0 or more and shorter than LaserSeconds`)
+			end
+			if fight.LaserReverseAt <= 0 or fight.LaserReverseAt >= 1 then
+				fail(`Boss {id}: LaserReverseAt must be between 0 and 1 (a fraction of the live time)`)
+			end
+			if fight.LaserReverseTell < 0 then
+				fail(`Boss {id}: LaserReverseTell must be 0 or more`)
+			end
+			if fight.LaserCount ~= math.floor(fight.LaserCount) then
+				fail(`Boss {id}: LaserCount must be a whole number`)
+			end
+			if not Enemies[fight.PopcornEnemy] then
+				fail(`Boss {id}: unknown PopcornEnemy "{fight.PopcornEnemy}"`)
+			end
+			for _, field in
+				{
+					"PhaseChangeSeconds",
+					"LaserWalkSpeed",
+					"LaserSeconds",
+					"WalkingSeconds",
+					"PopcornEvery",
+					"PopcornWarning",
+					"PopcornSeconds",
+					"PopWarning",
+					"PopRadius",
+					"PopDamage",
+					"LaserCount",
+					"LaserTurnSpeed",
+					"LaserWidth",
+					"LaserDamage",
+					"LaserHitCooldown",
+				}
+			do
+				if (fight :: any)[field] <= 0 then
+					fail(`Boss {id}: {field} must be more than 0`)
+				end
+			end
+		end
 		if boss.Body and Enemies[id] then
 			fail(`{id} is both a boss and an enemy`)
 		end
