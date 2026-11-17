@@ -109,7 +109,7 @@ The restaurant's food has gone rotten and come alive. You're the chef, and you h
 | Pickup | Effect |
 |---|---|
 | Tips | XP (small, medium, large values). Dropped by every defeated enemy; tips within 8 studs (Fridge Magnet adds to this) fly to the chef at 45 studs/s. At most 250 lie on the floor; extra value is added to the oldest one. |
-| Pie | Heals 20% max HP. Moldy Bread, Meatballs and other bigger enemies have a 5% chance to drop one (Fruit Flies never do), about 15 a run. Walk over it to eat it (2.5 studs); it stays on the floor while you're at full HP. At most 15 on the floor. |
+| Pie | Heals 20% max HP. Moldy Bread, Meatballs and other bigger enemies have a 4.5% chance to drop one (Fruit Flies never do), about 13 a run. Walk over it to eat it (2.5 studs); it stays on the floor while you're at full HP. At most 15 on the floor. |
 | Tip Jar | Pulls every tip on the map to the player |
 | Fire Extinguisher | Clears all normal enemies on screen |
 | Lunchbox | Dropped by elites and bosses. Gives 1 to 3 free upgrades. |
@@ -224,9 +224,9 @@ All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with ga
 
 | Piece | Count | HP | Speed | Damage | Tips |
 |---|---|---|---|---|---|
-| The Big Cheese | 1 | 600 | 6 | 12 | 20 |
-| Cheese Wedge | 3 | 120 | 10 | 8 | 6 |
-| Cheese Cube | 6 | 40 | 15 | 5 | 3 |
+| The Big Cheese | 1 | 1200 | 6 | 12 | 20 |
+| Cheese Wedge | 3 | 240 | 10 | 8 | 6 |
+| Cheese Cube | 6 | 80 | 15 | 5 | 3 |
 
 **Movement (Phase 1):** Fruit Flies spawn in groups of 6. Meatballs roll straight at where the chef was, and turn to aim again after overshooting by 25 studs or hitting a wall. Everything else walks straight at the chef. Enemies push each other apart so the swarm spreads into a crowd instead of stacking on one spot.
 
@@ -264,7 +264,7 @@ All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with ga
 
 **Homing popcorn** (#92; in phase 1 and the walking turns):
 - Every 10 s the microwave's window lights up and its screen says POP! for 0.6 s (the warning), then a **Popcorn Kernel** flies out of the door and follows the chef.
-- It's an enemy, so every weapon can shoot it down: **150 HP** (not scaled), **speed 13** (the chef runs at 16, so you can outrun it but not lose it). It does no contact damage.
+- It's an enemy, so every weapon can shoot it down: **400 HP** (not scaled, so it lives long enough to get out of the door), **speed 13** (the chef runs at 16, so you can outrun it but not lose it). It does no contact damage.
 - Whenever it dies it **pops**: shot down (drops 5 tips), touching the chef, or after 8 s (no tips). An orange disc shows the whole blast area while a solid disc grows inside it for 0.5 s, then the blast hits the chef for **20 damage** if they're within **8 studs**. Only the chef is hurt.
 
 ### 3.6 Run timeline (Chapter 1, starting values)
