@@ -327,6 +327,9 @@ local function syncProgress()
 end
 
 -- Do what a card says.
+-- Told when a Recipe card is taken (CookbookService). A DEV "Give" skips cards, so it isn't.
+local recipeTakenCallbacks: { (string) -> () } = {}
+
 local function applyCard(card: Card)
 	if card.Kind == "Starter" or card.Kind == "Gadget" or card.Kind == "BossPower" then
 		WeaponService.setWeaponLevel(card.Id, card.ToLevel)
@@ -335,6 +338,9 @@ local function applyCard(card: Card)
 	elseif card.Kind == "Recipe" then
 		-- The recipe takes its weapon's slot; the ingredient stays (PRD §2.5).
 		WeaponService.replaceWeapon(Recipes[card.Id].Weapon, card.Id)
+		for _, callback in recipeTakenCallbacks do
+			task.spawn(callback, card.Id)
+		end
 	end
 end
 
@@ -362,6 +368,11 @@ function UpgradeService.grantLevelUps(count: number)
 	end
 	pendingLevelUps += count
 	offerNext()
+end
+
+-- Run `callback` with the recipe's id whenever a Recipe card is taken (P2-8 #145).
+function UpgradeService.onRecipeTaken(callback: (recipeId: string) -> ())
+	table.insert(recipeTakenCallbacks, callback)
 end
 
 -- Replace the open offer with a fresh draw, using up one reroll. Returns true if it worked.

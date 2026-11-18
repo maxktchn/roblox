@@ -12,7 +12,8 @@
 -- "Coming soon" until their topics (#107, #108) fill them.
 --
 -- Reads: "RunState", "Chapter" (RunManager), "LifetimeRuns"/"LifetimeWins"/"BestWinSeconds"
--- (DataService), and the GearState remote (gold and the Utensil item, GearService).
+-- (DataService), "Found_<recipeId>" (CookbookService), and the GearState remote (gold and the
+-- Utensil item, GearService).
 -- Sends: RequestRestart when Play is tapped (accepted only in the lobby).
 
 local Lighting = game:GetService("Lighting")
@@ -21,10 +22,15 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local CameraController = require(script.Parent.CameraController)
 local Chapters = require(ReplicatedStorage.Config.Chapters)
+local Gadgets = require(ReplicatedStorage.Config.Gadgets)
 local Gear = require(ReplicatedStorage.Config.Gear)
 local GearController = require(script.Parent.GearController)
 local GearMath = require(ReplicatedStorage.Shared.GearMath)
+local Ingredients = require(ReplicatedStorage.Config.Ingredients)
+local Recipes = require(ReplicatedStorage.Config.Recipes)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local RunRules = require(ReplicatedStorage.Config.RunRules)
+local Starters = require(ReplicatedStorage.Config.Starters)
 
 local LobbyController = {}
 
@@ -48,6 +54,8 @@ local COLORS = {
 	gold = Color3.fromRGB(240, 185, 40),
 	ink = Color3.fromRGB(45, 35, 30),
 	tab = Color3.fromRGB(70, 62, 56),
+	hidden = Color3.fromRGB(20, 18, 17), -- an unfound recipe's card
+	recipe = Color3.fromRGB(230, 175, 30), -- a found recipe's border (as on the Order Up! cards)
 }
 
 type GearState = {
@@ -66,6 +74,8 @@ local chapterLabel: TextLabel
 local statsLabel: TextLabel
 local playButton: TextButton
 local gearState: GearState? = nil
+local cookbookList: ScrollingFrame
+local cookbookCount: TextLabel
 local currentTab = "HOME"
 
 local function inLobby(): boolean
@@ -150,6 +160,82 @@ local function drawHome()
 end
 
 --------------------------------------------------------------------------------
+-- Cookbook (#145)
+--------------------------------------------------------------------------------
+
+-- Recipes a run can reach: playable, made from the starter or a pool gadget plus a pool
+-- ingredient. The others (Frying Pan's, the Meat Cleaver's...) don't show until they can be made.
+local function reachableRecipes(): { string }
+	local ids = {}
+	for id, recipe in Recipes do
+		local weaponInPool = recipe.Weapon == RunRules.Starter
+			or table.find(RunRules.UpgradePool.Gadgets, recipe.Weapon) ~= nil
+		local ingredientInPool = table.find(RunRules.UpgradePool.Ingredients, recipe.Ingredient) ~= nil
+		if recipe.Levels and weaponInPool and ingredientInPool then
+			table.insert(ids, id)
+		end
+	end
+	table.sort(ids, function(a, b)
+		return Recipes[a].Name < Recipes[b].Name
+	end)
+	return ids
+end
+
+local function weaponName(id: string): string
+	local config: any = Starters[id] or Gadgets[id]
+	return if config then config.Name else id
+end
+
+local function drawCookbook()
+	for _, child in cookbookList:GetChildren() do
+		if child:IsA("Frame") then
+			child:Destroy()
+		end
+	end
+	local ids = reachableRecipes()
+	local found = 0
+	for order, id in ids do
+		local recipe = Recipes[id]
+		local isFound = player:GetAttribute(`Found_{id}`) == true
+		if isFound then
+			found += 1
+		end
+		local card = Instance.new("Frame")
+		card.Name = `Recipe_{id}`
+		card.LayoutOrder = order
+		card.BackgroundColor3 = if isFound then COLORS.box else COLORS.hidden
+		corner(card, 10)
+		local stroke = Instance.new("UIStroke")
+		stroke.Color = if isFound then COLORS.recipe else COLORS.tab
+		stroke.Thickness = 2
+		stroke.Parent = card
+		local ingredient = Ingredients[recipe.Ingredient]
+		local lines = if isFound
+			then {
+				recipe.Name,
+				`{weaponName(recipe.Weapon)} + {ingredient and ingredient.Name or recipe.Ingredient}`,
+				recipe.Description or "",
+			}
+			else { "???", `{weaponName(recipe.Weapon)} + ???`, "" }
+		local title = label(card, "Name", lines[1], 18)
+		title.Position = UDim2.fromOffset(8, 6)
+		title.Size = UDim2.new(1, -16, 0, 24)
+		title.TextColor3 = if isFound then COLORS.recipe else COLORS.faded
+		local parts = label(card, "Parts", lines[2], 15)
+		parts.Position = UDim2.fromOffset(8, 32)
+		parts.Size = UDim2.new(1, -16, 0, 20)
+		parts.Font = Enum.Font.GothamMedium
+		local description = label(card, "Description", lines[3], 13)
+		description.Position = UDim2.fromOffset(8, 54)
+		description.Size = UDim2.new(1, -16, 0, 34)
+		description.Font = Enum.Font.GothamMedium
+		description.TextColor3 = COLORS.faded
+		card.Parent = cookbookList
+	end
+	cookbookCount.Text = `Found {found} of {#ids}`
+end
+
+--------------------------------------------------------------------------------
 -- Tabs
 --------------------------------------------------------------------------------
 
@@ -179,6 +265,8 @@ function LobbyController.showTab(name: string)
 	end
 	if name == "HOME" then
 		drawHome()
+	elseif name == "COOKBOOK" then
+		drawCookbook()
 	end
 end
 
@@ -315,8 +403,29 @@ local function build()
 		soon.TextColor3 = COLORS.faded
 	end
 
-	-- COOKBOOK (#145 fills it).
-	pages.COOKBOOK = page("Cookbook", 860, 520)
+	-- COOKBOOK: one card per reachable recipe, found or not.
+	local cookbook = page("Cookbook", 860, 520)
+	pages.COOKBOOK = cookbook
+	cookbookList = Instance.new("ScrollingFrame")
+	cookbookList.Name = "List"
+	cookbookList.Position = UDim2.fromOffset(12, 12)
+	cookbookList.Size = UDim2.new(1, -24, 1, -56)
+	cookbookList.BackgroundTransparency = 1
+	cookbookList.BorderSizePixel = 0
+	cookbookList.ScrollBarThickness = 6
+	cookbookList.CanvasSize = UDim2.new()
+	cookbookList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	cookbookList.Parent = cookbook
+	local grid = Instance.new("UIGridLayout")
+	grid.CellSize = UDim2.fromOffset(200, 94)
+	grid.CellPadding = UDim2.fromOffset(8, 8)
+	grid.SortOrder = Enum.SortOrder.LayoutOrder
+	grid.Parent = cookbookList
+	cookbookCount = label(cookbook, "Count", "", 18)
+	cookbookCount.AnchorPoint = Vector2.new(0, 1)
+	cookbookCount.Position = UDim2.new(0, 0, 1, -10)
+	cookbookCount.Size = UDim2.new(1, 0, 0, 28)
+	cookbookCount.TextColor3 = COLORS.gold
 end
 
 function LobbyController:init()
@@ -347,6 +456,8 @@ function LobbyController:start()
 			if gui.Enabled then
 				drawHome()
 			end
+		elseif string.match(name, "^Found_") and gui.Enabled and currentTab == "COOKBOOK" then
+			drawCookbook()
 		end
 	end)
 	player.CharacterAdded:Connect(function(character: Model)
