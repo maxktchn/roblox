@@ -72,12 +72,12 @@ local Recipes: { [string]: Recipe } = {
 		FxColor = Color3.fromRGB(255, 200, 80),
 		Levels = {
 			{
-				Damage = 26,
-				Cooldown = 1.4,
+				Damage = 20,
+				Cooldown = 1.7,
 				Range = 30,
 				Count = 3,
 				Radius = 7,
-				Cluster = { Count = 4, Distance = 6, Damage = 12, Radius = 4 },
+				Cluster = { Count = 4, Distance = 6, Damage = 9, Radius = 4 },
 			},
 		},
 	},
@@ -89,7 +89,7 @@ local Recipes: { [string]: Recipe } = {
 		Shape = "Bounce",
 		FxColor = Color3.fromRGB(255, 170, 60),
 		Levels = {
-			{ Damage = 18, Cooldown = 1.0, Range = 30, Count = 3, Speed = 40, Bounces = 8, BounceRange = 14 },
+			{ Damage = 18, Cooldown = 1.0, Range = 30, Count = 3, Speed = 40, Bounces = 2, BounceRange = 14 },
 		},
 	},
 	FondueRing = {
@@ -137,7 +137,8 @@ local Recipes: { [string]: Recipe } = {
 				Range = 40,
 				Count = 5,
 				Speed = 35,
-				Pierce = 99,
+				Pierce = 3,
+				PierceFalloff = 0.4,
 				Spread = 15,
 				Freeze = 1.5,
 				FrozenBonus = 0.25,

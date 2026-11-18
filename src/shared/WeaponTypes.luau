@@ -73,6 +73,7 @@ export type WeaponLevel = {
 	Slow: number?, -- Trail: how much slower enemies on a splat move (0.3 = 30%). Projectile: slow on hit.
 	SlowSeconds: number?, -- Projectile: how long its Slow lasts (1.5 if left out)
 	Pierce: number?, -- Projectile: how many enemies one shot hits before it stops (1 if left out)
+	PierceFalloff: number?, -- Projectile: each later enemy a shot hits takes this much less (0.4 = 100%, 60%, 36%)
 	Spread: number?, -- Projectile: degrees between shots fanned toward the nearest enemy
 	Freeze: number?, -- Projectile: seconds each enemy hit is frozen (Deep Freeze)
 	FrozenBonus: number?, -- Projectile: extra damage frozen enemies take from everything (0.25 = +25%)

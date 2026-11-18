@@ -91,6 +91,9 @@ function ConfigCheck.run(): { string }
 			if stats.Pierce and stats.Pierce < 1 then
 				fail(`Weapon {id} Lv {i}: Pierce must be 1 or more`)
 			end
+			if stats.PierceFalloff and (stats.PierceFalloff < 0 or stats.PierceFalloff >= 1) then
+				fail(`Weapon {id} Lv {i}: PierceFalloff must be from 0 up to (not including) 1`)
+			end
 			if (stats.Spread and stats.Spread <= 0) or (stats.Freeze and stats.Freeze <= 0) then
 				fail(`Weapon {id} Lv {i}: Spread and Freeze must be more than 0`)
 			end

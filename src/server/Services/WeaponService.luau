@@ -62,6 +62,7 @@ type Shot = {
 	traveled: number,
 	maxDistance: number,
 	hitsLeft: number, -- Pierce: enemies it can still hit
+	damageScale: number, -- PierceFalloff: share of Damage the next enemy takes
 	alreadyHit: { [number]: boolean }, -- a piercing shot hits each enemy once
 }
 local shots: { Shot } = {}
@@ -182,8 +183,9 @@ local function cooldownScale(): number
 end
 
 -- Hit one enemy with a weapon: damage now, plus a burn if the weapon has one.
-local function hit(enemyId: number, stats: WeaponLevel, weaponId: string)
-	dealRolledDamage(enemyId, stats.Damage, stats.CritBonus, weaponId)
+-- damageScale (PierceFalloff) scales the hit, not the burn.
+local function hit(enemyId: number, stats: WeaponLevel, weaponId: string, damageScale: number?)
+	dealRolledDamage(enemyId, stats.Damage * (damageScale or 1), stats.CritBonus, weaponId)
 	if stats.BurnDps and stats.BurnSeconds and EnemyService.getEnemyPosition(enemyId) then
 		local burn = burns[enemyId]
 		if burn then
@@ -498,6 +500,7 @@ local function launchShot(weaponId: string, stats: WeaponLevel, origin: Vector3,
 		traveled = 0,
 		maxDistance = stats.Range,
 		hitsLeft = stats.Pierce or 1,
+		damageScale = 1,
 		alreadyHit = {},
 	}
 	table.insert(shots, shot)
@@ -551,7 +554,8 @@ local function updateShots(deltaTime: number)
 				shot.alreadyHit[target] = true
 				shot.hitsLeft -= 1
 				local position = EnemyService.getEnemyPosition(target)
-				hit(target, stats, shot.weaponId)
+				hit(target, stats, shot.weaponId, shot.damageScale)
+				shot.damageScale *= 1 - (stats.PierceFalloff or 0)
 				if stats.Slow then
 					EnemyService.slow(target, stats.Slow, stats.SlowSeconds or 1.5)
 				end
