@@ -57,7 +57,9 @@ export type Data = {
 		Equipped: { [string]: string }, -- [slot] = item id; a missing slot is empty
 	},
 	Talents: { [string]: any }, -- account level, XP and talent nodes (#108)
-	Unlocks: { [string]: any }, -- chapters and starters (#107)
+	-- Chapters and starters (#151, UnlockService). Cleared: chapters won at least once.
+	-- Starters: starters already given by their UnlockRule (never given twice).
+	Unlocks: { Cleared: { [string]: boolean }?, Starters: { [string]: boolean }? },
 }
 
 local TEMPLATE: Data = {

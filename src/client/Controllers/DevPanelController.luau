@@ -320,6 +320,9 @@ local function buildPanel()
 	makeButton(account, "Reset gear", COLORS.danger, function()
 		send("ResetGear")
 	end)
+	makeButton(account, "Reset unlocks", COLORS.danger, function()
+		send("ResetUnlocks")
+	end)
 end
 
 local function updateGodButton()

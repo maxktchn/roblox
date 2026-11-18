@@ -157,6 +157,17 @@ function ConfigCheck.run(): { string }
 	if not Starters[RunRules.Starter] then
 		fail(`RunRules.Starter: unknown starter "{RunRules.Starter}"`)
 	end
+	-- Unlock rules (#151): exactly the "Achievement" starters have one, and it makes sense.
+	for id, starter in Starters do
+		local rule = starter.UnlockRule
+		if (starter.Unlock == "Achievement") ~= (rule ~= nil) then
+			fail(`Starter {id}: an UnlockRule goes with Unlock = "Achievement" (and only then)`)
+		elseif rule and rule.Kind == "ClearChapter" and not (rule.Chapter and Chapters[rule.Chapter]) then
+			fail(`Starter {id}: UnlockRule needs a Chapter from Chapters.luau`)
+		elseif rule and rule.Kind == "Kills" and not (rule.Count and rule.Count > 0) then
+			fail(`Starter {id}: UnlockRule needs a Count above 0`)
+		end
+	end
 	-- Every MVP starter must be playable (the Utensil slot can hold any of them, #107).
 	for id, starter in Starters do
 		if starter.Mvp or starter.Levels then

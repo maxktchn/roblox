@@ -17,6 +17,7 @@ export type ItemRecord = {
 	Level: number,
 	SpentGold: number, -- everything spent levelling it, for refunds
 	SpentMaterial: number,
+	New: boolean?, -- just unlocked and not seen yet (#151): the Gear button shows NEW
 }
 
 -- Which slot an item goes in (nil for an unknown item).

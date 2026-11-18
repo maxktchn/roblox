@@ -76,6 +76,9 @@ local finalBossStarted = false
 -- Mini-boss (#84): who to tell when the clock reaches RunRules.MiniBossAtSeconds, and whether
 -- it already happened this run.
 local miniBossCallbacks: { () -> () } = {}
+-- Run end (#151): told the result before the RunState attribute changes, so what they change
+-- (unlocks) is in the run-end save.
+local runEndedCallbacks: { (result: "Won" | "Lost") -> () } = {}
 local miniBossStarted = false
 -- While held, the clock stands still and nothing new spawns (the mini-boss fight).
 local clockHeld = false
@@ -195,6 +198,12 @@ function RunManager.onMiniBoss(callback: () -> ())
 	table.insert(miniBossCallbacks, callback)
 end
 
+-- Run `callback` when a run ends, with "Won" or "Lost". It runs before the run's RunState
+-- changes (and so before the run-end save), so anything it changes is saved with the run.
+function RunManager.onRunEnded(callback: (result: "Won" | "Lost") -> ())
+	table.insert(runEndedCallbacks, callback)
+end
+
 -- Hold or release the clock (the mini-boss fight, #84). While held, the clock stands still,
 -- the timeline doesn't move on, and every phase listener is told "spawn nothing". Releasing
 -- announces the current phase again, so spawns pick up where they left off.
@@ -279,6 +288,9 @@ local function endRun(runResult: "Won" | "Lost")
 	paused = true
 	rushShown, rushStage = nil, nil -- the banner goes with the run
 	syncRush()
+	for _, callback in runEndedCallbacks do
+		callback(runResult)
+	end
 	syncAttributes()
 end
 
