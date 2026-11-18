@@ -52,6 +52,9 @@ return {
 	TrailMoveSpeed = 2, -- studs per second: slower than this counts as standing still
 	MaxTrailSplats = 40, -- per trail weapon; a new splat removes the oldest
 	MaxSlicks = 20, -- Buttered Barrage's butter slicks (#132); a new one removes the oldest
+	MaxFireSplats = 20, -- Flambé Pan's burning arcs (#148); a new splat removes the oldest
+	-- Knockback (Frying Pan, Microwave Pulse) moves elites this much of the distance; bosses not at all.
+	ElitePushScale = 0.5,
 
 	-- Loadout (PRD §2.4)
 	StarterMaxLevel = 5,

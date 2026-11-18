@@ -33,6 +33,23 @@ export type Slick = {
 	Slow: number,
 }
 
+-- Projectile only: every enemy the shot hits can't move for Seconds and takes DamageBonus more
+-- damage meanwhile (Steamroller, #147). It's a freeze with a squashed look, so the bosses follow
+-- the freeze rules.
+export type Flatten = {
+	Seconds: number,
+	DamageBonus: number,
+}
+
+-- Arc only: after each swing, Splats fire splats drop along the arc, 70% of the way out. Each lasts
+-- Seconds and deals Damage every RunRules.TrailTickSeconds to enemies on it (Flambé Pan, #148).
+export type FireArc = {
+	Splats: number,
+	Width: number,
+	Seconds: number,
+	Damage: number,
+}
+
 -- Lob only: when an egg lands, Count mini-eggs pop out evenly round it, land Distance studs
 -- away (RunRules.LobClusterSeconds later) and splash again (Breakfast Bomb, #129).
 export type Cluster = {
@@ -59,7 +76,7 @@ export type WeaponLevel = {
 	BurnDps: number?, -- optional: burn damage per second after a hit
 	BurnSeconds: number?, -- optional: how long the burn lasts
 	CritBonus: number?, -- optional: extra crit chance for this weapon only (0.25 = +25%)
-	Knockback: number?, -- optional: studs each hit pushes an enemy away (Pulse; bosses aren't pushed)
+	Knockback: number?, -- Pulse / Arc: studs each hit pushes an enemy away (elites half, bosses not at all)
 	-- optional: pulls enemies within Range toward the chef, in studs per second
 	-- (no Phase 1 weapon since Smoothie Vortex was removed, #83). Works with any shape.
 	-- Bosses are too heavy to pull.
@@ -68,7 +85,7 @@ export type WeaponLevel = {
 	Cluster: Cluster?, -- Lob: mini-eggs when an egg lands (see Cluster above)
 	Bounces: number?, -- Bounce: how many times a disc flies on to another enemy after its first hit
 	BounceRange: number?, -- Bounce: how far (to the next enemy's edge) a disc can fly on
-	Width: number?, -- Trail: studs across one splat
+	Width: number?, -- Trail: studs across one splat. Projectile: how wide its path is (Rolling Pin)
 	Seconds: number?, -- Trail: how long a splat stays
 	Slow: number?, -- Trail: how much slower enemies on a splat move (0.3 = 30%). Projectile: slow on hit.
 	SlowSeconds: number?, -- Projectile: how long its Slow lasts (1.5 if left out)
@@ -78,6 +95,8 @@ export type WeaponLevel = {
 	Freeze: number?, -- Projectile: seconds each enemy hit is frozen (Deep Freeze)
 	FrozenBonus: number?, -- Projectile: extra damage frozen enemies take from everything (0.25 = +25%)
 	Slick: Slick?, -- Projectile: a butter slick where each shot hits
+	Flatten: Flatten?, -- Projectile: flattens every enemy hit (see Flatten above)
+	FireArc: FireArc?, -- Arc: burning splats along each swing (see FireArc above)
 	StillEvery: number?, -- Trail: also drop a splat this often while the chef stands still
 	CanCrit: boolean?, -- Trail: its damage ticks can crit (burns and plain trails can't)
 }
