@@ -98,12 +98,17 @@ The restaurant's food has gone rotten and come alive. You're the chef, and you h
 - The recipe card keeps showing up in every "Order Up!" until it is taken. If several are ready, they fill the 3 card slots first.
 - A recipe is a weapon with one level: it can't be upgraded further, and its old weapon never comes back.
 
-**Phase 1 recipe starting values** (tune in `Recipes.luau`):
+**Recipe starting values** (tune in `Recipes.luau`). Phase 1 shipped the first three; P2-3 (#104) added the gadget recipes below them. Each recipe adds a new trick, not just bigger numbers:
 | Recipe | Shape | Numbers |
 |---|---|---|
 | Sushi Master Blade | Arc | 30 damage, 150° slash, 13 range, every 0.45 s, +25% crit chance on this weapon |
 | Ghost Pepper Blaster | Arc | 7 damage, 120° cone, 13 range, every 0.7 s, burns 8/s for 3 s |
 | Fondue Ring | Orbit | 6 forks on a 9-stud circle, 260°/s, 9 damage, burns 4/s for 2 s |
+| Condiment Flood | Trail | 6-stud splats that last 4 s, slow 50% and do 8 every 0.5 s; its ticks can crit; also drops one every 0.6 s while the chef stands still |
+| Buttered Barrage | Projectile | 6 toasts every 1.0 s, 16 damage, each hits up to 3 enemies; every hit leaves a 4-stud butter slick for 3 s that slows enemies 30% (no damage, at most 20) |
+| Deep Freeze | Projectile | 5 cubes fanned 15° apart every 1.0 s, 20 damage, 40 studs; each cube hits up to 3 enemies (100%, 60%, then 36% damage); every enemy hit is frozen 1.5 s and takes +25% damage from everything while frozen |
+| Pizza Party | Bounce | 3 discs every 1.0 s at different enemies, 18 damage, 2 bounces within 14 studs; the 3 discs share one hit list, so they spread across the crowd |
+| Breakfast Bomb | Lob | 3 eggs every 1.7 s, 20 damage, 7-stud splash; each egg then pops 4 mini-eggs that land 6 studs away and splash again (9 damage, 4 studs) |
 
 ### 2.6 Pickups in the arena
 | Pickup | Effect |
@@ -162,15 +167,20 @@ Rewards scale with how long the player survived and how far they got:
 | Spinning Forks | Forks orbit you | + Beef Jerky = **Fondue Ring** (burning orbit) |
 | Toaster | Launches toast at the nearest enemies | + Butter = **Buttered Barrage** |
 | Squeeze Bottle | Drops a ketchup trail that slows enemies | + Salt = **Condiment Flood** |
+| Ice Cube Tray | Slides ice cubes that pass through 2 enemies and slow them | + Fridge Magnet = **Deep Freeze** (freezes enemies solid) |
 
-All 6 gadgets are in the MVP, plus a 7th that takes the removed Blender's place (designed in Phase 2, #83). Fridge Magnet has no recipe until then; the new gadget's recipe can use it.
+All 7 gadgets are in the MVP. The Ice Cube Tray took the removed Blender's place (#83, designed in P2-3 #104), and its recipe gave Fridge Magnet one.
 
-**Phase 1 gadget starting values** (Lv 1 → Lv 5, tune in `Gadgets.luau`):
+**Gadget starting values** (Lv 1 → Lv 5, tune in `Gadgets.luau`; the last four were added in P2-3, #104):
 | Gadget | Shape | Lv 1 | Changes by Lv 5 |
 |---|---|---|---|
 | Pepper Shaker | Arc | 4 damage, 75° cone, 9 range, every 1.2 s, burns 3/s for 2 s | 7 damage, 105° cone, 10 range, every 0.9 s, burns 6/s for 3 s |
 | Spinning Forks | Orbit | 2 forks on a 7-stud circle, 180°/s, 4 damage, each enemy hit at most every 0.6 s | 4 forks, 8 studs, 240°/s, 8 damage |
 | Toaster | Projectile | 1 toast every 1.4 s at the nearest enemy within 40 studs, 8 damage, 45 studs/s | 4 toasts every 1.2 s, 14 damage |
+| Squeeze Bottle | Trail | while the chef walks, a 3-stud ketchup splat every 0.3 s that lasts 2 s; enemies on it are 30% slower and take 2 every 0.5 s (can't crit); at most 40 | 4 studs, lasts 3.5 s, 40% slower, 5 every 0.5 s |
+| Ice Cube Tray | Projectile | 1 cube every 1.6 s toward the nearest enemy, slides 30 studs at 35 studs/s and hits up to 3 enemies in its path (9 damage, then 60%, then 36%), slowing each 25% for 1.5 s | 3 cubes fanned 15° apart every 1.2 s, 15 damage, 35 studs, 35% slow |
+| Pizza Cutter | Bounce | 1 disc every 1.5 s at the nearest enemy within 30 studs, 9 damage, 40 studs/s; after each hit it flies on to the nearest enemy it hasn't hit within 12 studs, 2 times | 16 damage, every 1.1 s, still 2 bounces, within 14 studs |
+| Egg Grenade | Lob | 1 egg every 2.4 s at the nearest enemy within 30 studs, lands 0.6 s later where it was, 9 damage to everything within 5 studs | 2 eggs every 2.0 s, 14 damage, 7 studs |
 
 The Pepper Shaker (and Ghost Pepper Blaster) sprays toward the nearest enemy within its range plus 4 studs, or the way the chef faces if nothing is that close. Burns tick every 0.5 s and get the Hot Sauce bonus but can't crit. A fork hits enemies within 2.5 studs of it; a toast hits the first enemy within 2 studs.
 
@@ -178,16 +188,18 @@ The Pepper Shaker (and Ghost Pepper Blaster) sprays toward the nearest enemy wit
 | Ingredient | Effect per level |
 |---|---|
 | Hot Sauce | +6% damage |
-| Butter | +8% move speed |
-| Coffee | -8% weapon cooldowns |
+| Butter | +5% move speed |
+| Coffee | -5% weapon cooldowns (every weapon, boss powers too; burns and slows aren't shortened) |
 | Salt | +5% crit chance |
-| Bread | +10% max HP |
+| Bread | +6% max HP (taking a level raises current HP by the same amount) |
 | Beef Jerky | +1 armor (flat damage reduction) |
 | Fridge Magnet | +20% tip pickup range |
 
 Percent bonuses add up per level and multiply the base value (Hot Sauce Lv 3 = base damage × 1.18). Base crit chance is 0%, and a crit deals **2×** damage.
 
 Weapon ranges (and orbit and shot hit radii) are measured to the enemy's edge, not its center, so big enemies like bosses can be hit from outside touching distance. Enemies are measured by their real shape: their **thickness** toward the chef for distances (flat ones like Moldy Bread are thin) and their **width** for side-to-side checks, so a slash that crosses any part of an enemy's body hits it. A slash stays live while its blade is drawn sweeping across (0.15 s, `RunRules.SlashSeconds`): an enemy that runs into it during the sweep is hit too, once per slash.
+
+**Slowing enemies** (#128; Squeeze Bottle, Ice Cube Tray, butter slicks, Deep Freeze): a slowed enemy moves slower for a few seconds, and a frozen one can't move (it still hurts on contact). Slows don't stack: the strongest one wins. Normal enemies and elites take the full slow and can be frozen. **The Big Cheese** and its pieces take **half** and are never frozen (a freeze slows them 50%). **The Microwave Monster** can't be slowed or frozen (`SlowTaken` in the enemy config). Slowed enemies look icy, and frozen ones also shine.
 
 All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with gadgets (see 2.4).
 
@@ -304,7 +316,7 @@ Beating a chapter's final boss takes its **power**: an ability the player keeps 
 
 - **Unlock:** defeating the boss unlocks its power for good (the first time only; dying in the fight unlocks nothing). The win screen says "New power unlocked: <name>".
 - **In a run:** once unlocked, the power can show up as an "Order Up!" card, marked **BOSS POWER**. It works like a gadget: it uses one of the 6 shared slots and levels 1 to 5.
-- **Rarity:** its NEW card is rarer than a gadget's. For each "Order Up!" it has a **35%** chance to join the cards being drawn from (while you don't own it and have a free slot), so it shows up about a third as often as a gadget's NEW card (roughly 1 offer in 8 with a 4-gadget pool, a bit more often with Phase 1's 3). Once owned, its upgrade cards appear like any gadget's.
+- **Rarity:** its NEW card is rarer than a gadget's. For each "Order Up!" it has a **35%** chance to join the cards being drawn from (while you don't own it and have a free slot), so it shows up about a third as often as a gadget's NEW card (roughly 1 offer in 15 early in a run with the full pool of 7 gadgets and 7 ingredients, about 35% × 3 cards out of 16; none once all 6 slots are full). Once owned, its upgrade cards appear like any gadget's.
 - **Strength:** at Lv 1 about as strong as a normal gadget; at Lv 5 stronger than a maxed gadget.
 - **No recipes.** Boss powers never evolve.
 - **Never sold.** Only beating the boss unlocks a power (see 5.1).

@@ -7,6 +7,10 @@
 --   Aura       - a ring pulses around the chef           (WeaponFx: range)
 --   Projectile - a shot flies out                        (WeaponFx: "Launch"/"End", ...)
 --   Pulse      - a ring grows from where it was fired    (WeaponFx: origin, range, speed)
+--   Lob        - an egg arcs over, then splashes         (WeaponFx: "Lob", from, to, seconds, radius)
+--   Bounce     - a spinning disc chases one enemy part   (WeaponFx: "Disc", id, from, part, speed / "End", id)
+--   Trail      - flat splats on the floor that fade       (WeaponFx: "Splat", id, position, width, seconds / "SplatEnd", id)
+--                (Buttered Barrage's butter slicks use the same messages)
 --   Orbit      - objects circle the chef all the time. No messages: we read the weapon's
 --                level from the player's "Weapon_<id>" attribute and use the shared server
 --                clock, so they appear exactly where the server checks for hits.
@@ -37,7 +41,12 @@ local PULSE_SECONDS = 0.3 -- Aura: how long one ring pulse lasts
 
 local folder: Folder -- holds every effect part
 
-type WeaponConfig = { Shape: WeaponTypes.Shape?, Levels: { WeaponTypes.WeaponLevel }?, FxColor: Color3? }
+type WeaponConfig = {
+	Shape: WeaponTypes.Shape?,
+	Levels: { WeaponTypes.WeaponLevel }?,
+	FxColor: Color3?,
+	ShotSize: Vector3?,
+}
 
 local function getConfig(weaponId: string): WeaponConfig?
 	return (Starters[weaponId] or Gadgets[weaponId] or Recipes[weaponId] or BossPowers[weaponId]) :: any
@@ -170,6 +179,7 @@ end
 
 local function drawShot(
 	color: Color3,
+	size: Vector3,
 	shotId: number,
 	origin: Vector3,
 	direction: Vector3,
@@ -179,7 +189,7 @@ local function drawShot(
 	local part = table.remove(spareShotParts) or makeFxPart("Shot", color)
 	part.Color = color
 	part.Material = Enum.Material.SmoothPlastic
-	part.Size = Vector3.new(1.4, 0.4, 1.4) -- a slice of toast
+	part.Size = size
 	part.Transparency = 0
 	shotParts[shotId] = part
 	animate(`Shot{shotId}`, function(elapsed)
@@ -192,6 +202,145 @@ local function drawShot(
 		if traveled >= maxDistance then
 			endShot(shotId)
 			return false
+		end
+		return true
+	end)
+end
+
+-- LOB: an egg flies in an arc to where it lands, then a splash disc the size of its radius
+-- flashes and fades. Parts are reused.
+local SPLASH_SECONDS = 0.25
+local spareEggParts: { Part } = {}
+local spareSplashParts: { Part } = {}
+local lobCount = 0
+
+local function drawLob(color: Color3, from: Vector3, to: Vector3, seconds: number, radius: number)
+	local floorY = to.Y - 1 -- an enemy's centre is about a stud above the floor
+	local start = Vector3.new(from.X, floorY + 1, from.Z)
+	local landing = Vector3.new(to.X, floorY, to.Z)
+	local egg = table.remove(spareEggParts) or makeFxPart("Egg", color)
+	egg.Shape = Enum.PartType.Ball
+	egg.Material = Enum.Material.SmoothPlastic
+	egg.Color = color
+	egg.Size = Vector3.new(1.1, 1.1, 1.1)
+	egg.Transparency = 0
+	lobCount += 1
+	local key = `Lob{lobCount}`
+	animate(key, function(elapsed)
+		local t = math.min(elapsed / seconds, 1)
+		local height = 4 * RunRules.LobHeight * t * (1 - t) -- 0 at both ends, LobHeight at the top
+		egg.CFrame = CFrame.new(start:Lerp(landing, t) + Vector3.new(0, height, 0))
+		if t < 1 then
+			return true
+		end
+		egg.Transparency = 1
+		table.insert(spareEggParts, egg)
+		-- Land: a flat splash disc that fades out.
+		local splash = table.remove(spareSplashParts) or makeFxPart("Splash", color)
+		splash.Shape = Enum.PartType.Cylinder
+		splash.Color = color
+		splash.Size = Vector3.new(0.2, radius * 2, radius * 2)
+		splash.CFrame = CFrame.new(landing + Vector3.new(0, 0.15, 0)) * CFrame.Angles(0, 0, math.rad(90))
+		animate(`{key}Splash`, function(splashElapsed)
+			if splashElapsed > SPLASH_SECONDS then
+				splash.Transparency = 1
+				table.insert(spareSplashParts, splash)
+				return false
+			end
+			splash.Transparency = 0.3 + 0.7 * splashElapsed / SPLASH_SECONDS
+			return true
+		end)
+		return false
+	end)
+end
+
+-- BOUNCE: one spinning disc per disc id. Each "Disc" message says where it is and which enemy
+-- part it's flying at; it follows that part until the next message or "End".
+type DiscFx = { part: Part, position: Vector3, target: BasePart?, speed: number, lastElapsed: number }
+local discFx: { [number]: DiscFx } = {}
+local spareDiscParts: { Part } = {}
+
+local function drawDiscLeg(color: Color3, discId: number, from: Vector3, target: BasePart?, speed: number)
+	local existing = discFx[discId]
+	if existing then
+		-- A new leg: it hit an enemy and flies on to the next one.
+		existing.position = from
+		existing.target = target
+		existing.speed = speed
+		return
+	end
+	local part = table.remove(spareDiscParts) or makeFxPart("Disc", color)
+	part.Shape = Enum.PartType.Cylinder
+	part.Material = Enum.Material.Metal
+	part.Color = color
+	part.Size = Vector3.new(0.25, 2, 2)
+	part.Transparency = 0
+	local disc: DiscFx = { part = part, position = from, target = target, speed = speed, lastElapsed = 0 }
+	discFx[discId] = disc
+	animate(`Disc{discId}`, function(elapsed)
+		if discFx[discId] ~= disc then
+			return false -- ended
+		end
+		local deltaTime = elapsed - disc.lastElapsed
+		disc.lastElapsed = elapsed
+		local goal = disc.target
+		if goal and goal.Position.Y > -100 then -- a dead enemy's part is parked far below
+			local toGoal = Vector3.new(goal.Position.X - disc.position.X, 0, goal.Position.Z - disc.position.Z)
+			local step = disc.speed * deltaTime
+			disc.position += if toGoal.Magnitude > step then toGoal.Unit * step else toGoal
+		end
+		-- A cylinder's length runs along X: tip it up so it lies flat, then spin it round.
+		disc.part.CFrame = CFrame.new(disc.position)
+			* CFrame.Angles(0, elapsed * 20, 0)
+			* CFrame.Angles(0, 0, math.rad(90))
+		return true
+	end)
+end
+
+local function endDisc(discId: number)
+	local disc = discFx[discId]
+	if disc then
+		discFx[discId] = nil
+		disc.part.Transparency = 1
+		table.insert(spareDiscParts, disc.part)
+	end
+end
+
+-- SPLATS (Trail weapons, butter slicks): a flat disc on the floor that fades over its last
+-- half second, or straight away on "End". Parts are reused.
+local SPLAT_FADE_SECONDS = 0.5
+local splatParts: { [number]: Part } = {}
+local spareSplatParts: { Part } = {}
+
+local function endSplat(splatId: number)
+	local part = splatParts[splatId]
+	if part then
+		splatParts[splatId] = nil
+		part.Transparency = 1
+		table.insert(spareSplatParts, part)
+	end
+end
+
+local function drawSplat(color: Color3, splatId: number, position: Vector3, width: number, seconds: number)
+	local part = table.remove(spareSplatParts) or makeFxPart("Splat", color)
+	part.Shape = Enum.PartType.Cylinder
+	part.Material = Enum.Material.SmoothPlastic
+	part.Color = color
+	part.Size = Vector3.new(0.1, width, width)
+	part.CFrame = CFrame.new(position + Vector3.new(0, 0.08, 0)) * CFrame.Angles(0, 0, math.rad(90))
+	part.Transparency = 0.25
+	splatParts[splatId] = part
+	animate(`Splat{splatId}`, function(elapsed)
+		if splatParts[splatId] ~= part then
+			return false -- ended early (the oldest of a full trail)
+		end
+		local left = seconds - elapsed
+		if left <= 0 then
+			endSplat(splatId)
+			return false
+		end
+		if left < SPLAT_FADE_SECONDS then
+			part.Transparency = 0.25 + 0.75 * (1 - left / SPLAT_FADE_SECONDS)
 		end
 		return true
 	end)
@@ -253,18 +402,35 @@ local function onWeaponFx(weaponId: string, ...: any)
 		return
 	end
 	local color = config.FxColor or Color3.new(1, 1, 1)
+	-- Most shapes send an action and an id first ("Launch", shotId; "Splat", splatId; ...).
+	local action, id = ...
+	if action == "Splat" then
+		-- A Trail's splat or a butter slick (any weapon can leave them).
+		drawSplat(color, select(2, ...))
+		return
+	elseif action == "SplatEnd" then
+		endSplat(id)
+		return
+	end
 	if config.Shape == "Arc" then
 		drawArc(weaponId, color, ...)
 	elseif config.Shape == "Aura" then
 		drawAura(weaponId, color, ...)
 	elseif config.Shape == "Pulse" then
 		drawPulse(weaponId, color, ...)
-	elseif config.Shape == "Projectile" then
-		local action, shotId = ...
-		if action == "Launch" then
-			drawShot(color, select(2, ...))
+	elseif config.Shape == "Lob" then
+		drawLob(color, select(2, ...))
+	elseif config.Shape == "Bounce" then
+		if action == "Disc" then
+			drawDiscLeg(color, select(2, ...))
 		elseif action == "End" then
-			endShot(shotId)
+			endDisc(id)
+		end
+	elseif config.Shape == "Projectile" then
+		if action == "Launch" then
+			drawShot(color, config.ShotSize or Vector3.new(1.4, 0.4, 1.4), select(2, ...)) -- toast by default
+		elseif action == "End" then
+			endShot(id)
 		end
 	end
 end

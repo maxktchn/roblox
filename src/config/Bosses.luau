@@ -122,6 +122,7 @@ local Bosses: { [string]: Boss } = {
 			Shape = "Ball",
 			Color = Color3.fromRGB(255, 200, 60),
 			Movement = "Chase",
+			SlowTaken = 0.5, -- the mini-boss: half of any slow, never frozen (#128)
 			SplitInto = "CheeseWedge",
 			SplitCount = 3,
 		},
@@ -156,6 +157,7 @@ local Bosses: { [string]: Boss } = {
 			Shape = "Block",
 			Color = Color3.fromRGB(225, 228, 232),
 			Movement = "Chase",
+			SlowTaken = 0, -- the final boss can't be slowed or frozen (#128)
 		},
 		Power = "MicrowavePulse",
 		Fight = {

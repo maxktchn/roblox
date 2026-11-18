@@ -1,7 +1,8 @@
 --!strict
 -- Fires the player's starter, gadgets and recipe weapons on cooldowns; applies ingredient stats. Server decides all damage (PRD §8.4).
 --
--- Every weapon has a Shape in config (see Shared/WeaponTypes): Arc, Aura, Orbit or Projectile.
+-- Every weapon has a Shape in config (see Shared/WeaponTypes): Arc, Aura, Orbit, Projectile,
+-- Pulse, Lob, Bounce or Trail.
 -- There is one attack function per shape below, so new weapons are config-only (PRD §8.5).
 --
 -- Each frame, every owned weapon counts down its cooldown. At 0 it attacks: the server
@@ -50,16 +51,19 @@ local burns: { [number]: Burn } = {}
 -- Orbit weapons: weapon id -> (enemy id -> time it can be hit again).
 local orbitHitTimes: { [string]: { [number]: number } } = {}
 
--- Shots in flight (Toaster). The client draws its own copy of each one.
+-- Shots in flight (Toaster, Ice Cube Tray). The client draws its own copy of each one.
 type Shot = {
 	id: number,
 	weaponId: string,
+	stats: WeaponLevel,
 	position: Vector3,
 	direction: Vector3,
 	speed: number,
 	traveled: number,
 	maxDistance: number,
-	damage: number,
+	hitsLeft: number, -- Pierce: enemies it can still hit
+	damageScale: number, -- PierceFalloff: share of Damage the next enemy takes
+	alreadyHit: { [number]: boolean }, -- a piercing shot hits each enemy once
 }
 local shots: { Shot } = {}
 local lastShotId = 0
@@ -140,6 +144,7 @@ local function dealDamage(enemyId: number, amount: number, kind: string, weaponI
 	local part = EnemyService.getEnemyPart(enemyId)
 	local position = EnemyService.getEnemyPosition(enemyId)
 	local hpBefore = EnemyService.getEnemyHp(enemyId)
+	amount *= 1 + EnemyService.getDamageTakenBonus(enemyId) -- frozen by Deep Freeze (#128)
 	EnemyService.damage(enemyId, amount)
 	if hpBefore then
 		damageByWeapon[weaponId] = (damageByWeapon[weaponId] or 0) + math.min(amount, hpBefore)
@@ -169,9 +174,18 @@ local function flushHitFx(deltaTime: number)
 	pendingHits = {}
 end
 
+-- Coffee (#127): every weapon's Cooldown is multiplied by this (Coffee's Cooldown stat is
+-- negative: Lv 5 = -0.25, so x0.75). Starters, gadgets, recipes and boss powers alike; for an
+-- Orbit it's the per-enemy re-hit time. Burns and slows aren't shortened.
+local MIN_COOLDOWN_SCALE = 0.2
+local function cooldownScale(): number
+	return math.max(1 + StatsService.getStat("Cooldown"), MIN_COOLDOWN_SCALE)
+end
+
 -- Hit one enemy with a weapon: damage now, plus a burn if the weapon has one.
-local function hit(enemyId: number, stats: WeaponLevel, weaponId: string)
-	dealRolledDamage(enemyId, stats.Damage, stats.CritBonus, weaponId)
+-- damageScale (PierceFalloff) scales the hit, not the burn.
+local function hit(enemyId: number, stats: WeaponLevel, weaponId: string, damageScale: number?)
+	dealRolledDamage(enemyId, stats.Damage * (damageScale or 1), stats.CritBonus, weaponId)
 	if stats.BurnDps and stats.BurnSeconds and EnemyService.getEnemyPosition(enemyId) then
 		local burn = burns[enemyId]
 		if burn then
@@ -345,60 +359,436 @@ local function attackAura(weaponId: string, stats: WeaponLevel, root: BasePart)
 	sendFx(weaponId, stats.Range)
 end
 
--- PROJECTILE: fire one shot at each of the nearest `Count` enemies in range.
-local function attackProjectile(weaponId: string, stats: WeaponLevel, root: BasePart)
-	local origin = root.Position
-	-- Sort the enemies in range by distance and take the closest few.
-	local targets = {}
-	for _, enemyId in getEnemiesInReach(origin, stats.Range) do
+-- SPLATS: flat puddles on the floor that slow enemies standing on them and may hurt them
+-- (Squeeze Bottle's trail #131, Buttered Barrage's butter slicks #132). Each weapon keeps its
+-- own list, capped; the client draws them ("Splat"/"End" messages).
+type Splat = {
+	id: number,
+	position: Vector3,
+	radius: number,
+	timeLeft: number,
+	slow: number,
+	damage: number, -- per TrailTickSeconds; 0 = slows only (butter)
+	canCrit: boolean,
+}
+type SplatGroup = { splats: { Splat }, slowTimer: number, tickTimer: number }
+local splatGroups: { [string]: SplatGroup } = {}
+local lastSplatId = 0
+local floorY = 0 -- the arena floor's height (Map's ArenaCenter), set in init
+local SPLAT_SLOW_CHECK = 0.1 -- seconds between checks for enemies standing on splats
+
+local function dropSplat(
+	weaponId: string,
+	position: Vector3,
+	width: number,
+	seconds: number,
+	slow: number,
+	damage: number,
+	canCrit: boolean,
+	maxCount: number
+)
+	local group = splatGroups[weaponId]
+	if not group then
+		group = { splats = {}, slowTimer = 0, tickTimer = RunRules.TrailTickSeconds }
+		splatGroups[weaponId] = group
+	end
+	if #group.splats >= maxCount then
+		local oldest = table.remove(group.splats, 1)
+		if oldest then
+			sendFx(weaponId, "SplatEnd", oldest.id)
+		end
+	end
+	lastSplatId += 1
+	local flat = Vector3.new(position.X, floorY, position.Z)
+	table.insert(group.splats, {
+		id = lastSplatId,
+		position = flat,
+		radius = width / 2,
+		timeLeft = seconds,
+		slow = slow,
+		damage = damage,
+		canCrit = canCrit,
+	})
+	sendFx(weaponId, "Splat", lastSplatId, flat, width, seconds)
+end
+
+-- Every enemy standing on any of a group's splats (each once), with the strongest splat's numbers.
+local function enemiesOnSplats(group: SplatGroup): { [number]: Splat }
+	local found: { [number]: Splat } = {}
+	for _, splat in group.splats do
+		for _, enemyId in getEnemiesInReach(splat.position, splat.radius) do
+			local current = found[enemyId]
+			if not current or splat.slow > current.slow then
+				found[enemyId] = splat
+			end
+		end
+	end
+	return found
+end
+
+-- Every frame: age splats out, slow the enemies on them, and tick their damage.
+local function updateSplats(deltaTime: number)
+	for weaponId, group in splatGroups do
+		for i = #group.splats, 1, -1 do
+			local splat = group.splats[i]
+			splat.timeLeft -= deltaTime
+			if splat.timeLeft <= 0 then
+				table.remove(group.splats, i)
+				sendFx(weaponId, "SplatEnd", splat.id)
+			end
+		end
+		if #group.splats == 0 then
+			group.tickTimer = RunRules.TrailTickSeconds
+			continue
+		end
+		group.slowTimer -= deltaTime
+		group.tickTimer -= deltaTime
+		local slowNow = group.slowTimer <= 0
+		local tickNow = group.tickTimer <= 0
+		if slowNow or tickNow then
+			local onSplats = enemiesOnSplats(group)
+			if slowNow then
+				group.slowTimer = SPLAT_SLOW_CHECK
+				for enemyId, splat in onSplats do
+					EnemyService.slow(enemyId, splat.slow, RunRules.TrailSlowSeconds)
+				end
+			end
+			if tickNow then
+				group.tickTimer += RunRules.TrailTickSeconds
+				for enemyId, splat in onSplats do
+					if splat.damage > 0 then
+						if splat.canCrit then
+							dealRolledDamage(enemyId, splat.damage, nil, weaponId)
+						else
+							dealDamage(enemyId, splat.damage * (1 + StatsService.getStat("Damage")), "Hit", weaponId)
+						end
+					end
+				end
+			end
+		end
+	end
+end
+
+-- The enemies within `range` of `origin`, nearest edge first.
+type Target = { id: number, position: Vector3, distance: number }
+local function getNearestTargets(origin: Vector3, range: number): { Target }
+	local targets: { Target } = {}
+	for _, enemyId in getEnemiesInReach(origin, range) do
 		local position = EnemyService.getEnemyPosition(enemyId)
 		if position then
-			table.insert(targets, { position = position, distance = distanceToEdge(enemyId, position, origin) })
+			table.insert(
+				targets,
+				{ id = enemyId, position = position, distance = distanceToEdge(enemyId, position, origin) }
+			)
 		end
 	end
 	table.sort(targets, function(a, b)
 		return a.distance < b.distance
 	end)
+	return targets
+end
 
-	for i = 1, math.min(stats.Count or 1, #targets) do
+local function launchShot(weaponId: string, stats: WeaponLevel, origin: Vector3, direction: Vector3)
+	lastShotId += 1
+	local shot: Shot = {
+		id = lastShotId,
+		weaponId = weaponId,
+		stats = stats,
+		position = origin,
+		direction = direction,
+		speed = stats.Speed or 40,
+		traveled = 0,
+		maxDistance = stats.Range,
+		hitsLeft = stats.Pierce or 1,
+		damageScale = 1,
+		alreadyHit = {},
+	}
+	table.insert(shots, shot)
+	sendFx(weaponId, "Launch", shot.id, origin, shot.direction, shot.speed, shot.maxDistance)
+end
+
+-- PROJECTILE: fire one shot at each of the nearest `Count` enemies in range, or (Spread)
+-- `Count` shots fanned out toward the nearest one.
+local function attackProjectile(weaponId: string, stats: WeaponLevel, root: BasePart)
+	local origin = root.Position
+	local targets = getNearestTargets(origin, stats.Range)
+	local count = stats.Count or 1
+	if stats.Spread then
+		local nearest = targets[1]
+		local toTarget = nearest and Vector3.new(nearest.position.X - origin.X, 0, nearest.position.Z - origin.Z)
+		if toTarget and toTarget.Magnitude > 0.01 then
+			for i = 1, count do
+				local degrees = (i - (count + 1) / 2) * stats.Spread
+				local direction = CFrame.fromAxisAngle(Vector3.yAxis, math.rad(degrees))
+					:VectorToWorldSpace(toTarget.Unit)
+				launchShot(weaponId, stats, origin, direction)
+			end
+		end
+		return
+	end
+	for i = 1, math.min(count, #targets) do
 		local toTarget = targets[i].position - origin
 		if toTarget.Magnitude > 0.01 then
-			lastShotId += 1
-			local shot: Shot = {
-				id = lastShotId,
-				weaponId = weaponId,
-				position = origin,
-				direction = toTarget.Unit,
-				speed = stats.Speed or 40,
-				traveled = 0,
-				maxDistance = stats.Range,
-				damage = stats.Damage,
-			}
-			table.insert(shots, shot)
-			sendFx(weaponId, "Launch", shot.id, origin, shot.direction, shot.speed, shot.maxDistance)
+			launchShot(weaponId, stats, origin, toTarget.Unit)
 		end
 	end
 end
 
--- Move every shot; a shot hits the first enemy it comes close to, or ends at max distance.
+-- Move every shot. It hits enemies it comes close to (each once), up to its Pierce (1 = the
+-- first one stops it), slowing, freezing or leaving butter as its weapon says; it ends at
+-- max distance.
 local function updateShots(deltaTime: number)
 	-- Walk backwards so removing a shot doesn't skip the next one.
 	for i = #shots, 1, -1 do
 		local shot = shots[i]
+		local stats = shot.stats
 		local step = shot.speed * deltaTime
 		shot.position += shot.direction * step
 		shot.traveled += step
 
-		local targets = getEnemiesInReach(shot.position, RunRules.ProjectileHitRadius)
-		local target = targets[1]
-		if target then
-			dealRolledDamage(target, shot.damage, nil, shot.weaponId)
+		for _, target in getEnemiesInReach(shot.position, RunRules.ProjectileHitRadius) do
+			if shot.hitsLeft <= 0 then
+				break
+			end
+			if not shot.alreadyHit[target] then
+				shot.alreadyHit[target] = true
+				shot.hitsLeft -= 1
+				local position = EnemyService.getEnemyPosition(target)
+				hit(target, stats, shot.weaponId, shot.damageScale)
+				shot.damageScale *= 1 - (stats.PierceFalloff or 0)
+				if stats.Slow then
+					EnemyService.slow(target, stats.Slow, stats.SlowSeconds or 1.5)
+				end
+				if stats.Freeze then
+					EnemyService.freeze(target, stats.Freeze, stats.FrozenBonus)
+				end
+				local slick = stats.Slick
+				if slick and position then
+					dropSplat(
+						shot.weaponId,
+						position,
+						slick.Width,
+						slick.Seconds,
+						slick.Slow,
+						0,
+						false,
+						RunRules.MaxSlicks
+					)
+				end
+			end
 		end
-		if target or shot.traveled >= shot.maxDistance then
+		if shot.hitsLeft <= 0 or shot.traveled >= shot.maxDistance then
 			table.remove(shots, i)
 			sendFx(shot.weaponId, "End", shot.id)
 		end
 	end
+end
+
+-- LOB (Egg Grenade, #129): eggs in the air. Each lands where it was aimed and splashes.
+type Egg = {
+	weaponId: string,
+	stats: WeaponLevel,
+	target: Vector3, -- where it lands (flat position of the enemy when thrown)
+	timeLeft: number,
+	damage: number,
+	radius: number,
+	cluster: boolean, -- true = a full egg that pops mini-eggs (Breakfast Bomb); false = a mini-egg
+}
+local eggs: { Egg } = {}
+
+local function throwEgg(egg: Egg, from: Vector3)
+	table.insert(eggs, egg)
+	sendFx(egg.weaponId, "Lob", from, egg.target, egg.timeLeft, egg.radius)
+end
+
+-- Lob one egg at each of the nearest `Count` enemies in range.
+local function attackLob(weaponId: string, stats: WeaponLevel, root: BasePart)
+	local origin = root.Position
+	local targets = getNearestTargets(origin, stats.Range)
+	for i = 1, math.min(stats.Count or 1, #targets) do
+		throwEgg({
+			weaponId = weaponId,
+			stats = stats,
+			target = targets[i].position,
+			timeLeft = RunRules.LobFlightSeconds,
+			damage = stats.Damage,
+			radius = stats.Radius or 4,
+			cluster = stats.Cluster ~= nil,
+		}, origin)
+	end
+end
+
+-- Every frame: land the eggs whose time is up. A landing egg hits every enemy whose edge is
+-- within its radius (crits and Hot Sauce as usual, no burn); a full Breakfast Bomb egg then
+-- throws its mini-eggs out from where it landed.
+local function updateEggs(deltaTime: number)
+	for i = #eggs, 1, -1 do
+		local egg = eggs[i]
+		egg.timeLeft -= deltaTime
+		if egg.timeLeft <= 0 then
+			table.remove(eggs, i)
+			local splash: WeaponLevel =
+				{ Damage = egg.damage, Cooldown = 0, Range = 0, CritBonus = egg.stats.CritBonus }
+			for _, enemyId in getEnemiesInReach(egg.target, egg.radius) do
+				hit(enemyId, splash, egg.weaponId)
+			end
+			local cluster = egg.stats.Cluster
+			if egg.cluster and cluster then
+				for k = 0, cluster.Count - 1 do
+					local angle = k * 2 * math.pi / cluster.Count
+					local offset = Vector3.new(math.cos(angle), 0, math.sin(angle)) * cluster.Distance
+					throwEgg({
+						weaponId = egg.weaponId,
+						stats = egg.stats,
+						target = egg.target + offset,
+						timeLeft = RunRules.LobClusterSeconds,
+						damage = cluster.Damage,
+						radius = cluster.Radius,
+						cluster = false,
+					}, egg.target)
+				end
+			end
+		end
+	end
+end
+
+-- BOUNCE (Pizza Cutter, #130): discs in flight. A disc flies at its target enemy (following
+-- it), hits it, then flies on to the nearest enemy nobody in its throw has hit yet within
+-- BounceRange, until it runs out of bounces or enemies. The client follows the same target.
+type Disc = {
+	id: number,
+	weaponId: string,
+	stats: WeaponLevel,
+	position: Vector3,
+	target: number, -- enemy id it's flying at
+	bouncesLeft: number,
+	alreadyHit: { [number]: boolean }, -- shared by every disc of one throw
+	age: number,
+}
+local discs: { Disc } = {}
+local lastDiscId = 0
+local DISC_MAX_SECONDS = 6 -- a disc that somehow never arrives is dropped after this long
+
+-- The nearest enemy whose edge is within BounceRange of the disc that its throw hasn't hit.
+local function nextDiscTarget(disc: Disc): number?
+	local best, bestDistance = nil, math.huge
+	for _, enemyId in getEnemiesInReach(disc.position, disc.stats.BounceRange or 0) do
+		local position = EnemyService.getEnemyPosition(enemyId)
+		if position and not disc.alreadyHit[enemyId] then
+			local distance = distanceToEdge(enemyId, position, disc.position)
+			if distance < bestDistance then
+				best, bestDistance = enemyId, distance
+			end
+		end
+	end
+	return best
+end
+
+-- Tell the client where a disc is and which enemy (part) it's flying at now.
+local function sendDiscLeg(disc: Disc)
+	sendFx(disc.weaponId, "Disc", disc.id, disc.position, EnemyService.getEnemyPart(disc.target), disc.stats.Speed)
+end
+
+local function endDisc(index: number)
+	local disc = table.remove(discs, index)
+	if disc then
+		sendFx(disc.weaponId, "End", disc.id)
+	end
+end
+
+-- Throw `Count` discs at the nearest different enemies in range.
+local function attackBounce(weaponId: string, stats: WeaponLevel, root: BasePart)
+	local targets = getNearestTargets(root.Position, stats.Range)
+	local alreadyHit = {}
+	for i = 1, math.min(stats.Count or 1, #targets) do
+		lastDiscId += 1
+		local disc: Disc = {
+			id = lastDiscId,
+			weaponId = weaponId,
+			stats = stats,
+			position = root.Position,
+			target = targets[i].id,
+			bouncesLeft = stats.Bounces or 0,
+			alreadyHit = alreadyHit,
+			age = 0,
+		}
+		table.insert(discs, disc)
+		sendDiscLeg(disc)
+	end
+end
+
+local function updateDiscs(deltaTime: number)
+	for i = #discs, 1, -1 do
+		local disc = discs[i]
+		disc.age += deltaTime
+		local targetPosition = EnemyService.getEnemyPosition(disc.target)
+		if disc.alreadyHit[disc.target] or not targetPosition then
+			-- Its target died, or another disc of the same throw got there first: pick another
+			-- (this doesn't use up a bounce).
+			local nextTarget = nextDiscTarget(disc)
+			if not nextTarget or disc.age > DISC_MAX_SECONDS then
+				endDisc(i)
+				continue
+			end
+			disc.target = nextTarget
+			sendDiscLeg(disc)
+			targetPosition = EnemyService.getEnemyPosition(nextTarget)
+		end
+		if not targetPosition then
+			endDisc(i)
+			continue
+		end
+		local toTarget = Vector3.new(targetPosition.X - disc.position.X, 0, targetPosition.Z - disc.position.Z)
+		local step = (disc.stats.Speed or 40) * deltaTime
+		if toTarget.Magnitude > step then
+			disc.position += toTarget.Unit * step
+		else
+			disc.position = Vector3.new(targetPosition.X, disc.position.Y, targetPosition.Z)
+		end
+		if distanceToEdge(disc.target, targetPosition, disc.position) <= RunRules.ProjectileHitRadius then
+			disc.alreadyHit[disc.target] = true
+			hit(disc.target, disc.stats, disc.weaponId)
+			local nextTarget = if disc.bouncesLeft > 0 then nextDiscTarget(disc) else nil
+			if nextTarget then
+				disc.bouncesLeft -= 1
+				disc.target = nextTarget
+				sendDiscLeg(disc)
+			else
+				endDisc(i)
+			end
+		elseif disc.age > DISC_MAX_SECONDS then
+			endDisc(i)
+		end
+	end
+end
+
+-- TRAIL (Squeeze Bottle, #131): while the chef walks, a splat at their feet every Cooldown;
+-- standing still drops nothing unless the weapon has StillEvery (Condiment Flood pools).
+local trailTimers: { [string]: number } = {}
+local lastChefPosition: Vector3? = nil
+local chefMoving = false
+
+local function updateTrail(weaponId: string, stats: WeaponLevel, root: BasePart, deltaTime: number)
+	local timer = (trailTimers[weaponId] or 0) - deltaTime
+	if timer <= 0 then
+		local every = if chefMoving then stats.Cooldown else stats.StillEvery
+		if every then
+			dropSplat(
+				weaponId,
+				root.Position,
+				stats.Width or 3,
+				stats.Seconds or 2,
+				stats.Slow or 0,
+				stats.Damage,
+				stats.CanCrit == true,
+				RunRules.MaxTrailSplats
+			)
+			timer = every * cooldownScale()
+		else
+			timer = 0 -- standing still: drop one as soon as the chef moves
+		end
+	end
+	trailTimers[weaponId] = timer
 end
 
 -- ORBIT: `Count` objects circle the chef. Their angle comes from the shared server clock,
@@ -426,7 +816,7 @@ local function updateOrbit(weaponId: string, stats: WeaponLevel, root: BasePart)
 				and distanceToEdge(enemyId, position, forkPosition) <= RunRules.OrbitHitRadius
 			then
 				hit(enemyId, stats, weaponId)
-				hitTimes[enemyId] = now + stats.Cooldown -- one fork hit per enemy per Cooldown
+				hitTimes[enemyId] = now + stats.Cooldown * cooldownScale() -- one fork hit per enemy per Cooldown
 			end
 		end
 	end
@@ -510,6 +900,8 @@ local ATTACKS: { [string]: (string, WeaponLevel, BasePart) -> () } = {
 	Aura = attackAura,
 	Projectile = attackProjectile,
 	Pulse = attackPulse,
+	Lob = attackLob,
+	Bounce = attackBounce,
 }
 
 local function update(deltaTime: number)
@@ -517,6 +909,9 @@ local function update(deltaTime: number)
 		return -- "Order Up!" is on screen: cooldowns, shots and burns all freeze
 	end
 	updateShots(deltaTime)
+	updateEggs(deltaTime)
+	updateDiscs(deltaTime)
+	updateSplats(deltaTime)
 	updatePulses(deltaTime)
 	updateBurns(deltaTime)
 	flushHitFx(deltaTime)
@@ -526,6 +921,12 @@ local function update(deltaTime: number)
 		return -- no living chef: weapons wait
 	end
 	updateSwings(deltaTime, root)
+	-- Is the chef walking? (Trail weapons only drop splats while they are.)
+	local flatNow = Vector3.new(root.Position.X, 0, root.Position.Z)
+	chefMoving = lastChefPosition ~= nil
+		and deltaTime > 0
+		and (flatNow - lastChefPosition).Magnitude / deltaTime > RunRules.TrailMoveSpeed
+	lastChefPosition = flatNow
 	for weaponId, level in levels do
 		local shape, weaponLevels = getWeaponConfig(weaponId)
 		local stats = weaponLevels and weaponLevels[level]
@@ -539,10 +940,14 @@ local function update(deltaTime: number)
 			updateOrbit(weaponId, stats, root) -- always on, no cooldown to wait for
 			continue
 		end
+		if shape == "Trail" then
+			updateTrail(weaponId, stats, root, deltaTime) -- always on: drops splats as the chef walks
+			continue
+		end
 		cooldowns[weaponId] = (cooldowns[weaponId] or 0) - deltaTime
 		if cooldowns[weaponId] <= 0 then
 			ATTACKS[shape](weaponId, stats, root)
-			cooldowns[weaponId] = stats.Cooldown
+			cooldowns[weaponId] = stats.Cooldown * cooldownScale()
 		end
 	end
 end
@@ -579,6 +984,7 @@ function WeaponService.replaceWeapon(oldId: string, newId: string)
 	levels[oldId] = nil
 	cooldowns[oldId] = nil
 	orbitHitTimes[oldId] = nil
+	trailTimers[oldId] = nil
 	levels[newId] = 1
 	syncAttributes()
 end
@@ -598,6 +1004,19 @@ function WeaponService.reset()
 		sendFx(shot.weaponId, "End", shot.id)
 	end
 	table.clear(shots)
+	table.clear(eggs)
+	for _, disc in discs do
+		sendFx(disc.weaponId, "End", disc.id)
+	end
+	table.clear(discs)
+	for weaponId, group in splatGroups do
+		for _, splat in group.splats do
+			sendFx(weaponId, "SplatEnd", splat.id)
+		end
+	end
+	table.clear(splatGroups)
+	table.clear(trailTimers)
+	lastChefPosition = nil
 	table.clear(pulses)
 	table.clear(swings)
 	table.clear(pendingHits)
@@ -629,6 +1048,11 @@ end
 
 function WeaponService:init()
 	maxEnemyHalfWidth = EnemyService.getMaxEnemyWidth() / 2
+	local map = workspace:FindFirstChild("Map")
+	local center = map and map:GetAttribute("ArenaCenter")
+	if typeof(center) == "Vector3" then
+		floorY = center.Y
+	end
 	table.clear(levels)
 	levels[RunRules.Starter] = 1
 end

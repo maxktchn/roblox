@@ -47,6 +47,11 @@ type EnemyRecord = {
 	windup: number,
 	-- Planted (a Sour Lemon after its first shot, Shot.Plant): never moves again, only turns.
 	planted: boolean,
+	-- Slowed by a weapon (#128): moves at (1 - slow) speed for slowTime more seconds. 1 = frozen.
+	slow: number,
+	slowTime: number,
+	frozenBonus: number, -- extra damage taken from weapons while frozen (Deep Freeze)
+	chill: number, -- what its part shows: 0 normal, 1 slowed, 2 frozen
 }
 
 -- Where unused parts wait: far below the floor, out of sight.
@@ -64,6 +69,10 @@ local CHEF_RADIUS = RunRules.ChefRadius
 local AVOID_MARGIN = 1
 -- Elites (#120) are their own enemy types: "Elite_" .. the normal type's id.
 local ELITE_PREFIX = "Elite_"
+-- Slowed and frozen enemies (#128) look icy: their part's material changes (not its colour,
+-- which the client's hit flash uses), and a frozen one also shines.
+local SLOWED_MATERIAL = Enum.Material.Ice
+local FROZEN_REFLECTANCE = 0.5
 -- A winding-up charger wobbles side to side this far (studs) and this fast (radians per second).
 local WINDUP_WOBBLE = 0.3
 local WINDUP_WOBBLE_SPEED = 45
@@ -284,7 +293,14 @@ local function spawnWithConfig(enemyType: string, config: Enemies.Enemy, positio
 		direction = direction,
 		windup = if config.Movement == "Charge" then RunRules.ChargeWindupSeconds else 0,
 		planted = false,
+		slow = 0,
+		slowTime = 0,
+		frozenBonus = 0,
+		chill = 0,
 	}
+	-- A pooled part may still look icy from its last enemy.
+	enemy.part.Material = Enum.Material.SmoothPlastic
+	enemy.part.Reflectance = 0
 	enemy.part.Size = config.Size -- a pooled part may have been swollen (a Sour Lemon's tell, #118)
 	enemy.part.CFrame = CFrame.lookAt(standing, standing + direction)
 	enemy.part:SetAttribute("HpFraction", nil) -- a pooled part may still carry its last enemy's
@@ -443,6 +459,62 @@ function EnemyService.plant(enemyId: EnemyId)
 	end
 end
 
+-- Show whether an enemy is slowed or frozen on its part (only when that changes).
+local function updateChill(enemy: EnemyRecord)
+	local chill = if enemy.slow >= 1 then 2 elseif enemy.slow > 0 then 1 else 0
+	if chill ~= enemy.chill then
+		enemy.chill = chill
+		enemy.part.Material = if chill > 0 then SLOWED_MATERIAL else Enum.Material.SmoothPlastic
+		enemy.part.Reflectance = if chill == 2 then FROZEN_REFLECTANCE else 0
+	end
+end
+
+-- Slow one enemy (#128): it moves at (1 - fraction) speed for `seconds`. Slows don't stack:
+-- the strongest one wins, and one of the same strength extends the time. The enemy's
+-- SlowTaken scales it (the mini-boss takes half, so a freeze only slows it 50%; the final boss
+-- takes none). Does nothing if the enemy is dead.
+function EnemyService.slow(enemyId: EnemyId, fraction: number, seconds: number)
+	local enemy = alive[enemyId]
+	if not enemy or fraction <= 0 or seconds <= 0 then
+		return
+	end
+	local taken = math.min(fraction, 1) * (enemy.config.SlowTaken or 1)
+	if taken <= 0 then
+		return -- immune
+	end
+	if taken > enemy.slow + 1e-6 then
+		enemy.slow = taken
+		enemy.slowTime = seconds
+		enemy.frozenBonus = 0
+	elseif math.abs(taken - enemy.slow) <= 1e-6 then
+		enemy.slowTime = math.max(enemy.slowTime, seconds)
+	end
+	updateChill(enemy)
+end
+
+-- Freeze one enemy (#128): it can't move for `seconds` (it still hurts on contact).
+-- `damageBonus` (Deep Freeze: 0.25) is extra damage it takes from weapons while frozen.
+-- Enemies that only take part of a slow are slowed instead, and get no bonus.
+function EnemyService.freeze(enemyId: EnemyId, seconds: number, damageBonus: number?)
+	EnemyService.slow(enemyId, 1, seconds)
+	local enemy = alive[enemyId]
+	if enemy and enemy.slow >= 1 and damageBonus then
+		enemy.frozenBonus = math.max(enemy.frozenBonus, damageBonus)
+	end
+end
+
+-- How slowed an enemy is right now (0 = not, 1 = frozen). 0 if it is dead.
+function EnemyService.getSlow(enemyId: EnemyId): number
+	local enemy = alive[enemyId]
+	return if enemy then enemy.slow else 0
+end
+
+-- Extra damage an enemy takes from weapons right now (a Deep Freeze freeze). 0 if none or dead.
+function EnemyService.getDamageTakenBonus(enemyId: EnemyId): number
+	local enemy = alive[enemyId]
+	return if enemy and enemy.slow >= 1 then enemy.frozenBonus else 0
+end
+
 function EnemyService.getEnemyPart(enemyId: EnemyId): BasePart?
 	local enemy = alive[enemyId]
 	return enemy and enemy.part
@@ -594,7 +666,7 @@ local function moveEnemy(enemy: EnemyRecord, deltaTime: number, chefPosition: Ve
 				end
 			end
 			enemy.direction = direction
-			local targetStep = math.min((enemy.moveSpeed or config.Speed) * deltaTime, remaining)
+			local targetStep = math.min((enemy.moveSpeed or config.Speed) * (1 - enemy.slow) * deltaTime, remaining)
 			local wanted = enemy.position + direction * targetStep
 			-- Stay at the chef's edge, never inside (going around a circle in steps cuts in a bit).
 			local wantedFromChef = Vector3.new(wanted.X - chefPosition.X, 0, wanted.Z - chefPosition.Z)
@@ -608,7 +680,7 @@ local function moveEnemy(enemy: EnemyRecord, deltaTime: number, chefPosition: Ve
 	end
 	local toChef = Vector3.new(chefPosition.X - enemy.position.X, 0, chefPosition.Z - enemy.position.Z)
 	local distance = toChef.Magnitude
-	local step = config.Speed * deltaTime
+	local step = config.Speed * (1 - enemy.slow) * deltaTime -- slowed or frozen (#128)
 
 	if config.Movement == "Chase" then
 		-- Face the chef every frame and walk straight at them.
@@ -738,6 +810,14 @@ end
 -- Move every live enemy, spread them apart, then move all their parts with one BulkMoveTo call (PRD §8.3).
 local function moveEnemies(deltaTime: number, chefPosition: Vector3)
 	for _, enemy in alive do
+		if enemy.slowTime > 0 then
+			enemy.slowTime -= deltaTime
+			if enemy.slowTime <= 0 then
+				enemy.slow = 0
+				enemy.frozenBonus = 0
+				updateChill(enemy)
+			end
+		end
 		moveEnemy(enemy, deltaTime, chefPosition)
 	end
 	separateEnemies(deltaTime, chefPosition)

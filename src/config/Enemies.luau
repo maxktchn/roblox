@@ -32,6 +32,9 @@
 -- CanBeElite: true = the elite schedule (Chapters.luau Elites, #120) can pick it. Elites are
 --               bigger, tougher versions (RunRules Elite... values) that drop a Lunchbox.
 -- IsElite: set only on the elite versions EnemyService makes (type "Elite_<id>"); never in this file.
+-- SlowTaken: how much of a slow or freeze it takes (EnemyService.slow, #128). nil = all of it.
+--               0.5 = half, and a freeze only slows it 50% (the mini-boss and its pieces).
+--               0 = immune (the final boss).
 -- KeepAway: Min and Max studs from the chef for "KeepAway" movement.
 -- Shot: a ranged attack (JuiceService, Sour Lemon #118). Within Range studs of the chef it shoots
 --               every Every seconds (the first FirstDelay seconds after getting in range).
@@ -89,6 +92,7 @@ export type Enemy = {
 	Shot: Shot?,
 	CanBeElite: boolean?,
 	IsElite: boolean?,
+	SlowTaken: number?,
 }
 
 local Enemies: { [string]: Enemy } = {
@@ -239,6 +243,7 @@ local Enemies: { [string]: Enemy } = {
 		Shape = "Block",
 		Color = Color3.fromRGB(255, 215, 100),
 		Movement = "Chase",
+		SlowTaken = 0.5, -- a mini-boss piece: half of any slow, never frozen (#128)
 		SplitInto = "CheeseCube",
 		SplitCount = 2,
 	},
@@ -255,6 +260,7 @@ local Enemies: { [string]: Enemy } = {
 		Shape = "Block",
 		Color = Color3.fromRGB(255, 230, 150),
 		Movement = "Chase",
+		SlowTaken = 0.5, -- a mini-boss piece: half of any slow, never frozen (#128)
 	},
 	-- The Microwave Monster's popcorn (#92, Bosses.luau Fight.Popcorn...): fired from the boss,
 	-- never in the normal waves, no run-time scaling. It does no contact damage: when it dies

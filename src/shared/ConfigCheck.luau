@@ -68,6 +68,16 @@ function ConfigCheck.run(): { string }
 				then stats.ArcDegrees
 				elseif weapon.Shape == "Orbit" or weapon.Shape == "Projectile" then stats.Count and stats.Speed
 				elseif weapon.Shape == "Pulse" then (stats.Speed or 0) > 0 and stats.Range > 0
+				elseif weapon.Shape == "Lob" then (stats.Count or 0) > 0 and (stats.Radius or 0) > 0
+				elseif weapon.Shape == "Trail" then (stats.Width or 0) > 0
+					and (stats.Seconds or 0) > 0
+					and (stats.Slow or 0) >= 0
+					and (stats.Slow or 0) < 1
+					and stats.Cooldown > 0
+				elseif weapon.Shape == "Bounce" then (stats.Count or 0) > 0
+					and (stats.Speed or 0) > 0
+					and (stats.Bounces or -1) >= 0
+					and (stats.BounceRange or 0) > 0
 				else true
 			if not needs then
 				fail(`Weapon {id} Lv {i}: missing a field its {weapon.Shape} shape needs`)
@@ -77,6 +87,28 @@ function ConfigCheck.run(): { string }
 			end
 			if stats.PullStrength and stats.PullStrength <= 0 then
 				fail(`Weapon {id} Lv {i}: PullStrength must be more than 0`)
+			end
+			if stats.Pierce and stats.Pierce < 1 then
+				fail(`Weapon {id} Lv {i}: Pierce must be 1 or more`)
+			end
+			if stats.PierceFalloff and (stats.PierceFalloff < 0 or stats.PierceFalloff >= 1) then
+				fail(`Weapon {id} Lv {i}: PierceFalloff must be from 0 up to (not including) 1`)
+			end
+			if (stats.Spread and stats.Spread <= 0) or (stats.Freeze and stats.Freeze <= 0) then
+				fail(`Weapon {id} Lv {i}: Spread and Freeze must be more than 0`)
+			end
+			if weapon.Shape == "Projectile" and stats.Slow and (stats.Slow <= 0 or stats.Slow >= 1) then
+				fail(`Weapon {id} Lv {i}: Slow must be between 0 and 1`)
+			end
+			local slick = stats.Slick
+			if slick and (slick.Width <= 0 or slick.Seconds <= 0 or slick.Slow <= 0 or slick.Slow >= 1) then
+				fail(`Weapon {id} Lv {i}: Slick needs Width and Seconds above 0 and Slow between 0 and 1`)
+			end
+			local cluster = stats.Cluster
+			if
+				cluster and (cluster.Count < 1 or cluster.Distance <= 0 or cluster.Damage <= 0 or cluster.Radius <= 0)
+			then
+				fail(`Weapon {id} Lv {i}: Cluster needs Count 1 or more and Distance, Damage, Radius above 0`)
 			end
 		end
 	end
@@ -270,6 +302,9 @@ function ConfigCheck.run(): { string }
 		end
 		if enemy.IsElite then
 			fail(`Enemy {id}: IsElite is set by EnemyService, not in Enemies.luau`)
+		end
+		if enemy.SlowTaken and (enemy.SlowTaken < 0 or enemy.SlowTaken > 1) then
+			fail(`Enemy {id}: SlowTaken must be 0 to 1`)
 		end
 		if enemy.CanBeElite and enemy.GroupSize and enemy.GroupSize > 1 then
 			fail(`Enemy {id}: enemies that spawn in groups can't be elites`)
