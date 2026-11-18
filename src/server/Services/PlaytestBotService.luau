@@ -23,18 +23,22 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local RestartService = require(script.Parent.RestartService)
 local RunManager = require(script.Parent.RunManager)
 local RunReportService = require(script.Parent.RunReportService)
+local Starters = require(ReplicatedStorage.Config.Starters)
 local UnlockService = require(script.Parent.UnlockService)
 local UpgradeService = require(script.Parent.UpgradeService)
+local WeaponService = require(script.Parent.WeaponService)
 
 type Card = Card.Card
 
 local PlaytestBotService = {}
 
 -- One strategy per run, used in this order (and again from the top for more runs).
---   KnifeFirst:  levels the starter first, then gadgets
---   GadgetFirst: takes gadgets first, the knife last
---   Balanced:    mostly random
-local STRATEGIES = { "KnifeFirst", "GadgetFirst", "Balanced" }
+--   StarterFirst: levels the starter first, then gadgets
+--   GadgetFirst:  takes gadgets first, the starter last
+--   Balanced:     mostly random
+-- The bot plays whatever starter is equipped (give and equip one with the DEV panel's gear
+-- buttons first); each run's report says which (#150).
+local STRATEGIES = { "StarterFirst", "GadgetFirst", "Balanced" }
 local SECONDS_BETWEEN_RUNS = 4 -- time to read the run-over screen before the next run
 local PICK_EVERY_SECONDS = 0.4 -- how often the bot looks for open cards
 
@@ -44,7 +48,7 @@ local INGREDIENT_LIKES: { [string]: number } =
 
 -- Points per card kind for each strategy. The highest-scoring card is picked.
 local KIND_SCORES: { [string]: { [string]: number } } = {
-	KnifeFirst = { Starter = 300, BossPower = 200, Gadget = 150, Ingredient = 100 },
+	StarterFirst = { Starter = 300, BossPower = 200, Gadget = 150, Ingredient = 100 },
 	GadgetFirst = { Gadget = 300, BossPower = 280, Ingredient = 150, Starter = 50 },
 }
 
@@ -128,7 +132,7 @@ end
 local function finish()
 	local summary = { `BOT REPORT: {#reports} run(s)` }
 	for _, report in reports do
-		-- First line of each report: "[Bot run 1: KnifeFirst] RUN REPORT: WON at 6:42 · ..."
+		-- First line of each report: "[Bot run 1: StarterFirst, Chef's Knife] RUN REPORT: WON at 6:42 · ..."
 		table.insert(summary, string.split(report, "\n")[1])
 	end
 	local text = table.concat(summary, "\n") .. "\n\n" .. table.concat(reports, "\n\n")
@@ -155,7 +159,8 @@ end
 local function onRunOver()
 	local report = RunReportService.getLastReport()
 	if report then
-		table.insert(reports, `[Bot run {runNumber}: {strategyFor(runNumber)}] {report}`)
+		local starter = Starters[WeaponService.getStarter()]
+		table.insert(reports, `[Bot run {runNumber}: {strategyFor(runNumber)}, {starter.Name}] {report}`)
 	end
 	task.delay(SECONDS_BETWEEN_RUNS, function()
 		if not running then

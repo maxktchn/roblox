@@ -21,7 +21,8 @@
 --   "Merge", { id x3 }    3 different copies of the same item and rarity -> 1 at the next rarity,
 --                         Lv 1, with 80% of the 3 copies' levelling spend back
 --   "Salvage", id         destroy it for its rarity's gold, 1 material and 80% of its levelling
---                         spend; never the equipped item or the last Chef's Knife
+--                         spend; never the equipped item or your last copy of a starter
+--                         (Utensil item: Chef's Knife, Rolling Pin, Frying Pan; #150)
 -- After every action (and on load, when a run starts or ends, and after DEV gear changes) the
 -- client gets GearState(state, message?): a copy of the items, equipped ids and currencies, plus
 -- CanChange (false while a run is on). `message` says why an action was refused.
@@ -34,6 +35,7 @@ local Gear = require(ReplicatedStorage.Config.Gear)
 local GearMath = require(ReplicatedStorage.Shared.GearMath)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local RunManager = require(script.Parent.RunManager)
+local Starters = require(ReplicatedStorage.Config.Starters)
 local StatsService = require(script.Parent.StatsService)
 
 local GearService = {}
@@ -350,15 +352,16 @@ function GearService.salvage(player: Player, id: string): (boolean, string?)
 	if isEquipped(gear, id) then
 		return false, "Equip something else in its slot first"
 	end
-	if record.Item == FREE_ITEM then
-		local knives = 0
+	if Starters[record.Item] then
+		-- A starter you earned (or the free knife) can't be lost: keep at least one copy (#150).
+		local copies = 0
 		for _, other in gear.Items do
-			if other.Item == FREE_ITEM then
-				knives += 1
+			if other.Item == record.Item then
+				copies += 1
 			end
 		end
-		if knives <= 1 then
-			return false, `You always keep one {GearMath.itemName(FREE_ITEM)}`
+		if copies <= 1 then
+			return false, `You always keep one {GearMath.itemName(record.Item)}`
 		end
 	end
 	local gold, materialBack = GearMath.salvage(record)
