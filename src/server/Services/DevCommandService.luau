@@ -215,8 +215,9 @@ ACTIONS.GiveGear = function(player, arg)
 		reply(player, "Can't give gear (save not loaded?)")
 		return
 	end
-	-- DEV shortcut: equip it straight away (the Gear screen's equip comes with #137/#138).
+	-- DEV shortcut: equip it straight away (on purpose ignores the between-runs rule).
 	data.Gear.Equipped[slot] = id
+	GearService.sendState(player)
 	reply(player, `{rarity} {GearMath.itemName(itemId)} equipped (next run)`)
 end
 
@@ -224,6 +225,7 @@ ACTIONS.GiveGold = function(player, arg)
 	local amount = toWholeNumber(arg)
 	if amount then
 		GearService.addCurrency(player, "Gold", math.clamp(amount, 0, MAX_CURRENCY_AT_ONCE))
+		GearService.sendState(player)
 		reply(player, `Gold: {GearService.getCurrency(player, "Gold")}`)
 	end
 end
@@ -234,12 +236,14 @@ ACTIONS.GiveMaterials = function(player, arg)
 		for _, slot: any in Gear.Slots do
 			GearService.addCurrency(player, slot.Material, math.clamp(amount, 0, MAX_CURRENCY_AT_ONCE))
 		end
+		GearService.sendState(player)
 		reply(player, `+{amount} of each material`)
 	end
 end
 
 ACTIONS.ResetGear = function(player)
 	GearService.resetGear(player)
+	GearService.sendState(player)
 	reply(player, "Gear reset: just the Chef's Knife (next run)")
 end
 

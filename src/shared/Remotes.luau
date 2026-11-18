@@ -18,6 +18,8 @@ local NAMES = {
 	"RunReport", -- server -> client: (text) end-of-run report for tuning; devs only (RunReportService)
 	"DevMessage", -- server -> client: (text) reply shown on the DEV panel; devs only
 	"HitFx", -- server -> client: { HitFx } recent hits, for enemy flashes and damage numbers (visual only)
+	"GearAction", -- client -> server: (action, arg) from the Gear screen; validated (GearService, P2-4)
+	"GearState", -- server -> client: (state, message?) the player's gear and currencies for the Gear screen
 }
 
 -- Unreliable remotes: for frequent, throwaway updates where only the latest one matters
