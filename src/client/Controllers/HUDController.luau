@@ -23,6 +23,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local BossPowers = require(ReplicatedStorage.Config.BossPowers)
 local Gadgets = require(ReplicatedStorage.Config.Gadgets)
+local GearController = require(script.Parent.GearController)
 local Ingredients = require(ReplicatedStorage.Config.Ingredients)
 local Recipes = require(ReplicatedStorage.Config.Recipes)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
@@ -82,6 +83,7 @@ local runOverTitle: TextLabel
 local runOverStats: TextLabel
 local runOverUnlock: TextLabel
 local playAgainButton: TextButton
+local gearButton: TextButton
 
 -- Helper: a text label in the game font.
 local function makeLabel(parent: Instance, name: string, size: number): TextLabel
@@ -266,9 +268,9 @@ local function buildScreen()
 	-- "Play again" (#50): the server starts a fresh run (RestartService).
 	playAgainButton = Instance.new("TextButton")
 	playAgainButton.Name = "PlayAgain"
-	playAgainButton.AnchorPoint = Vector2.new(0.5, 0)
-	playAgainButton.Position = UDim2.new(0.5, 0, 0, 172)
-	playAgainButton.Size = UDim2.fromOffset(220, 56) -- big enough for a thumb (PRD §7.4)
+	playAgainButton.AnchorPoint = Vector2.new(1, 0)
+	playAgainButton.Position = UDim2.new(0.5, -6, 0, 172)
+	playAgainButton.Size = UDim2.fromOffset(200, 56) -- big enough for a thumb (PRD §7.4)
 	playAgainButton.BackgroundColor3 = COLORS.tips
 	playAgainButton.Font = Enum.Font.FredokaOne
 	playAgainButton.TextSize = 26
@@ -276,6 +278,20 @@ local function buildScreen()
 	playAgainButton.Text = "Play again"
 	corner(playAgainButton, UDim.new(0, 12))
 	playAgainButton.Parent = runOverPanel
+
+	-- "Gear" (P2-4 #138): the Gear screen, until the lobby (#109) has its own button.
+	gearButton = Instance.new("TextButton")
+	gearButton.Name = "Gear"
+	gearButton.AnchorPoint = Vector2.new(0, 0)
+	gearButton.Position = UDim2.new(0.5, 6, 0, 172)
+	gearButton.Size = UDim2.fromOffset(160, 56)
+	gearButton.BackgroundColor3 = COLORS.paper
+	gearButton.Font = Enum.Font.FredokaOne
+	gearButton.TextSize = 26
+	gearButton.TextColor3 = COLORS.ink
+	gearButton.Text = "Gear"
+	corner(gearButton, UDim.new(0, 12))
+	gearButton.Parent = runOverPanel
 end
 
 -- The run-over banner, with how far the player got.
@@ -448,6 +464,7 @@ end
 
 function HUDController:start()
 	local requestRestart = Remotes.get("RequestRestart")
+	gearButton.Activated:Connect(GearController.open)
 	playAgainButton.Activated:Connect(function()
 		if not playAgainButton.Active then
 			return -- already asked: wait for the new run

@@ -3,7 +3,7 @@
 -- Every number here is a starting value: gear needs a lot of balancing to feel right.
 --
 -- Items        one per slot (#105). Utensil items are starters (their names come from Starters.luau).
---              Effect = the Epic and Legendary bonus effect numbers. They're a rough outline,
+--              Effect = the Epic and Legendary bonus effect numbers, and the Text players see. They're a rough outline,
 --              tuned once built. FryingPan and RollingPin effects are built with those starters (#107).
 -- Stats        an item's bonus goes in a straight line from its rarity's First (Lv 1) to its Max
 --              (max level). Attack = % damage, Hp = % max HP, as fractions (0.02 = +2%). Every
@@ -30,54 +30,76 @@ local Items: { [string]: Item } = {
 	ChefsKnife = {
 		Slot = "Utensil",
 		Effect = {
-			Epic = { Every = 5 }, -- every 5th attack also throws a knife
-			Legendary = { Every = 3 },
+			Epic = { Every = 5, Text = "Every 5th attack throws a second knife" },
+			Legendary = { Every = 3, Text = "Every 3rd attack throws a second knife" },
 		},
 	},
 	FryingPan = {
 		Slot = "Utensil",
 		Effect = {
-			Epic = { StunSeconds = 0.5, Spreads = false },
-			Legendary = { StunSeconds = 1, Spreads = true }, -- the stun spreads to enemies next to it
+			Epic = { StunSeconds = 0.5, Spreads = false, Text = "Hits stun for 0.5 s" },
+			Legendary = { StunSeconds = 1, Spreads = true, Text = "Hits stun for 1 s, spreading to enemies next to it" },
 		},
 	},
 	RollingPin = {
 		Slot = "Utensil",
 		Effect = {
-			Epic = { Slow = 0.3, SlowSeconds = 2, DamageTakenBonus = 0 },
-			Legendary = { Slow = 0.5, SlowSeconds = 2, DamageTakenBonus = 0.2 },
+			Epic = { Slow = 0.3, SlowSeconds = 2, DamageTakenBonus = 0, Text = "Flattens enemies: 30% slower for 2 s" },
+			Legendary = {
+				Slow = 0.5,
+				SlowSeconds = 2,
+				DamageTakenBonus = 0.2,
+				Text = "Flattens enemies: 50% slower for 2 s, and they take +20% damage",
+			},
 		},
 	},
 	ChefsHat = {
 		Slot = "Hat",
 		Name = "Chef's Hat",
 		Effect = {
-			Epic = { FreePicks = 1 }, -- free "Order Up!" picks at the start of every run
-			Legendary = { FreePicks = 2 },
+			Epic = { FreePicks = 1, Text = "Start every run with 1 free Order Up! pick" },
+			Legendary = { FreePicks = 2, Text = "Start every run with 2 free Order Up! picks" },
 		},
 	},
 	Apron = {
 		Slot = "Apron",
 		Name = "Apron",
 		Effect = {
-			Epic = { BlockEverySeconds = 12 }, -- blocks one hit, then is ready again after this long
-			Legendary = { BlockEverySeconds = 7 },
+			Epic = { BlockEverySeconds = 12, Text = "Blocks a hit every 12 s" },
+			Legendary = { BlockEverySeconds = 7, Text = "Blocks a hit every 7 s" },
 		},
 	},
 	OvenMitts = {
 		Slot = "Mitts",
 		Name = "Oven Mitts",
 		Effect = {
-			Epic = { Chance = 0.1, BurnDps = 5, BurnSeconds = 3, Spreads = false },
-			Legendary = { Chance = 0.2, BurnDps = 5, BurnSeconds = 3, Spreads = true }, -- fire spreads on death
+			Epic = {
+				Chance = 0.1,
+				BurnDps = 5,
+				BurnSeconds = 3,
+				Spreads = false,
+				Text = "10% of hits set enemies on fire",
+			},
+			Legendary = {
+				Chance = 0.2,
+				BurnDps = 5,
+				BurnSeconds = 3,
+				Spreads = true,
+				Text = "20% of hits set enemies on fire, and it spreads when they die",
+			},
 		},
 	},
 	Shoes = {
 		Slot = "Shoes",
 		Name = "Shoes",
 		Effect = {
-			Epic = { SpeedBoost = 0.3, BoostSeconds = 2, SafeSeconds = 0 }, -- after a hit
-			Legendary = { SpeedBoost = 0.3, BoostSeconds = 2, SafeSeconds = 1 }, -- plus 1 s of no damage
+			Epic = { SpeedBoost = 0.3, BoostSeconds = 2, SafeSeconds = 0, Text = "After a hit, run 30% faster for 2 s" },
+			Legendary = {
+				SpeedBoost = 0.3,
+				BoostSeconds = 2,
+				SafeSeconds = 1,
+				Text = "After a hit, run 30% faster for 2 s and can't be hurt for 1 s",
+			},
 		},
 	},
 }

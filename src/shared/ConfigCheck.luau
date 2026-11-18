@@ -442,6 +442,8 @@ function ConfigCheck.run(): { string }
 		end
 		if not (item.Effect and item.Effect.Epic and item.Effect.Legendary) then
 			fail(`Gear item {id}: needs Effect.Epic and Effect.Legendary`)
+		elseif type(item.Effect.Epic.Text) ~= "string" or type(item.Effect.Legendary.Text) ~= "string" then
+			fail(`Gear item {id}: each effect needs a Text for players`)
 		end
 	end
 	for _, stat in { "Attack", "Hp" } do
