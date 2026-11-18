@@ -233,7 +233,7 @@ end
 ACTIONS.GiveMaterials = function(player, arg)
 	local amount = toWholeNumber(arg)
 	if amount then
-		for _, slot: any in Gear.Slots do
+		for _, slot in Gear.Slots do
 			GearService.addCurrency(player, slot.Material, math.clamp(amount, 0, MAX_CURRENCY_AT_ONCE))
 		end
 		GearService.sendState(player)

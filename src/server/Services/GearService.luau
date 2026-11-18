@@ -94,6 +94,19 @@ local function repair(gear: any)
 	end
 end
 
+-- Make sure the save has gold and every slot's material (0 if missing), so a material added or
+-- renamed in Gear.Slots never breaks levelling, merging or salvaging.
+local function repairCurrencies(currencies: { [string]: number })
+	if currencies.Gold == nil then
+		currencies.Gold = 0
+	end
+	for _, slot in Gear.Slots do
+		if currencies[slot.Material] == nil then
+			currencies[slot.Material] = 0
+		end
+	end
+end
+
 -- Give a player a new item (DEV tools now; run rewards and chests later). Returns its id, or nil
 -- if the save isn't loaded or the item or rarity is unknown. The level is kept within the rarity's cap.
 function GearService.give(player: Player, itemId: string, rarity: string, level: number?): string?
@@ -406,6 +419,7 @@ function GearService.resetGear(player: Player)
 		data.Currencies[name] = 0
 	end
 	repair(data.Gear)
+	repairCurrencies(data.Currencies)
 end
 
 function GearService:start()
@@ -413,6 +427,7 @@ function GearService:start()
 	Remotes.get("GearAction").OnServerEvent:Connect(GearService.handleAction)
 	DataService.onLoaded(function(player: Player, data: DataService.Data)
 		repair(data.Gear)
+		repairCurrencies(data.Currencies)
 		if player == getRunPlayer() and not runGearSet then
 			GearService.startRun()
 		end

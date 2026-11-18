@@ -26,6 +26,16 @@ export type StatRange = { First: number, Max: number }
 
 export type Rarity = { Id: string, Color: Color3, MaxLevel: number }
 
+export type Slot = { MainStat: string, Material: string }
+
+local Slots: { [string]: Slot } = {
+	Utensil = { MainStat = "Attack", Material = "Sharpener" }, -- sets the starter weapon
+	Hat = { MainStat = "Attack", Material = "HatPattern" },
+	Apron = { MainStat = "Hp", Material = "ApronPattern" },
+	Mitts = { MainStat = "Attack", Material = "MittPattern" },
+	Shoes = { MainStat = "Hp", Material = "ShoePattern" },
+}
+
 local Items: { [string]: Item } = {
 	ChefsKnife = {
 		Slot = "Utensil",
@@ -131,13 +141,7 @@ local Stats: { Attack: { [string]: StatRange }, Hp: { [string]: StatRange } } = 
 }
 
 return {
-	Slots = {
-		Utensil = { MainStat = "Attack", Material = "Sharpener" }, -- sets the starter weapon
-		Hat = { MainStat = "Attack", Material = "HatPattern" },
-		Apron = { MainStat = "Hp", Material = "ApronPattern" },
-		Mitts = { MainStat = "Attack", Material = "MittPattern" },
-		Shoes = { MainStat = "Hp", Material = "ShoePattern" },
-	},
+	Slots = Slots,
 
 	Items = Items,
 	Rarities = Rarities,

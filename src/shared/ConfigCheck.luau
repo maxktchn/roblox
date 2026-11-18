@@ -20,6 +20,18 @@ local WeaponTypes = require(ReplicatedStorage.Shared.WeaponTypes)
 
 local ConfigCheck = {}
 
+-- The numbers each gear item's Epic and Legendary effect must have (GearEffectsService and
+-- WeaponService use them; #107 builds the Frying Pan's and Rolling Pin's).
+local GEAR_EFFECT_NUMBERS: { [string]: { string } } = {
+	ChefsKnife = { "Every" },
+	ChefsHat = { "FreePicks" },
+	Apron = { "BlockEverySeconds" },
+	OvenMitts = { "Chance", "BurnDps", "BurnSeconds" },
+	Shoes = { "SpeedBoost", "BoostSeconds", "SafeSeconds" },
+	FryingPan = { "StunSeconds" },
+	RollingPin = { "Slow", "SlowSeconds", "DamageTakenBonus" },
+}
+
 function ConfigCheck.run(): { string }
 	local problems: { string } = {}
 	local function fail(message: string)
@@ -444,6 +456,20 @@ function ConfigCheck.run(): { string }
 			fail(`Gear item {id}: needs Effect.Epic and Effect.Legendary`)
 		elseif type(item.Effect.Epic.Text) ~= "string" or type(item.Effect.Legendary.Text) ~= "string" then
 			fail(`Gear item {id}: each effect needs a Text for players`)
+		else
+			-- The numbers the bonus effects use: a missing one would break the run every frame.
+			local fields: { string } = GEAR_EFFECT_NUMBERS[id] or {}
+			for _, field in fields do
+				for _, rarity in { "Epic", "Legendary" } do
+					local value = (item.Effect :: any)[rarity][field]
+					if type(value) ~= "number" or value < 0 then
+						fail(`Gear item {id}: Effect.{rarity}.{field} must be a number, 0 or more`)
+					end
+				end
+			end
+			if id == "ChefsKnife" and (item.Effect.Epic.Every < 1 or item.Effect.Legendary.Every < 1) then
+				fail("Gear item ChefsKnife: Effect Every must be at least 1")
+			end
 		end
 	end
 	for _, stat in { "Attack", "Hp" } do

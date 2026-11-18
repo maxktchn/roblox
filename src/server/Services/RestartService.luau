@@ -44,8 +44,6 @@ function RestartService.restart()
 	StatsService.reset() -- no ingredients
 	UpgradeService.reset() -- Lv 1, rerolls back, closes any open cards
 	RunManager.reset() -- full HP, 0:00, timeline from the start, RunState "Playing"
-	-- After the run reset: the gear's max HP shows on RunManager's next frame (full HP).
-	GearService.startRun() -- this run's gear, from what's equipped now (P2-4)
 	RunReportService.reset() -- a new report for the new run
 	UnlockService.clearJustUnlocked() -- unlocks stay; only the banner's announcement goes
 
@@ -54,6 +52,11 @@ function RestartService.restart()
 	if player then
 		player:LoadCharacter()
 	end
+
+	-- This run's gear, from what's equipped now (P2-4). After the new chef exists: an Epic Hat's
+	-- free picks open the cards, and the card screen has to freeze the new chef, not the old one.
+	-- The gear's max HP shows on RunManager's next frame (as full HP).
+	GearService.startRun()
 end
 
 function RestartService:start()
