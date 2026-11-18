@@ -6,6 +6,7 @@
 --   Arc        - a blade sweeps across the slice        (WeaponFx: facing, range, arcDegrees)
 --   Aura       - a ring pulses around the chef           (WeaponFx: range)
 --   Projectile - a shot flies out                        (WeaponFx: "Launch"/"End", ...)
+--                (a shot with Width, the Rolling Pin, is a pin rolling along the floor)
 --   Pulse      - a ring grows from where it was fired    (WeaponFx: origin, range, speed)
 --   Lob        - an egg arcs over, then splashes         (WeaponFx: "Lob", from, to, seconds, radius)
 --   Bounce     - a spinning disc chases one enemy part   (WeaponFx: "Disc", id, from, part, speed / "End", id)
@@ -177,9 +178,12 @@ local function endShot(shotId: number)
 	end
 end
 
+local ROLL_HEIGHT = 2 -- a rolling pin rolls this far below the chef's root (about on the floor)
+
 local function drawShot(
 	color: Color3,
 	size: Vector3,
+	rolls: boolean, -- a rolling pin: a cylinder lying across its path, rolling along the floor
 	shotId: number,
 	origin: Vector3,
 	direction: Vector3,
@@ -188,17 +192,26 @@ local function drawShot(
 )
 	local part = table.remove(spareShotParts) or makeFxPart("Shot", color)
 	part.Color = color
-	part.Material = Enum.Material.SmoothPlastic
+	part.Material = if rolls then Enum.Material.Wood else Enum.Material.SmoothPlastic
+	part.Shape = if rolls then Enum.PartType.Cylinder else Enum.PartType.Block
 	part.Size = size
 	part.Transparency = 0
 	shotParts[shotId] = part
+	local start = if rolls then origin - Vector3.new(0, ROLL_HEIGHT, 0) else origin
 	animate(`Shot{shotId}`, function(elapsed)
 		if shotParts[shotId] ~= part then
 			return false -- the server ended it (hit something)
 		end
 		local traveled = math.min(elapsed * speed, maxDistance)
-		local spin = CFrame.Angles(0, elapsed * 12, 0)
-		part.CFrame = CFrame.new(origin + direction * traveled) * spin
+		local position = start + direction * traveled
+		if rolls then
+			-- A cylinder's length runs along X: facing along the path puts it across the path.
+			-- Turn it about that axis as it travels.
+			part.CFrame = CFrame.lookAt(position, position + direction)
+				* CFrame.Angles(-traveled / math.max(size.Y / 2, 0.1), 0, 0)
+		else
+			part.CFrame = CFrame.new(position) * CFrame.Angles(0, elapsed * 12, 0)
+		end
 		if traveled >= maxDistance then
 			endShot(shotId)
 			return false
@@ -321,10 +334,17 @@ local function endSplat(splatId: number)
 	end
 end
 
-local function drawSplat(color: Color3, splatId: number, position: Vector3, width: number, seconds: number)
+local function drawSplat(
+	color: Color3,
+	burning: boolean, -- Flambé Pan's fire: glows and flickers
+	splatId: number,
+	position: Vector3,
+	width: number,
+	seconds: number
+)
 	local part = table.remove(spareSplatParts) or makeFxPart("Splat", color)
 	part.Shape = Enum.PartType.Cylinder
-	part.Material = Enum.Material.SmoothPlastic
+	part.Material = if burning then Enum.Material.Neon else Enum.Material.SmoothPlastic
 	part.Color = color
 	part.Size = Vector3.new(0.1, width, width)
 	part.CFrame = CFrame.new(position + Vector3.new(0, 0.08, 0)) * CFrame.Angles(0, 0, math.rad(90))
@@ -341,6 +361,8 @@ local function drawSplat(color: Color3, splatId: number, position: Vector3, widt
 		end
 		if left < SPLAT_FADE_SECONDS then
 			part.Transparency = 0.25 + 0.75 * (1 - left / SPLAT_FADE_SECONDS)
+		elseif burning then
+			part.Transparency = 0.3 + 0.2 * math.sin(elapsed * 25)
 		end
 		return true
 	end)
@@ -405,15 +427,17 @@ local function onWeaponFx(weaponId: string, ...: any)
 	-- Most shapes send an action and an id first ("Launch", shotId; "Splat", splatId; ...).
 	local action, id = ...
 	if action == "Splat" then
-		-- A Trail's splat or a butter slick (any weapon can leave them).
-		drawSplat(color, select(2, ...))
+		-- A Trail's splat, a butter slick or Flambé fire (any weapon can leave them).
+		local levels = config.Levels
+		local burning = levels ~= nil and levels[1].FireArc ~= nil
+		drawSplat(color, burning, select(2, ...))
 		return
 	elseif action == "SplatEnd" then
 		endSplat(id)
 		return
 	elseif config.Shape == "Arc" and action == "Launch" then
 		-- A knife thrown by an Epic or Legendary Chef's Knife (gear effect, #139): a thin blade.
-		drawShot(color, Vector3.new(0.3, 0.2, 1.6), select(2, ...))
+		drawShot(color, Vector3.new(0.3, 0.2, 1.6), false, select(2, ...))
 		return
 	elseif config.Shape == "Arc" and action == "End" then
 		endShot(id)
@@ -435,7 +459,15 @@ local function onWeaponFx(weaponId: string, ...: any)
 		end
 	elseif config.Shape == "Projectile" then
 		if action == "Launch" then
-			drawShot(color, config.ShotSize or Vector3.new(1.4, 0.4, 1.4), select(2, ...)) -- toast by default
+			local size = config.ShotSize or Vector3.new(1.4, 0.4, 1.4) -- toast by default
+			-- A shot with Width (the Rolling Pin) is as long as its path is wide at this level.
+			local level = player:GetAttribute(`Weapon_{weaponId}`)
+			local stats = if type(level) == "number" and config.Levels then config.Levels[level] else nil
+			local width = stats and stats.Width
+			if width then
+				size = Vector3.new(width, size.Y, size.Z)
+			end
+			drawShot(color, size, width ~= nil, select(2, ...))
 		elseif action == "End" then
 			endShot(id)
 		end

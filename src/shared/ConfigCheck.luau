@@ -117,6 +117,34 @@ function ConfigCheck.run(): { string }
 			if slick and (slick.Width <= 0 or slick.Seconds <= 0 or slick.Slow <= 0 or slick.Slow >= 1) then
 				fail(`Weapon {id} Lv {i}: Slick needs Width and Seconds above 0 and Slow between 0 and 1`)
 			end
+			if weapon.Shape == "Projectile" and stats.Width and stats.Width <= 0 then
+				fail(`Weapon {id} Lv {i}: Width must be more than 0`)
+			end
+			if (stats.FullDamageRange == nil) ~= (stats.MinDamageScale == nil) then
+				fail(`Weapon {id} Lv {i}: FullDamageRange and MinDamageScale go together`)
+			elseif
+				stats.FullDamageRange
+				and stats.MinDamageScale
+				and (
+					stats.FullDamageRange < 0
+					or stats.FullDamageRange >= stats.Range
+					or stats.MinDamageScale <= 0
+					or stats.MinDamageScale > 1
+				)
+			then
+				fail(`Weapon {id} Lv {i}: FullDamageRange must be under Range, MinDamageScale above 0 up to 1`)
+			end
+			if stats.Knockback and stats.Knockback <= 0 then
+				fail(`Weapon {id} Lv {i}: Knockback must be more than 0`)
+			end
+			local flatten = stats.Flatten
+			if flatten and (flatten.Seconds <= 0 or flatten.DamageBonus < 0) then
+				fail(`Weapon {id} Lv {i}: Flatten needs Seconds above 0 and DamageBonus 0 or more`)
+			end
+			local fire = stats.FireArc
+			if fire and (fire.Splats < 1 or fire.Width <= 0 or fire.Seconds <= 0 or fire.Damage <= 0) then
+				fail(`Weapon {id} Lv {i}: FireArc needs Splats 1 or more and Width, Seconds, Damage above 0`)
+			end
 			local cluster = stats.Cluster
 			if
 				cluster and (cluster.Count < 1 or cluster.Distance <= 0 or cluster.Damage <= 0 or cluster.Radius <= 0)
@@ -126,11 +154,14 @@ function ConfigCheck.run(): { string }
 		end
 	end
 
-	local runStarter = Starters[RunRules.Starter]
-	if not runStarter then
+	if not Starters[RunRules.Starter] then
 		fail(`RunRules.Starter: unknown starter "{RunRules.Starter}"`)
-	else
-		checkWeapon(RunRules.Starter, runStarter, RunRules.StarterMaxLevel)
+	end
+	-- Every MVP starter must be playable (the Utensil slot can hold any of them, #107).
+	for id, starter in Starters do
+		if starter.Mvp or starter.Levels then
+			checkWeapon(id, starter, RunRules.StarterMaxLevel)
+		end
 	end
 
 	for _, id in RunRules.UpgradePool.Gadgets do
@@ -148,7 +179,8 @@ function ConfigCheck.run(): { string }
 
 	-- Every recipe the current pool can reach must be playable (one level of numbers).
 	for id, recipe in Recipes do
-		local weaponReachable = recipe.Weapon == RunRules.Starter
+		local starter = Starters[recipe.Weapon]
+		local weaponReachable = (starter ~= nil and starter.Levels ~= nil)
 			or table.find(RunRules.UpgradePool.Gadgets, recipe.Weapon) ~= nil
 		local ingredientReachable = table.find(RunRules.UpgradePool.Ingredients, recipe.Ingredient) ~= nil
 		if weaponReachable and ingredientReachable then
@@ -184,8 +216,8 @@ function ConfigCheck.run(): { string }
 		end
 		if not allowed then
 			fail(`Weapon {id}: Aimed is only for starters and their recipes`)
-		elseif weapon.Shape ~= "Arc" then
-			fail(`Weapon {id}: Aimed needs a shape with a direction (Arc)`)
+		elseif weapon.Shape ~= "Arc" and weapon.Shape ~= "Projectile" then
+			fail(`Weapon {id}: Aimed needs a shape with a direction (Arc or Projectile)`)
 		end
 	end
 	for id, starter in Starters do

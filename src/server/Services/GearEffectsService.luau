@@ -11,7 +11,8 @@
 --   Shoes        after a hit: SpeedBoost faster for BoostSeconds, and no damage for SafeSeconds
 --   Chef's Knife every Nth attack also throws a knife (WeaponService.setExtraKnifeEvery)
 --   Oven Mitts   hits may burn; at Legendary the fire spreads on death (WeaponService.setGearBurn)
--- Frying Pan and Rolling Pin effects come with those starters (#107).
+--   Frying Pan   its hits stun; at Legendary the stun spreads (WeaponService.setStarterHitEffect, #149)
+--   Rolling Pin  its hits slow; at Legendary slowed enemies also take more damage (same)
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -69,8 +70,14 @@ local function blockHit(_amount: number, _source: string?): boolean
 	return false
 end
 
--- Turn every effect off, then on again for this run's Epic and Legendary gear.
+-- Turn every effect off, then on again for this run's Epic and Legendary gear. The equipped
+-- Utensil also becomes the run's starter weapon (#150).
 local function applyRunGear()
+	local utensil = GearService.getRunGear().Utensil
+	if utensil then
+		WeaponService.setStarter(utensil.Item)
+	end
+
 	apron = GearEffectsService.getEffect("Apron")
 	shoes = GearEffectsService.getEffect("Shoes")
 	boostTimer, safeTimer, apronTimer = 0, 0, 0
@@ -89,6 +96,17 @@ local function applyRunGear()
 			Spreads = mitts.Spreads == true,
 		}
 		else nil)
+
+	local pan = GearEffectsService.getEffect("FryingPan")
+	WeaponService.setStarterHitEffect(
+		"FryingPan",
+		if pan then { StunSeconds = pan.StunSeconds, Spreads = pan.Spreads == true } else nil
+	)
+	local pin = GearEffectsService.getEffect("RollingPin")
+	WeaponService.setStarterHitEffect(
+		"RollingPin",
+		if pin then { Slow = pin.Slow, SlowSeconds = pin.SlowSeconds, DamageTakenBonus = pin.DamageTakenBonus } else nil
+	)
 
 	local hat = GearEffectsService.getEffect("ChefsHat")
 	if hat then

@@ -45,7 +45,7 @@ local function turnOn(player: Player)
 	-- If an "Order Up!" happened to be open, the run would stay paused: resume it.
 	RunManager.setPaused(false)
 
-	WeaponService.setWeaponLevel(RunRules.Starter, RunRules.StarterMaxLevel)
+	WeaponService.setWeaponLevel(WeaponService.getStarter(), RunRules.StarterMaxLevel)
 	for _, gadgetId in RunRules.UpgradePool.Gadgets do
 		WeaponService.setWeaponLevel(gadgetId, RunRules.SharedItemMaxLevel)
 	end
