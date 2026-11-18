@@ -337,14 +337,32 @@ Beating a chapter's final boss takes its **power**: an ability the player keeps 
 
 ## 4. Meta Progression (survivor.io model)
 
+Full design: `docs/superpowers/specs/2026-11-17-gear-design.md` (#105). All numbers are starting values in `Config/Gear.luau`.
+
 ### 4.1 Gear slots
-| Slot | Main stat | Notes |
+One item per slot (#105). A new player owns a Common Lv 1 Chef's Knife, equipped, and nothing else. There's no inventory limit, and gear isn't shown on the chef in Phase 2.
+
+| Slot | Item | Main stat | Notes |
+|---|---|---|---|
+| Utensil | Your starter (Chef's Knife, Rolling Pin, Frying Pan …) | Attack | Sets your starter weapon |
+| Hat | Chef's Hat | Attack | |
+| Apron | Apron | HP | |
+| Mitts | Oven Mitts | Attack | |
+| Shoes | Shoes | HP | |
+
+- **Attack** is a % bonus to all the chef's damage; **HP** a % bonus to max HP. Equipped items add together, and gear is its own multiplier on top of ingredients: `damage = base × (1 + gear Attack) × (1 + Hot Sauce …)`.
+- Gear is locked in when a run starts.
+- Gear starts weak and rarity is where the power is. Each item's bonus goes in a straight line from its rarity's Lv 1 value to its max-level value:
+
+| Rarity | Attack item | HP item |
 |---|---|---|
-| Utensil | Attack | Sets your starter weapon |
-| Hat | Attack | |
-| Apron | HP | |
-| Mitts | Attack | |
-| Shoes | HP | |
+| Common | +2% → +5% | +3% → +7% |
+| Fine | +8% → +14% | +10% → +18% |
+| Rare | +16% → +26% | +20% → +33% |
+| Epic | +30% → +42% | +38% → +52% |
+| Legendary | +48% → +60% | +60% → +75% |
+
+A full maxed Legendary set is about **x2.8 damage and x2.5 HP**. Chapter 1 stays beatable with no gear.
 
 ### 4.2 Rarity and merging
 | Tier | Color | Max gear level |
@@ -355,17 +373,30 @@ Beating a chapter's final boss takes its **power**: an ability the player keeps 
 | Epic | Purple | 40 |
 | Legendary | Gold | 50 |
 
-- **Merge rule:** 3 copies of the **same item** at the **same tier** become 1 copy at the next tier
-- The merged item keeps the highest gear level of the three
-- **Tier bonuses:** Every tier raises the base stat. **Epic** and **Legendary** each add a bonus effect (for example, an Epic Frying Pan also stuns briefly on hit). Bonus effects are defined per item in config.
+- **Merge rule:** 3 copies of the **same item** at the **same tier** become 1 copy at the next tier, **at Lv 1**
+- A **pick-3 screen** chooses which copies go in (the 3 lowest-level ones by default), so collectors can keep levelled copies
+- **80%** of the gold and materials spent levelling the 3 copies comes back
+- Every tier's Lv 1 is stronger than the tier below at max level, so a merge is never a downgrade
+- If the equipped copy is merged, the new item is equipped
+- **Bonus effects:** **Epic** adds one effect per item, and **Legendary** makes it stronger. Defined per item in config:
+
+| Item | Epic | Legendary |
+|---|---|---|
+| Chef's Knife | Every 5th attack throws a second knife | Every 3rd attack |
+| Frying Pan | Hits stun for 0.5 s | 1 s, and the stun spreads to enemies next to it |
+| Rolling Pin | Enemies it rolls over are 30% slower for 2 s | 50% slower, and they take +20% damage |
+| Chef's Hat | Start every run with 1 free "Order Up!" pick | 2 free picks |
+| Apron | Blocks the first hit every 12 s | Every 7 s |
+| Oven Mitts | 10% of hits set enemies on fire (3 s) | 20%, and fire spreads when a burning enemy dies |
+| Shoes | After you're hit, run 30% faster for 2 s | And can't be hurt for 1 s |
 
 ### 4.3 Gear leveling
 - Leveling up gear costs **gold** and the slot's **material**
-- Cost goes up with each level
-- Max level depends on rarity (see 4.2)
-- **Salvage:** Players can salvage a gear item. This **destroys the item** and refunds **80%** of the gold and materials spent leveling it (starting value, tune later).
+- Cost depends only on the level (not the rarity): each level costs about **8%** more than the last. Cheap first levels; rough targets of about 5 runs to Lv 10, 15 runs to Lv 20 and 40 runs to Lv 30 (run payouts in #106 are sized to hit these)
+- Max level depends on rarity (see 4.2). At the cap, the only way up is merging
+- **Salvage:** Players can salvage any gear item, including one just received. This **destroys the item** and gives **1 of the slot's material**, some gold by rarity (amount set with #106), and **80%** of the gold and materials spent leveling it (starting value, tune later).
   - Equipped gear can't be salvaged
-  - The free Chef's Knife can't be salvaged, so players always have a starter
+  - Your last Chef's Knife can't be salvaged, so players always have a starter
   - Show a confirmation popup before salvaging Epic or Legendary items
 
 ### 4.4 Materials
