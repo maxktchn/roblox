@@ -30,6 +30,7 @@ local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 -- Third-party and not --!strict, so it's typed loosely here.
+local GearMath = require(ReplicatedStorage.Shared.GearMath)
 local ProfileStore = require(ServerScriptService.ProfileStore) :: any
 local Saving = require(ReplicatedStorage.Config.Saving)
 
@@ -46,8 +47,15 @@ export type Data = {
 		RunsWon: number,
 		BestWinSeconds: number, -- fastest win's run clock; 0 = no win yet
 	},
-	Currencies: { [string]: any }, -- gold and materials (#106, #105)
-	Gear: { [string]: any }, -- inventory and equipped items (#105)
+	-- Gold and the 5 gear materials (P2-4). GearService changes them; others go through it.
+	Currencies: { [string]: number },
+	-- Owned gear and what's equipped (P2-4, GearService only). Item ids are strings because
+	-- DataStores can't hold gappy number keys.
+	Gear: {
+		NextId: number,
+		Items: { [string]: GearMath.ItemRecord },
+		Equipped: { [string]: string }, -- [slot] = item id; a missing slot is empty
+	},
 	Talents: { [string]: any }, -- account level, XP and talent nodes (#108)
 	Unlocks: { [string]: any }, -- chapters and starters (#107)
 }
@@ -56,8 +64,8 @@ local TEMPLATE: Data = {
 	Version = 1,
 	BossPowers = {},
 	Lifetime = { Kills = 0, RunsPlayed = 0, RunsWon = 0, BestWinSeconds = 0 },
-	Currencies = {},
-	Gear = {},
+	Currencies = { Gold = 0, Sharpener = 0, HatPattern = 0, ApronPattern = 0, MittPattern = 0, ShoePattern = 0 },
+	Gear = { NextId = 1, Items = {}, Equipped = {} }, -- GearService gives the free knife on load
 	Talents = {},
 	Unlocks = {},
 }

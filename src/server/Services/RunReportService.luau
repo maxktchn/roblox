@@ -74,6 +74,7 @@ local function nameOf(id: string): string
 		Popcorn = "Popcorn pop",
 		CheeseTrail = "Cheese trail",
 		LemonJuice = "Lemon juice",
+		OvenMitts = "Oven Mitts fire", -- the gear effect (#139)
 	} :: { [string]: string })[id]
 	if special then
 		return special

@@ -14,6 +14,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local BossService = require(script.Parent.BossService)
 local EliteService = require(script.Parent.EliteService)
 local EnemyService = require(script.Parent.EnemyService)
+local GearService = require(script.Parent.GearService)
 local JuiceService = require(script.Parent.JuiceService)
 local MiniBossService = require(script.Parent.MiniBossService)
 local PickupService = require(script.Parent.PickupService)
@@ -51,6 +52,11 @@ function RestartService.restart()
 	if player then
 		player:LoadCharacter()
 	end
+
+	-- This run's gear, from what's equipped now (P2-4). After the new chef exists: an Epic Hat's
+	-- free picks open the cards, and the card screen has to freeze the new chef, not the old one.
+	-- The gear's max HP shows on RunManager's next frame (as full HP).
+	GearService.startRun()
 end
 
 function RestartService:start()

@@ -243,9 +243,9 @@ end
 local hp = RunRules.ChefMaxHp
 local lastMaxHp = RunRules.ChefMaxHp
 
--- Max HP right now: base plus Bread's bonus (PRD §3.3).
+-- Max HP right now: base times gear HP and Bread's bonus (PRD §3.3, §4.1).
 local function getMaxHp(): number
-	return RunRules.ChefMaxHp * (1 + StatsService.getStat("MaxHp"))
+	return RunRules.ChefMaxHp * StatsService.getMaxHpMultiplier()
 end
 
 -- If max HP went up (a Bread card), the chef gains that much HP too, like most survivors games.
@@ -296,6 +296,16 @@ end
 export type DamagedCallback = (hpLost: number, source: string?) -> ()
 local damagedCallbacks: { DamagedCallback } = {}
 
+-- Something that can stop a hit before it lands (gear: the Apron's block, the Shoes' safe time).
+-- Returns true to block the hit: no HP lost and no damaged callbacks. nil = nothing blocks.
+export type HitBlocker = (amount: number, source: string?) -> boolean
+local hitBlocker: HitBlocker? = nil
+
+-- Set (or clear, with nil) the hit blocker. GearEffectsService sets it each run.
+function RunManager.setHitBlocker(blocker: HitBlocker?)
+	hitBlocker = blocker
+end
+
 -- Run `callback` after every hit on the chef (RunReportService counts damage per source).
 function RunManager.onPlayerDamaged(callback: DamagedCallback)
 	table.insert(damagedCallbacks, callback)
@@ -308,6 +318,9 @@ end
 function RunManager.damagePlayer(amount: number, source: string?)
 	if runOver or amount <= 0 then
 		return
+	end
+	if hitBlocker and hitBlocker(amount, source) then
+		return -- blocked by gear (GearEffectsService)
 	end
 	refreshMaxHp()
 	local afterArmor = math.max(amount - StatsService.getStat("Armor"), 1)

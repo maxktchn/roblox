@@ -10,6 +10,7 @@ local Bosses = require(Config.Bosses)
 local Chapters = require(Config.Chapters)
 local Enemies = require(Config.Enemies)
 local Gadgets = require(Config.Gadgets)
+local Gear = require(Config.Gear)
 local Ingredients = require(Config.Ingredients)
 local Recipes = require(Config.Recipes)
 local RunRules = require(Config.RunRules)
@@ -18,6 +19,18 @@ local Starters = require(Config.Starters)
 local WeaponTypes = require(ReplicatedStorage.Shared.WeaponTypes)
 
 local ConfigCheck = {}
+
+-- The numbers each gear item's Epic and Legendary effect must have (GearEffectsService and
+-- WeaponService use them; #107 builds the Frying Pan's and Rolling Pin's).
+local GEAR_EFFECT_NUMBERS: { [string]: { string } } = {
+	ChefsKnife = { "Every" },
+	ChefsHat = { "FreePicks" },
+	Apron = { "BlockEverySeconds" },
+	OvenMitts = { "Chance", "BurnDps", "BurnSeconds" },
+	Shoes = { "SpeedBoost", "BoostSeconds", "SafeSeconds" },
+	FryingPan = { "StunSeconds" },
+	RollingPin = { "Slow", "SlowSeconds", "DamageTakenBonus" },
+}
 
 function ConfigCheck.run(): { string }
 	local problems: { string } = {}
@@ -427,6 +440,64 @@ function ConfigCheck.run(): { string }
 	-- giving up before that would leave the player unable to save for about 10 minutes.
 	if Saving.LoadTimeoutSeconds <= 40 then
 		fail("Saving.LoadTimeoutSeconds must be more than 40 (ProfileStore's session take-over)")
+	end
+
+	-- Gear (P2-4, #105).
+	for id, item in Gear.Items do
+		if not Gear.Slots[item.Slot] then
+			fail(`Gear item {id}: unknown slot "{item.Slot}"`)
+		end
+		if item.Slot == "Utensil" and not Starters[id] then
+			fail(`Gear item {id}: Utensil items must be starter ids`)
+		elseif item.Slot ~= "Utensil" and not item.Name then
+			fail(`Gear item {id}: needs a Name`)
+		end
+		if not (item.Effect and item.Effect.Epic and item.Effect.Legendary) then
+			fail(`Gear item {id}: needs Effect.Epic and Effect.Legendary`)
+		elseif type(item.Effect.Epic.Text) ~= "string" or type(item.Effect.Legendary.Text) ~= "string" then
+			fail(`Gear item {id}: each effect needs a Text for players`)
+		else
+			-- The numbers the bonus effects use: a missing one would break the run every frame.
+			local fields: { string } = GEAR_EFFECT_NUMBERS[id] or {}
+			for _, field in fields do
+				for _, rarity in { "Epic", "Legendary" } do
+					local value = (item.Effect :: any)[rarity][field]
+					if type(value) ~= "number" or value < 0 then
+						fail(`Gear item {id}: Effect.{rarity}.{field} must be a number, 0 or more`)
+					end
+				end
+			end
+			if id == "ChefsKnife" and (item.Effect.Epic.Every < 1 or item.Effect.Legendary.Every < 1) then
+				fail("Gear item ChefsKnife: Effect Every must be at least 1")
+			end
+		end
+	end
+	for _, stat in { "Attack", "Hp" } do
+		local previousMax: number? = nil
+		for _, rarity in Gear.Rarities do
+			local range = (Gear.Stats :: any)[stat][rarity.Id]
+			if not range then
+				fail(`Gear.Stats.{stat} has no {rarity.Id}`)
+				continue
+			end
+			if range.First >= range.Max then
+				fail(`Gear.Stats.{stat}.{rarity.Id}: First must be below Max`)
+			end
+			-- Merging resets to Lv 1, so Lv 1 of a rarity must beat the rarity below at max level.
+			if previousMax and range.First <= previousMax then
+				fail(`Gear.Stats.{stat}.{rarity.Id}: First must be above the previous rarity's Max`)
+			end
+			previousMax = range.Max
+		end
+		for _, rarity in Gear.Rarities do
+			if not Gear.SalvageGold[rarity.Id] then
+				fail(`Gear.SalvageGold has no {rarity.Id}`)
+			end
+		end
+	end
+	local cost = Gear.LevelCost
+	if cost.Gold <= 0 or cost.Material <= 0 or cost.Growth < 1 then
+		fail("Gear.LevelCost: Gold and Material must be above 0, Growth at least 1")
 	end
 
 	return problems
