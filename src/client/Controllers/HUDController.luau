@@ -66,6 +66,9 @@ local SIDE_SPACE = EDGE + (ICON_SIZE + 6) * ICON_COLUMNS + 8
 local TOP_BAR_MAX_WIDTH = 520 -- on big screens the bar stops growing here
 
 local gui: ScreenGui
+-- The save notes ("Test build", "Progress isn't saving") live on their own layer, shown in every
+-- state: the HUD itself hides in the lobby, where players now spend their between-run time.
+local notesGui: ScreenGui
 local levelLabel: TextLabel
 local tipFill: Frame
 local tipText: TextLabel
@@ -188,7 +191,12 @@ local function buildScreen()
 	saveBanner.BackgroundColor3 = COLORS.saveOff
 	saveBanner.BorderSizePixel = 0
 	saveBanner.Visible = false
-	saveBanner.Parent = gui
+	notesGui = Instance.new("ScreenGui")
+	notesGui.Name = "SaveNotes"
+	notesGui.ResetOnSpawn = false
+	notesGui.DisplayOrder = 16 -- over the lobby (14) and the Gear screen (15)
+	notesGui.ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets
+	saveBanner.Parent = notesGui
 	corner(saveBanner, UDim.new(0, 8))
 	local saveText = makeLabel(saveBanner, "Text", 18)
 	saveText.Size = UDim2.fromScale(1, 1)
@@ -209,7 +217,7 @@ local function buildScreen()
 	corner(shieldPill, UDim.new(0, 8))
 
 	-- Bottom-right corner, small: saves may be wiped until launch (Config.Saving.TestBuild).
-	local testNote = makeLabel(gui, "TestBuildNote", 14)
+	local testNote = makeLabel(notesGui, "TestBuildNote", 14)
 	testNote.AnchorPoint = Vector2.new(1, 1)
 	testNote.Position = UDim2.new(1, -8, 1, -8)
 	testNote.Size = UDim2.fromOffset(260, 18)
@@ -484,6 +492,7 @@ function HUDController:start()
 
 	local playerGui = player:WaitForChild("PlayerGui")
 	gui.Parent = playerGui
+	notesGui.Parent = playerGui
 	hpBillboard.Parent = playerGui
 
 	updateNumbers()

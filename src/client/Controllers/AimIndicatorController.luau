@@ -121,7 +121,7 @@ local function update()
 	local orderUp = player:FindFirstChild("PlayerGui") and player.PlayerGui:FindFirstChild("OrderUp")
 	local cardsOpen = orderUp ~= nil and orderUp:IsA("ScreenGui") and orderUp.Enabled
 	local runState = player:GetAttribute("RunState")
-	local playing = runState ~= "Lost" and runState ~= "Won"
+	local playing = runState == "Playing" -- not in the lobby, not after the run
 	if not (root and root:IsA("BasePart") and playing and ownsAimedWeapon()) or cardsOpen then
 		gui.Enabled = false
 		return

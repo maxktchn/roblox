@@ -275,8 +275,10 @@ local function syncLobby()
 	local lobby = inLobby()
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart")
-	if root and root:IsA("BasePart") then
-		root.Anchored = lobby -- the chef stands still in the lobby
+	if lobby and root and root:IsA("BasePart") then
+		-- The chef stands still in the lobby. Never unanchor here: Play respawns a fresh chef, and
+		-- outside the lobby the "Order Up!" card screen may be freezing them on purpose.
+		root.Anchored = true
 	end
 	if lobby == gui.Enabled then
 		return

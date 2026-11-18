@@ -82,9 +82,11 @@ local function release()
 	knob.Position = UDim2.fromScale(0.5, 0.5) -- the aim stays where it was
 end
 
--- Show the stick only on touch devices, while touch is the input in use.
+-- Show the stick only on touch devices, while touch is the input in use, and not in the lobby.
 local function updateVisible()
-	gui.Enabled = UserInputService.TouchEnabled and UserInputService:GetLastInputType() == Enum.UserInputType.Touch
+	gui.Enabled = UserInputService.TouchEnabled
+		and UserInputService:GetLastInputType() == Enum.UserInputType.Touch
+		and player:GetAttribute("RunState") ~= "Lobby"
 end
 
 -- Hide Roblox's touch jump button whenever it appears.
@@ -127,6 +129,7 @@ function AimStickController:start()
 
 	updateVisible()
 	UserInputService.LastInputTypeChanged:Connect(updateVisible)
+	player:GetAttributeChangedSignal("RunState"):Connect(updateVisible)
 
 	-- Roblox builds its touch controls a little after the character spawns.
 	player.CharacterAdded:Connect(function()
