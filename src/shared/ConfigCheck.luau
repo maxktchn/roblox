@@ -10,6 +10,7 @@ local Bosses = require(Config.Bosses)
 local Chapters = require(Config.Chapters)
 local Enemies = require(Config.Enemies)
 local Gadgets = require(Config.Gadgets)
+local Gear = require(Config.Gear)
 local Ingredients = require(Config.Ingredients)
 local Recipes = require(Config.Recipes)
 local RunRules = require(Config.RunRules)
@@ -427,6 +428,48 @@ function ConfigCheck.run(): { string }
 	-- giving up before that would leave the player unable to save for about 10 minutes.
 	if Saving.LoadTimeoutSeconds <= 40 then
 		fail("Saving.LoadTimeoutSeconds must be more than 40 (ProfileStore's session take-over)")
+	end
+
+	-- Gear (P2-4, #105).
+	for id, item in Gear.Items do
+		if not Gear.Slots[item.Slot] then
+			fail(`Gear item {id}: unknown slot "{item.Slot}"`)
+		end
+		if item.Slot == "Utensil" and not Starters[id] then
+			fail(`Gear item {id}: Utensil items must be starter ids`)
+		elseif item.Slot ~= "Utensil" and not item.Name then
+			fail(`Gear item {id}: needs a Name`)
+		end
+		if not (item.Effect and item.Effect.Epic and item.Effect.Legendary) then
+			fail(`Gear item {id}: needs Effect.Epic and Effect.Legendary`)
+		end
+	end
+	for _, stat in { "Attack", "Hp" } do
+		local previousMax: number? = nil
+		for _, rarity in Gear.Rarities do
+			local range = (Gear.Stats :: any)[stat][rarity.Id]
+			if not range then
+				fail(`Gear.Stats.{stat} has no {rarity.Id}`)
+				continue
+			end
+			if range.First >= range.Max then
+				fail(`Gear.Stats.{stat}.{rarity.Id}: First must be below Max`)
+			end
+			-- Merging resets to Lv 1, so Lv 1 of a rarity must beat the rarity below at max level.
+			if previousMax and range.First <= previousMax then
+				fail(`Gear.Stats.{stat}.{rarity.Id}: First must be above the previous rarity's Max`)
+			end
+			previousMax = range.Max
+		end
+		for _, rarity in Gear.Rarities do
+			if not Gear.SalvageGold[rarity.Id] then
+				fail(`Gear.SalvageGold has no {rarity.Id}`)
+			end
+		end
+	end
+	local cost = Gear.LevelCost
+	if cost.Gold <= 0 or cost.Material <= 0 or cost.Growth < 1 then
+		fail("Gear.LevelCost: Gold and Material must be above 0, Growth at least 1")
 	end
 
 	return problems
