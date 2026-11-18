@@ -8,11 +8,22 @@ local WeaponTypes = require(ReplicatedStorage.Shared.WeaponTypes)
 
 export type Unlock = "Free" | "Achievement" | "Chest"
 
+-- How an "Achievement" starter is earned (#151). UnlockService checks it when a run ends and
+-- gives a Common Lv 1 copy the first time it's met.
+--   ClearChapter: win a run of Chapter (a Chapters.luau id)
+--   Kills:        Count enemies defeated in all finished runs together (Lifetime.Kills)
+export type UnlockRule = {
+	Kind: "ClearChapter" | "Kills",
+	Chapter: string?,
+	Count: number?,
+	Text: string, -- for players: what to do
+}
+
 export type Starter = {
 	Name: string,
 	Attack: string, -- description for players
 	Unlock: Unlock,
-	Achievement: string?,
+	UnlockRule: UnlockRule?, -- "Achievement" starters only
 	Mvp: boolean,
 	-- Only starters playable so far have these:
 	Shape: WeaponTypes.Shape?,
@@ -68,7 +79,7 @@ local Starters: { [string]: Starter } = {
 		Attack = "Rolls toward where you aim, hitting everything in its path",
 		Aimed = true,
 		Unlock = "Achievement",
-		Achievement = "Clear Chapter 1",
+		UnlockRule = { Kind = "ClearChapter", Chapter = "DinerKitchen", Text = "Clear Chapter 1" },
 		Mvp = true,
 		Shape = "Projectile",
 		FxColor = Color3.fromRGB(205, 160, 110),
@@ -135,7 +146,7 @@ local Starters: { [string]: Starter } = {
 		Name = "Meat Cleaver",
 		Attack = "Thrown, comes back like a boomerang",
 		Unlock = "Achievement",
-		Achievement = "Defeat 5,000 enemies total",
+		UnlockRule = { Kind = "Kills", Count = 5000, Text = "Defeat 5,000 enemies total" },
 		Mvp = false,
 	},
 	Whisk = {

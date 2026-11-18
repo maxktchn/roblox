@@ -10,6 +10,8 @@
 --   "Hp", "MaxHp"                   RunManager, the chef's HP (#9)
 --   "RunState"                      RunManager: "Playing", "Lost" or "Won" (shows the run-over banner)
 --   "JustUnlocked"                  UnlockService: a boss power this run unlocked (line on the banner)
+--   "JustUnlockedStarter"           UnlockService: a starter this run unlocked (same line, #151)
+--   "GearNew"                       GearService: an item is new, so the Gear button shows NEW
 --   "SaveStatus"                    DataService: "Off" shows the not-saving banner (P2-1, #114)
 --   "ApronReady"                    GearEffectsService: the Apron's block is ready (true), used up
 --                                   (false) or not equipped (nil) (P2-4, #139)
@@ -87,6 +89,7 @@ local runOverStats: TextLabel
 local runOverUnlock: TextLabel
 local playAgainButton: TextButton
 local gearButton: TextButton
+local gearNewBadge: TextLabel
 
 -- Helper: a text label in the game font.
 local function makeLabel(parent: Instance, name: string, size: number): TextLabel
@@ -308,6 +311,20 @@ local function buildScreen()
 	gearButton.Text = "Gear"
 	corner(gearButton, UDim.new(0, 12))
 	gearButton.Parent = runOverPanel
+	-- NEW badge (#151): an item was just unlocked and Gear hasn't been opened since.
+	gearNewBadge = Instance.new("TextLabel")
+	gearNewBadge.Name = "NewBadge"
+	gearNewBadge.AnchorPoint = Vector2.new(1, 0)
+	gearNewBadge.Position = UDim2.new(1, 6, 0, -8)
+	gearNewBadge.Size = UDim2.fromOffset(52, 24)
+	gearNewBadge.BackgroundColor3 = COLORS.hpLow
+	gearNewBadge.Font = Enum.Font.FredokaOne
+	gearNewBadge.TextSize = 16
+	gearNewBadge.TextColor3 = Color3.new(1, 1, 1)
+	gearNewBadge.Text = "NEW"
+	gearNewBadge.Visible = false
+	corner(gearNewBadge, UDim.new(0, 8))
+	gearNewBadge.Parent = gearButton
 end
 
 -- The run-over banner, with how far the player got.
@@ -326,9 +343,14 @@ local function updateRunState()
 			runOverTitle.Text = "SHIFT OVER"
 			runOverTitle.TextColor3 = COLORS.hpLow
 		end
-		local unlockedName = player:GetAttribute("JustUnlocked")
-		runOverUnlock.Visible = type(unlockedName) == "string"
-		runOverUnlock.Text = `New power unlocked: {unlockedName}`
+		local power = player:GetAttribute("JustUnlocked")
+		local starter = player:GetAttribute("JustUnlockedStarter")
+		local hasPower, hasStarter = type(power) == "string", type(starter) == "string"
+		runOverUnlock.Visible = hasPower or hasStarter
+		runOverUnlock.Text = if hasPower and hasStarter
+			then `New power: {power} · New starter: {starter}`
+			elseif hasStarter then `New starter unlocked: {starter}`
+			else `New power unlocked: {power}`
 		runOverStats.Text =
 			`Reached Lv {player:GetAttribute("Level") or 1} · Defeated {player:GetAttribute("Kills") or 0}`
 	end
@@ -506,8 +528,10 @@ function HUDController:start()
 			updateIcons()
 		elseif name == "Hp" or name == "MaxHp" then
 			updateHp()
-		elseif name == "RunState" or name == "JustUnlocked" then
+		elseif name == "RunState" or name == "JustUnlocked" or name == "JustUnlockedStarter" then
 			updateRunState()
+		elseif name == "GearNew" then
+			gearNewBadge.Visible = player:GetAttribute("GearNew") == true
 		else
 			updateNumbers()
 		end
