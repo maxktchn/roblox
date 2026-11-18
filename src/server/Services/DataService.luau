@@ -22,6 +22,8 @@
 --
 -- Player attributes:
 --   "SaveStatus"  set here: "Loading", then "On" (saving) or "Off" (playing without saving)
+--   "LifetimeRuns", "LifetimeWins", "BestWinSeconds"  set here from the save's Lifetime stats, on
+--                 load and after every finished run (the lobby's Home screen shows them, P2-8)
 --   read here:    "RunState" and "RunSeconds" (RunManager), "Kills" (WeaponService)
 
 local Players = game:GetService("Players")
@@ -101,7 +103,15 @@ local function setStatus(player: Player, status: string)
 	player:SetAttribute("SaveStatus", status)
 end
 
+-- Copy the lifetime stats onto the player for the lobby's Home screen.
+local function syncLifetime(player: Player, data: Data)
+	player:SetAttribute("LifetimeRuns", data.Lifetime.RunsPlayed)
+	player:SetAttribute("LifetimeWins", data.Lifetime.RunsWon)
+	player:SetAttribute("BestWinSeconds", data.Lifetime.BestWinSeconds)
+end
+
 local function announceLoaded(player: Player, data: Data)
+	syncLifetime(player, data)
 	for _, callback in loadedCallbacks do
 		callback(player, data)
 	end
@@ -193,6 +203,7 @@ local function onRunEnded(player: Player, result: string)
 			lifetime.BestWinSeconds = seconds
 		end
 	end
+	syncLifetime(player, data)
 	DataService.saveNow(player)
 end
 

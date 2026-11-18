@@ -10,6 +10,7 @@
 -- Player attributes set here (read by the HUD):
 --   "Hp", "MaxHp"  the chef's HP (#9)
 --   "RunSeconds"   run timer in whole seconds (#6)
+--   "Chapter"      the chapter (a key of Chapters.luau) for the lobby's Home screen
 --   "RunState"     "Lobby" (between runs, P2-8 #143), "Playing", "Lost" (#9) or "Won" (final boss
 --                  defeated, #11)
 --   "Rush", "RushStage", "RushSound"  a swarm event (the dinner rush, #121): its name, "Warning"
@@ -270,6 +271,7 @@ local function syncAttributes()
 		player:SetAttribute("MaxHp", math.ceil(lastMaxHp))
 		player:SetAttribute("RunSeconds", math.floor(runSeconds))
 		player:SetAttribute("RunState", if inLobby then "Lobby" else result or "Playing")
+		player:SetAttribute("Chapter", CHAPTER) -- for the lobby's Home screen (P2-8)
 	end
 end
 

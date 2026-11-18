@@ -1,8 +1,8 @@
 --!strict
 -- The Gear screen (P2-4 #138, PRD §4, design: docs/superpowers/specs/2026-11-17-gear-design.md).
 --
--- A plain screen until the lobby exists (#109 restyles it and moves it there). It opens from the
--- "Gear" button on the run-over banner (HUDController calls GearController.open()).
+-- It lives in the lobby's Gear tab (P2-8 #144): LobbyController docks it on the right of the
+-- screen (setDocked) beside the chef, and opens and closes it with the tab.
 --
 -- The server owns everything: this screen draws the latest GearState(state, message?) and sends
 -- GearAction(action, arg) when a button is tapped. Every number shown comes from GearMath, the
@@ -57,6 +57,9 @@ local inventory: ScrollingFrame
 local detail: Frame
 local picker: Frame
 local confirmBox: Frame
+local mainPanel: Frame
+local closeButton: TextButton
+local panelLimit: UISizeConstraint
 
 --------------------------------------------------------------------------------
 -- Small building blocks
@@ -493,10 +496,11 @@ local function build()
 	panel.Size = UDim2.new(1, -24, 1, -24)
 	panel.BackgroundColor3 = COLORS.back
 	corner(panel, 14)
-	local maxSize = Instance.new("UISizeConstraint")
-	maxSize.MaxSize = Vector2.new(920, 560)
-	maxSize.Parent = panel
+	panelLimit = Instance.new("UISizeConstraint")
+	panelLimit.MaxSize = Vector2.new(920, 560)
+	panelLimit.Parent = panel
 	panel.Parent = gui
+	mainPanel = panel
 
 	local title = label(panel, "GEAR", 26)
 	title.Position = UDim2.fromOffset(12, 6)
@@ -521,6 +525,7 @@ local function build()
 	close.AnchorPoint = Vector2.new(1, 0)
 	close.Position = UDim2.new(1, -6, 0, 4)
 	close.Size = UDim2.fromOffset(BUTTON_HEIGHT, BUTTON_HEIGHT - 4)
+	closeButton = close
 
 	-- Left: the 5 equipped slots.
 	slotsFrame = Instance.new("Frame")
@@ -716,6 +721,27 @@ end
 
 function GearController.close()
 	gui.Enabled = false
+end
+
+-- How far down the lobby's tab bar reaches (pixels); a docked panel starts below it.
+local DOCKED_TOP = 72
+
+-- Docked (the lobby's Gear tab): the panel fills the right of the screen under the tab bar,
+-- leaving the left for the chef, with no close button (the tabs close it). Undocked: centred,
+-- with its close button.
+function GearController.setDocked(docked: boolean)
+	closeButton.Visible = not docked
+	if docked then
+		mainPanel.AnchorPoint = Vector2.new(1, 1)
+		mainPanel.Position = UDim2.new(1, -12, 1, -12)
+		mainPanel.Size = UDim2.new(0.64, -12, 1, -DOCKED_TOP - 12)
+		panelLimit.MaxSize = Vector2.new(math.huge, math.huge)
+	else
+		mainPanel.AnchorPoint = Vector2.new(0.5, 0.5)
+		mainPanel.Position = UDim2.fromScale(0.5, 0.5)
+		mainPanel.Size = UDim2.new(1, -24, 1, -24)
+		panelLimit.MaxSize = Vector2.new(920, 560)
+	end
 end
 
 function GearController:init()
