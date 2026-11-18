@@ -296,6 +296,16 @@ end
 export type DamagedCallback = (hpLost: number, source: string?) -> ()
 local damagedCallbacks: { DamagedCallback } = {}
 
+-- Something that can stop a hit before it lands (gear: the Apron's block, the Shoes' safe time).
+-- Returns true to block the hit: no HP lost and no damaged callbacks. nil = nothing blocks.
+export type HitBlocker = (amount: number, source: string?) -> boolean
+local hitBlocker: HitBlocker? = nil
+
+-- Set (or clear, with nil) the hit blocker. GearEffectsService sets it each run.
+function RunManager.setHitBlocker(blocker: HitBlocker?)
+	hitBlocker = blocker
+end
+
 -- Run `callback` after every hit on the chef (RunReportService counts damage per source).
 function RunManager.onPlayerDamaged(callback: DamagedCallback)
 	table.insert(damagedCallbacks, callback)
@@ -308,6 +318,9 @@ end
 function RunManager.damagePlayer(amount: number, source: string?)
 	if runOver or amount <= 0 then
 		return
+	end
+	if hitBlocker and hitBlocker(amount, source) then
+		return -- blocked by gear (GearEffectsService)
 	end
 	refreshMaxHp()
 	local afterArmor = math.max(amount - StatsService.getStat("Armor"), 1)

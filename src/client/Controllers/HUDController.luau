@@ -11,6 +11,8 @@
 --   "RunState"                      RunManager: "Playing", "Lost" or "Won" (shows the run-over banner)
 --   "JustUnlocked"                  UnlockService: a boss power this run unlocked (line on the banner)
 --   "SaveStatus"                    DataService: "Off" shows the not-saving banner (P2-1, #114)
+--   "ApronReady"                    GearEffectsService: the Apron's block is ready (true), used up
+--                                   (false) or not equipped (nil) (P2-4, #139)
 --   "Rush", "RushStage", "RushSound" RunManager: the dinner rush banner (#121), big while
 --                                   "Warning", smaller while "On"; the sound plays with the warning
 -- Until the lobby exists (#109), the "Test build" note (Config.Saving.TestBuild) sits here too.
@@ -75,6 +77,7 @@ local rushLabel: TextLabel -- "DINNER RUSH!" (#121)
 local rushSound: Sound
 local lastRushStage: unknown = nil
 local saveBanner: Frame -- "Progress isn't saving right now" while SaveStatus is "Off" (#114)
+local shieldPill: TextLabel -- the Apron's block: bright when ready, faded while it recharges
 local iconRow: Frame
 local hpBillboard: BillboardGui
 local hpFill: Frame
@@ -192,6 +195,19 @@ local function buildScreen()
 	saveText.Size = UDim2.fromScale(1, 1)
 	saveText.TextColor3 = Color3.new(1, 1, 1)
 	saveText.Text = "Progress isn't saving right now"
+
+	-- Top right, under the kill count (the item icons grow down the left): an Epic or Legendary
+	-- Apron's block (#139).
+	shieldPill = makeLabel(gui, "Shield", 16)
+	shieldPill.AnchorPoint = Vector2.new(1, 0)
+	shieldPill.Position = UDim2.new(1, -EDGE, 0, 118)
+	shieldPill.Size = UDim2.fromOffset(110, 26)
+	shieldPill.BackgroundColor3 = COLORS.hpHigh
+	shieldPill.BackgroundTransparency = 0
+	shieldPill.TextColor3 = Color3.new(1, 1, 1)
+	shieldPill.Text = "SHIELD"
+	shieldPill.Visible = false
+	corner(shieldPill, UDim.new(0, 8))
 
 	-- Bottom-right corner, small: saves may be wiped until launch (Config.Saving.TestBuild).
 	local testNote = makeLabel(gui, "TestBuildNote", 14)
@@ -348,6 +364,10 @@ local function updateNumbers()
 	miniBossLabel.Text = if type(miniBoss) == "string" then `Defeat {miniBoss}!` else ""
 
 	saveBanner.Visible = player:GetAttribute("SaveStatus") == "Off"
+	local apronReady = player:GetAttribute("ApronReady")
+	shieldPill.Visible = apronReady ~= nil
+	shieldPill.BackgroundTransparency = if apronReady then 0 else 0.7
+	shieldPill.TextTransparency = if apronReady then 0 else 0.5
 
 	-- The dinner rush (#121): big while it's warning, smaller while it's on.
 	local rush = player:GetAttribute("Rush")

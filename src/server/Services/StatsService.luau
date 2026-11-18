@@ -32,6 +32,8 @@ local slow = 0
 -- multiplier on top of ingredients, so a gear upgrade isn't watered down by Hot Sauce or Bread.
 local gearAttack = 0
 local gearHp = 0
+-- A short burst of extra walk speed (0.3 = 30% faster; the Shoes' bonus effect after a hit).
+local speedBoost = 0
 
 -- Copy owned ingredient levels onto the run's player (nil = not owned).
 local function syncAttributes()
@@ -96,7 +98,16 @@ end
 
 -- The chef's walk speed right now, in studs per second.
 function StatsService.getWalkSpeed(): number
-	return RunRules.ChefWalkSpeed * (1 + StatsService.getStat("MoveSpeed")) * (1 - slow)
+	return RunRules.ChefWalkSpeed * (1 + StatsService.getStat("MoveSpeed")) * (1 + speedBoost) * (1 - slow)
+end
+
+-- Make the chef walk `fraction` faster (0.3 = 30%), or 0 to stop (GearEffectsService, Shoes).
+function StatsService.setSpeedBoost(fraction: number)
+	fraction = math.max(fraction, 0)
+	if fraction ~= speedBoost then
+		speedBoost = fraction
+		applyWalkSpeed()
+	end
 end
 
 -- Slow the chef down by `fraction` (0.4 = 40% slower), or 0 for full speed. Slows don't
@@ -123,6 +134,7 @@ end
 function StatsService.reset()
 	table.clear(ingredientLevels)
 	slow = 0
+	speedBoost = 0
 	syncAttributes()
 	applyWalkSpeed()
 end
