@@ -26,7 +26,8 @@ return {
 	-- An enemy hurts the chef when it is within touching distance plus this many studs.
 	ContactReach = 0.75,
 
-	-- Phase 1 has no lobby, so every run starts with this starter (PRD §9). Checked by ConfigCheck.
+	-- The starter a run begins with until the save says which Utensil is equipped (it then
+	-- becomes the run's starter, #150). Also the free utensil every player owns. Checked by ConfigCheck.
 	Starter = "ChefsKnife",
 
 	-- Aiming (PRD §2.2): the client sends its aim direction at most this many times a second;

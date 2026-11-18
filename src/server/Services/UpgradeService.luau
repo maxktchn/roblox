@@ -133,12 +133,13 @@ local function buildPool(): { Card }
 	local slotsFree = slotsUsed() < RunRules.SharedSlots
 
 	-- The starter is always owned; it can only be upgraded.
-	local starter = Starters[RunRules.Starter]
-	local starterLevel = WeaponService.getWeaponLevel(RunRules.Starter)
+	local starterId = WeaponService.getStarter() -- the equipped Utensil (#150)
+	local starter = Starters[starterId]
+	local starterLevel = WeaponService.getWeaponLevel(starterId)
 	if starterLevel and starterLevel < RunRules.StarterMaxLevel and starter.Levels then
 		table.insert(pool, {
 			Kind = "Starter",
-			Id = RunRules.Starter,
+			Id = starterId,
 			Name = starter.Name,
 			FromLevel = starterLevel,
 			ToLevel = starterLevel + 1,
@@ -217,9 +218,7 @@ local function readyRecipes(): { Card }
 	local cards: { Card } = {}
 	for id, recipe in Recipes do
 		local weaponLevel = WeaponService.getWeaponLevel(recipe.Weapon)
-		local maxLevel = if recipe.Weapon == RunRules.Starter
-			then RunRules.StarterMaxLevel
-			else RunRules.SharedItemMaxLevel
+		local maxLevel = if Starters[recipe.Weapon] then RunRules.StarterMaxLevel else RunRules.SharedItemMaxLevel
 		local weapon: any = Starters[recipe.Weapon] or Gadgets[recipe.Weapon]
 		if
 			recipe.Levels

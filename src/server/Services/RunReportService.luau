@@ -246,7 +246,7 @@ local function onAttributeChanged(player: Player, name: string)
 	local id = string.match(name, "^Weapon_(.+)$") or string.match(name, "^Ingredient_(.+)$")
 	if id then
 		-- The starter at Lv 1 is given at the start of every run, not picked.
-		if id == RunRules.Starter and value == 1 then
+		if id == WeaponService.getStarter() and value == 1 then
 			return
 		end
 		table.insert(itemsGained, { seconds = seconds, text = `{nameOf(id)} {value}` })

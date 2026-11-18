@@ -41,6 +41,8 @@ local WeaponService = {}
 
 -- Weapon id -> current level (1 to 5). The run starts with the starter at Lv 1.
 local levels: { [string]: number } = {}
+-- This run's starter: the equipped Utensil (setStarter, #150), RunRules.Starter until it's known.
+local runStarter = RunRules.Starter
 -- Weapon id -> seconds until it can attack again.
 local cooldowns: { [string]: number } = {}
 
@@ -1004,11 +1006,11 @@ local ATTACKS: { [string]: (string, WeaponLevel, BasePart) -> () } = {
 
 -- The starter, or the recipe it evolved into (the knife's gear effect carries over).
 local function isStarterLine(weaponId: string): boolean
-	if weaponId == RunRules.Starter then
+	if weaponId == runStarter then
 		return true
 	end
 	local recipe = Recipes[weaponId]
-	return recipe ~= nil and recipe.Weapon == RunRules.Starter
+	return recipe ~= nil and recipe.Weapon == runStarter
 end
 
 -- Epic/Legendary Chef's Knife: throw a knife straight ahead (the aim, or the way the chef
@@ -1181,7 +1183,8 @@ function WeaponService.reset()
 	table.clear(starterHitEffects)
 	starterAttacks, extraKnives = 0, 0
 	aim = nil -- a new run: the knife uses facing until the player aims again
-	levels[RunRules.Starter] = 1
+	runStarter = RunRules.Starter -- GearService fixes the run gear next, which sets the real starter
+	levels[runStarter] = 1
 	kills = 0
 	local player = getRunPlayer()
 	if player then
@@ -1213,7 +1216,27 @@ function WeaponService:init()
 		floorY = center.Y
 	end
 	table.clear(levels)
-	levels[RunRules.Starter] = 1
+	levels[runStarter] = 1
+end
+
+-- This run's starter weapon id.
+function WeaponService.getStarter(): string
+	return runStarter
+end
+
+-- Make `starterId` (the equipped Utensil, #150) this run's starter, in place of the current one.
+-- Only while the current starter is still untouched (Lv 1, not evolved), i.e. as the run starts
+-- or when the save arrives in its first moments. Unknown or unplayable starters are ignored.
+function WeaponService.setStarter(starterId: string)
+	local starter = Starters[starterId]
+	if starterId == runStarter or not (starter and starter.Levels) or levels[runStarter] ~= 1 then
+		return
+	end
+	levels[runStarter] = nil
+	cooldowns[runStarter] = nil
+	runStarter = starterId
+	levels[starterId] = 1
+	syncAttributes()
 end
 
 function WeaponService:start()

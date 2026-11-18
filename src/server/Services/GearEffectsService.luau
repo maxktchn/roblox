@@ -70,8 +70,14 @@ local function blockHit(_amount: number, _source: string?): boolean
 	return false
 end
 
--- Turn every effect off, then on again for this run's Epic and Legendary gear.
+-- Turn every effect off, then on again for this run's Epic and Legendary gear. The equipped
+-- Utensil also becomes the run's starter weapon (#150).
 local function applyRunGear()
+	local utensil = GearService.getRunGear().Utensil
+	if utensil then
+		WeaponService.setStarter(utensil.Item)
+	end
+
 	apron = GearEffectsService.getEffect("Apron")
 	shoes = GearEffectsService.getEffect("Shoes")
 	boostTimer, safeTimer, apronTimer = 0, 0, 0
