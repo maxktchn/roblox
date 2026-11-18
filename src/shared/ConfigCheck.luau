@@ -120,6 +120,20 @@ function ConfigCheck.run(): { string }
 			if weapon.Shape == "Projectile" and stats.Width and stats.Width <= 0 then
 				fail(`Weapon {id} Lv {i}: Width must be more than 0`)
 			end
+			if (stats.FullDamageRange == nil) ~= (stats.MinDamageScale == nil) then
+				fail(`Weapon {id} Lv {i}: FullDamageRange and MinDamageScale go together`)
+			elseif
+				stats.FullDamageRange
+				and stats.MinDamageScale
+				and (
+					stats.FullDamageRange < 0
+					or stats.FullDamageRange >= stats.Range
+					or stats.MinDamageScale <= 0
+					or stats.MinDamageScale > 1
+				)
+			then
+				fail(`Weapon {id} Lv {i}: FullDamageRange must be under Range, MinDamageScale above 0 up to 1`)
+			end
 			if stats.Knockback and stats.Knockback <= 0 then
 				fail(`Weapon {id} Lv {i}: Knockback must be more than 0`)
 			end

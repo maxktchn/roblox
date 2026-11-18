@@ -90,6 +90,10 @@ export type WeaponLevel = {
 	Slow: number?, -- Trail: how much slower enemies on a splat move (0.3 = 30%). Projectile: slow on hit.
 	SlowSeconds: number?, -- Projectile: how long its Slow lasts (1.5 if left out)
 	Pierce: number?, -- Projectile: how many enemies one shot hits before it stops (1 if left out)
+	-- Projectile: full damage while the shot has rolled up to FullDamageRange studs, then less and
+	-- less, down to MinDamageScale of it at the end of its Range (Rolling Pin, 0.4 = 40%).
+	FullDamageRange: number?,
+	MinDamageScale: number?,
 	PierceFalloff: number?, -- Projectile: each later enemy a shot hits takes this much less (0.4 = 100%, 60%, 36%)
 	Spread: number?, -- Projectile: degrees between shots fanned toward the nearest enemy
 	Freeze: number?, -- Projectile: seconds each enemy hit is frozen (Deep Freeze)

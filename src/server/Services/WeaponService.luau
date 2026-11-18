@@ -628,6 +628,16 @@ local function attackProjectile(weaponId: string, stats: WeaponLevel, root: Base
 	end
 end
 
+-- Rolling Pin (#147): its damage fades with how far it has rolled (see FullDamageRange).
+local function rollScale(stats: WeaponLevel, traveled: number): number
+	local full, min = stats.FullDamageRange, stats.MinDamageScale
+	if not (full and min) or traveled <= full then
+		return 1
+	end
+	local t = math.clamp((traveled - full) / math.max(stats.Range - full, 0.01), 0, 1)
+	return 1 + (min - 1) * t
+end
+
 -- Move every shot. It hits enemies it comes close to (each once), up to its Pierce (1 = the
 -- first one stops it), slowing, freezing or leaving butter as its weapon says; it ends at
 -- max distance.
@@ -650,7 +660,7 @@ local function updateShots(deltaTime: number)
 				shot.alreadyHit[target] = true
 				shot.hitsLeft -= 1
 				local position = EnemyService.getEnemyPosition(target)
-				hit(target, stats, shot.weaponId, shot.damageScale)
+				hit(target, stats, shot.weaponId, shot.damageScale * rollScale(stats, shot.traveled))
 				shot.damageScale *= 1 - (stats.PierceFalloff or 0)
 				if stats.Slow then
 					EnemyService.slow(target, stats.Slow, stats.SlowSeconds or 1.5)

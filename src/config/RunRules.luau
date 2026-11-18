@@ -56,6 +56,7 @@ return {
 	MaxFireSplats = 20, -- Flambé Pan's burning arcs (#148); a new splat removes the oldest
 	-- Knockback (Frying Pan, Microwave Pulse) moves elites this much of the distance; bosses not at all.
 	ElitePushScale = 0.5,
+	PushSeconds = 0.2, -- a knockback slides the enemy back over this long instead of jumping
 
 	-- Loadout (PRD §2.4)
 	StarterMaxLevel = 5,

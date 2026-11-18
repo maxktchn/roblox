@@ -55,6 +55,9 @@ type EnemyRecord = {
 	-- How a freeze looks (#147): "Ice" (Deep Freeze), "Flat" (Steamroller), "Stun" (Frying Pan gear).
 	look: FreezeLook,
 	shown: string, -- what its part shows now: "None", "Slowed", or a FreezeLook
+	-- Knockback still to happen (push): studs per second, and seconds left of the slide.
+	pushVelocity: Vector3,
+	pushTime: number,
 }
 
 export type FreezeLook = "Ice" | "Flat" | "Stun"
@@ -299,6 +302,8 @@ local function spawnWithConfig(enemyType: string, config: Enemies.Enemy, positio
 		direction = direction,
 		windup = if config.Movement == "Charge" then RunRules.ChargeWindupSeconds else 0,
 		planted = false,
+		pushVelocity = Vector3.zero,
+		pushTime = 0,
 		slow = 0,
 		slowTime = 0,
 		frozenBonus = 0,
@@ -579,9 +584,10 @@ function EnemyService.pull(enemyId: EnemyId, toward: Vector3, studs: number)
 	enemy.position = clampToArena(enemy.position + offset / distance * step)
 end
 
--- Push one enemy `studs` directly away from `from` (Microwave Pulse knockback, #66): the mirror
--- of pull. Stays inside the arena. Bosses are too heavy to push: nothing happens. Elites move
--- RunRules.ElitePushScale of the distance (#148). The part follows on the next frame.
+-- Push one enemy `studs` directly away from `from` (Microwave Pulse knockback #66, Frying Pan
+-- #148): it slides there over RunRules.PushSeconds instead of jumping (a new push replaces one
+-- still sliding). Stays inside the arena. Bosses are too heavy to push: nothing happens. Elites
+-- move RunRules.ElitePushScale of the distance.
 function EnemyService.push(enemyId: EnemyId, from: Vector3, studs: number)
 	local enemy = alive[enemyId]
 	if not enemy or Bosses[enemy.enemyType] or studs <= 0 then
@@ -594,7 +600,18 @@ function EnemyService.push(enemyId: EnemyId, from: Vector3, studs: number)
 	if away.Magnitude < 0.01 then
 		away = Vector3.new(math.cos(enemyId), 0, math.sin(enemyId)) -- right on the spot: pick a side
 	end
-	enemy.position = clampToArena(enemy.position + away.Unit * studs)
+	enemy.pushVelocity = away.Unit * studs / RunRules.PushSeconds
+	enemy.pushTime = RunRules.PushSeconds
+end
+
+-- Slide a pushed enemy along for this frame (on top of its own movement).
+local function slidePushed(enemy: EnemyRecord, deltaTime: number)
+	if enemy.pushTime <= 0 then
+		return
+	end
+	local step = math.min(deltaTime, enemy.pushTime)
+	enemy.pushTime -= step
+	enemy.position = clampToArena(enemy.position + enemy.pushVelocity * step)
 end
 
 -- An enemy's shape for distance checks. Enemies turn to face the chef (chasers) or the way they
@@ -852,6 +869,7 @@ local function moveEnemies(deltaTime: number, chefPosition: Vector3)
 			end
 		end
 		moveEnemy(enemy, deltaTime, chefPosition)
+		slidePushed(enemy, deltaTime)
 	end
 	separateEnemies(deltaTime, chefPosition)
 

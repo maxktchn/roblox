@@ -72,6 +72,8 @@ local STAT_LABELS: { [string]: { name: string, unit: string, percent: boolean? }
 	Pierce = { name = "Pierce", unit = "" },
 	Freeze = { name = "Freeze", unit = "s" },
 	Knockback = { name = "Push", unit = "" },
+	FullDamageRange = { name = "Full damage for", unit = "" },
+	MinDamageScale = { name = "Damage at the end", unit = "%", percent = true },
 }
 
 -- One line saying what changes between two levels of a weapon, built from its config numbers.
