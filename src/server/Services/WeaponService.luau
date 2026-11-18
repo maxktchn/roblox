@@ -68,6 +68,20 @@ type Shot = {
 local shots: { Shot } = {}
 local lastShotId = 0
 
+-- Gear bonus effects (P2-4 #139; GearEffectsService sets these each run, reset() clears them).
+-- Epic/Legendary Chef's Knife: every Nth starter attack also throws a knife (nil = off).
+local extraKnifeEvery: number? = nil
+local starterAttacks = 0 -- attacks by the starter (or its recipe) this run
+local extraKnives = 0 -- knives thrown by the effect this run
+-- How the thrown knife flies.
+local THROWN_KNIFE_SPEED = 60
+local THROWN_KNIFE_RANGE = 30
+-- Epic/Legendary Oven Mitts: hits may set enemies on fire (nil = off).
+export type GearBurn = { Chance: number, BurnDps: number, BurnSeconds: number, Spreads: boolean }
+local gearBurn: GearBurn? = nil
+local GEAR_BURN_ID = "OvenMitts" -- the burn's source in the run report
+local FIRE_SPREAD_RADIUS = 6 -- studs: a burning enemy that dies lights the nearest one this close
+
 local kills = 0 -- enemies defeated this run (shown on the HUD)
 -- Damage each weapon has actually dealt this run (overkill not counted), for the run report.
 local damageByWeapon: { [string]: number } = {}
@@ -182,27 +196,37 @@ local function cooldownScale(): number
 	return math.max(1 + StatsService.getStat("Cooldown"), MIN_COOLDOWN_SCALE)
 end
 
--- Hit one enemy with a weapon: damage now, plus a burn if the weapon has one.
--- damageScale (PierceFalloff) scales the hit, not the burn.
+-- Set a live enemy on fire. Already burning: keep the stronger burn and restart the timer.
+local function ignite(enemyId: number, dps: number, seconds: number, weaponId: string)
+	if not EnemyService.getEnemyPosition(enemyId) then
+		return
+	end
+	local burn = burns[enemyId]
+	if burn then
+		if dps > burn.dps then
+			burn.dps = dps
+			burn.weaponId = weaponId
+		end
+		burn.timeLeft = seconds
+	else
+		burns[enemyId] = {
+			dps = dps,
+			timeLeft = seconds,
+			tickTimer = RunRules.BurnTickSeconds,
+			weaponId = weaponId,
+		}
+	end
+end
+
+-- Hit one enemy with a weapon: damage now, plus a burn if the weapon has one (or the Oven
+-- Mitts' gear effect rolls it). damageScale (PierceFalloff) scales the hit, not the burn.
 local function hit(enemyId: number, stats: WeaponLevel, weaponId: string, damageScale: number?)
 	dealRolledDamage(enemyId, stats.Damage * (damageScale or 1), stats.CritBonus, weaponId)
-	if stats.BurnDps and stats.BurnSeconds and EnemyService.getEnemyPosition(enemyId) then
-		local burn = burns[enemyId]
-		if burn then
-			-- Already burning: keep the stronger burn and restart the timer.
-			if stats.BurnDps > burn.dps then
-				burn.dps = stats.BurnDps
-				burn.weaponId = weaponId
-			end
-			burn.timeLeft = stats.BurnSeconds
-		else
-			burns[enemyId] = {
-				dps = stats.BurnDps,
-				timeLeft = stats.BurnSeconds,
-				tickTimer = RunRules.BurnTickSeconds,
-				weaponId = weaponId,
-			}
-		end
+	if stats.BurnDps and stats.BurnSeconds then
+		ignite(enemyId, stats.BurnDps, stats.BurnSeconds, weaponId)
+	end
+	if gearBurn and math.random() < gearBurn.Chance then
+		ignite(enemyId, gearBurn.BurnDps, gearBurn.BurnSeconds, GEAR_BURN_ID)
 	end
 end
 
@@ -904,6 +928,30 @@ local ATTACKS: { [string]: (string, WeaponLevel, BasePart) -> () } = {
 	Bounce = attackBounce,
 }
 
+-- The starter, or the recipe it evolved into (the knife's gear effect carries over).
+local function isStarterLine(weaponId: string): boolean
+	if weaponId == RunRules.Starter then
+		return true
+	end
+	local recipe = Recipes[weaponId]
+	return recipe ~= nil and recipe.Weapon == RunRules.Starter
+end
+
+-- Epic/Legendary Chef's Knife: throw a knife straight ahead (the aim, or the way the chef
+-- faces). It deals the weapon's damage to the first enemy it meets.
+local function throwKnife(weaponId: string, stats: WeaponLevel, root: BasePart)
+	local direction = getAttackDirection(weaponId, root, THROWN_KNIFE_RANGE)
+	local knife: WeaponLevel = {
+		Damage = stats.Damage,
+		Cooldown = 0,
+		Range = THROWN_KNIFE_RANGE,
+		Speed = THROWN_KNIFE_SPEED,
+		CritBonus = stats.CritBonus,
+	}
+	extraKnives += 1
+	launchShot(weaponId, knife, root.Position, direction)
+end
+
 local function update(deltaTime: number)
 	if RunManager.isPaused() then
 		return -- "Order Up!" is on screen: cooldowns, shots and burns all freeze
@@ -948,6 +996,12 @@ local function update(deltaTime: number)
 		if cooldowns[weaponId] <= 0 then
 			ATTACKS[shape](weaponId, stats, root)
 			cooldowns[weaponId] = stats.Cooldown * cooldownScale()
+			if isStarterLine(weaponId) then
+				starterAttacks += 1
+				if extraKnifeEvery and starterAttacks % extraKnifeEvery == 0 then
+					throwKnife(weaponId, stats, root)
+				end
+			end
 		end
 	end
 end
@@ -995,6 +1049,28 @@ function WeaponService.getOwnedWeapons(): { [string]: number }
 end
 
 -- Forget all weapons and give back the starter at Lv 1 (start of a new run).
+-- Epic/Legendary Chef's Knife (GearEffectsService): every `every` starter attacks also throw a
+-- knife. nil turns it off.
+function WeaponService.setExtraKnifeEvery(every: number?)
+	extraKnifeEvery = every
+end
+
+-- Epic/Legendary Oven Mitts (GearEffectsService): hits may burn. nil turns it off.
+function WeaponService.setGearBurn(burn: GearBurn?)
+	gearBurn = burn
+end
+
+-- Knives thrown by the knife's gear effect, and starter attacks, this run (tests and reports).
+function WeaponService.getExtraKnifeCount(): (number, number)
+	return extraKnives, starterAttacks
+end
+
+-- Which weapon an enemy is burning from right now ("OvenMitts" for the gear effect), or nil.
+function WeaponService.getBurn(enemyId: number): string?
+	local burn = burns[enemyId]
+	return burn and burn.weaponId
+end
+
 function WeaponService.reset()
 	table.clear(levels)
 	table.clear(cooldowns)
@@ -1021,6 +1097,8 @@ function WeaponService.reset()
 	table.clear(swings)
 	table.clear(pendingHits)
 	table.clear(damageByWeapon)
+	extraKnifeEvery, gearBurn = nil, nil -- GearEffectsService turns them on again for the new run
+	starterAttacks, extraKnives = 0, 0
 	aim = nil -- a new run: the knife uses facing until the player aims again
 	levels[RunRules.Starter] = 1
 	kills = 0
@@ -1114,7 +1192,22 @@ function WeaponService:start()
 
 	-- Kill count for the HUD, as the player's "Kills" attribute. Counted here because this
 	-- service already listens to EnemyService (RunManager can't: EnemyService requires it).
-	EnemyService.onEnemyKilled(function()
+	EnemyService.onEnemyKilled(function(enemyId: number, _enemyType: string, position: Vector3)
+		-- Legendary Oven Mitts: the fire spreads to the nearest enemy close by.
+		local burn = burns[enemyId]
+		if gearBurn and gearBurn.Spreads and burn and burn.weaponId == GEAR_BURN_ID then
+			local nearestId, nearestDistance = nil, math.huge
+			for _, otherId in getEnemiesInReach(position, FIRE_SPREAD_RADIUS) do
+				local otherPosition = EnemyService.getEnemyPosition(otherId)
+				local distance = if otherPosition then flatDistance(position, otherPosition) else math.huge
+				if otherId ~= enemyId and distance < nearestDistance then
+					nearestId, nearestDistance = otherId, distance
+				end
+			end
+			if nearestId then
+				ignite(nearestId, gearBurn.BurnDps, gearBurn.BurnSeconds, GEAR_BURN_ID)
+			end
+		end
 		kills += 1
 		local player = getRunPlayer()
 		if player then

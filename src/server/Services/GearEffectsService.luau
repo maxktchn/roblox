@@ -9,7 +9,8 @@
 --                count). Player attribute "ApronReady" (true/false; nil without the effect) lets
 --                the HUD show when it's ready.
 --   Shoes        after a hit: SpeedBoost faster for BoostSeconds, and no damage for SafeSeconds
---   Chef's Knife and Oven Mitts work inside WeaponService (see the weapon hooks there).
+--   Chef's Knife every Nth attack also throws a knife (WeaponService.setExtraKnifeEvery)
+--   Oven Mitts   hits may burn; at Legendary the fire spreads on death (WeaponService.setGearBurn)
 -- Frying Pan and Rolling Pin effects come with those starters (#107).
 
 local Players = game:GetService("Players")
@@ -21,6 +22,7 @@ local GearService = require(script.Parent.GearService)
 local RunManager = require(script.Parent.RunManager)
 local StatsService = require(script.Parent.StatsService)
 local UpgradeService = require(script.Parent.UpgradeService)
+local WeaponService = require(script.Parent.WeaponService)
 
 local GearEffectsService = {}
 
@@ -75,6 +77,18 @@ local function applyRunGear()
 	StatsService.setSpeedBoost(0)
 	setApronReady(if apron then true else nil)
 	RunManager.setHitBlocker(if apron or shoes then blockHit else nil)
+
+	local knife = GearEffectsService.getEffect("ChefsKnife")
+	WeaponService.setExtraKnifeEvery(if knife then knife.Every else nil)
+	local mitts = GearEffectsService.getEffect("OvenMitts")
+	WeaponService.setGearBurn(if mitts
+		then {
+			Chance = mitts.Chance,
+			BurnDps = mitts.BurnDps,
+			BurnSeconds = mitts.BurnSeconds,
+			Spreads = mitts.Spreads == true,
+		}
+		else nil)
 
 	local hat = GearEffectsService.getEffect("ChefsHat")
 	if hat then

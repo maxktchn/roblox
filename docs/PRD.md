@@ -382,12 +382,12 @@ A full maxed Legendary set is about **x2.8 damage and x2.5 HP**. Chapter 1 stays
 
 | Item | Epic | Legendary |
 |---|---|---|
-| Chef's Knife | Every 5th attack throws a second knife | Every 3rd attack |
+| Chef's Knife | Every 5th attack throws a second knife (straight ahead, 30 studs, the knife's damage) | Every 3rd attack |
 | Frying Pan | Hits stun for 0.5 s | 1 s, and the stun spreads to enemies next to it |
 | Rolling Pin | Enemies it rolls over are 30% slower for 2 s | 50% slower, and they take +20% damage |
 | Chef's Hat | Start every run with 1 free "Order Up!" pick | 2 free picks |
-| Apron | Blocks the first hit every 12 s | Every 7 s |
-| Oven Mitts | 10% of hits set enemies on fire (3 s) | 20%, and fire spreads when a burning enemy dies |
+| Apron | Blocks the first hit every 12 s (a SHIELD pill on the HUD shows when it's ready) | Every 7 s |
+| Oven Mitts | 10% of hits set enemies on fire (5 damage a second for 3 s) | 20%, and fire spreads to the nearest enemy within 6 studs when a burning enemy dies |
 | Shoes | After you're hit, run 30% faster for 2 s | And can't be hurt for 1 s |
 
 ### 4.3 Gear leveling

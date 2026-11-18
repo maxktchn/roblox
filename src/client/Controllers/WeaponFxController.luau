@@ -411,6 +411,13 @@ local function onWeaponFx(weaponId: string, ...: any)
 	elseif action == "SplatEnd" then
 		endSplat(id)
 		return
+	elseif config.Shape == "Arc" and action == "Launch" then
+		-- A knife thrown by an Epic or Legendary Chef's Knife (gear effect, #139): a thin blade.
+		drawShot(color, Vector3.new(0.3, 0.2, 1.6), select(2, ...))
+		return
+	elseif config.Shape == "Arc" and action == "End" then
+		endShot(id)
+		return
 	end
 	if config.Shape == "Arc" then
 		drawArc(weaponId, color, ...)
