@@ -47,7 +47,7 @@ The restaurant's food has gone rotten and come alive. You're the chef, and you h
 ## 2. Core Run Loop
 
 ### 2.1 Run flow
-1. Player picks a chapter and their equipped Utensil (starter) in the lobby
+1. The player joins into the **lobby** (P2-8 #143): no enemies and no clock. They pick a chapter and their equipped Utensil (starter) there, then press **Play**
 2. Run starts with only the starter weapon at Lv 1
 3. Enemies spawn in waves and get harder over time
 4. Defeated enemies drop **tips** (XP)
@@ -55,7 +55,7 @@ The restaurant's food has gone rotten and come alive. You're the chef, and you h
 6. At **3:00**, a mini-boss appears (Chapter 1: The Big Cheese). Normal spawns stop and the run clock holds at 3:00 until every piece of it is defeated; enemies already in the kitchen stay
 7. At **6:00**, the final boss appears in a closed arena
 8. Beat the final boss to **clear the chapter**. If HP reaches 0, the player can revive once, or the run ends.
-9. Results screen shows rewards earned
+9. Results screen (the run-over banner) shows how far they got and rewards earned; **Continue** goes back to the lobby
 
 ### 2.2 Controls and camera
 - **Move and aim.** All attacks fire automatically. The signature tool (starter) swings toward where the player aims; gadgets don't aim.
@@ -493,7 +493,7 @@ Gamepasses must only save time. Starting list:
 ## 7. UI/UX
 
 ### 7.1 Lobby screens
-For now the lobby is a set of **menu screens inside the run place** (see 8.1), shown before and between runs.
+For now the lobby is a set of **menu screens inside the run place** (see 8.1), shown before and between runs. Design: `docs/superpowers/specs/2026-11-17-lobby-design.md` (#109). It's a fourth run state, "Lobby": joining starts there, Play starts a run, and Continue on the run-over banner comes back. Tabs across the top: **Home, Gear, Talents, Chapters, Shop, Cookbook** (Talents, Chapters and Shop say "Coming soon" until #107 and #108 fill them; Battle Pass and Missions are hidden until Phase 3).
 
 | Screen | Contents |
 |---|---|

@@ -10,7 +10,8 @@
 -- Player attributes set here (read by the HUD):
 --   "Hp", "MaxHp"  the chef's HP (#9)
 --   "RunSeconds"   run timer in whole seconds (#6)
---   "RunState"     "Playing", "Lost" (#9) or "Won" (final boss defeated, #11)
+--   "RunState"     "Lobby" (between runs, P2-8 #143), "Playing", "Lost" (#9) or "Won" (final boss
+--                  defeated, #11)
 --   "Rush", "RushStage", "RushSound"  a swarm event (the dinner rush, #121): its name, "Warning"
 --                  or "On", and its sound id; all nil when there's none
 
@@ -38,6 +39,9 @@ local CHAPTER = "DinerKitchen"
 local paused = false
 local runOver = false
 local result: "Won" | "Lost" | nil = nil
+-- In the lobby (P2-8 #143): between runs, before Play. Paused and "run over" too, so the clock,
+-- spawns and weapons stand still and gear can change.
+local inLobby = false
 
 -- Pause or resume the run. UpgradeService pauses while "Order Up!" cards are on screen.
 -- While paused: the timer, enemies (#6, #8) and weapons must all stand still.
@@ -265,7 +269,7 @@ local function syncAttributes()
 		player:SetAttribute("Hp", math.ceil(hp))
 		player:SetAttribute("MaxHp", math.ceil(lastMaxHp))
 		player:SetAttribute("RunSeconds", math.floor(runSeconds))
-		player:SetAttribute("RunState", result or "Playing")
+		player:SetAttribute("RunState", if inLobby then "Lobby" else result or "Playing")
 	end
 end
 
@@ -355,6 +359,7 @@ end
 -- Start a fresh run: full HP, timer at 0:00, not paused, not over.
 -- The first phase is announced again on the next frame.
 function RunManager.reset()
+	inLobby = false
 	runOver = false
 	result = nil
 	paused = false
@@ -370,6 +375,33 @@ function RunManager.reset()
 	rushShown, rushStage = nil, nil
 	syncRush()
 	syncAttributes()
+end
+
+-- Go to the lobby (P2-8 #143): no run. Everything stands still (paused and "run over"), the
+-- clock is back at 0:00 and the chef has full HP. The server starts here; RestartService
+-- comes back here on Continue. RunManager.reset() (Play) leaves it.
+function RunManager.enterLobby()
+	inLobby = true
+	runOver = true
+	result = nil
+	paused = true
+	lastMaxHp = getMaxHp()
+	hp = lastMaxHp
+	runSeconds = 0
+	shownSeconds = -1
+	phaseIndex = 0
+	finalBossStarted = false
+	miniBossStarted = false
+	clockHeld = false
+	rushScale = 1
+	rushShown, rushStage = nil, nil
+	syncRush()
+	syncAttributes()
+end
+
+-- True while in the lobby (between runs, before Play).
+function RunManager.isInLobby(): boolean
+	return inLobby
 end
 
 --------------------------------------------------------------------------------
@@ -445,7 +477,7 @@ end
 function RunManager:init() end
 
 function RunManager:start()
-	syncAttributes()
+	RunManager.enterLobby() -- every server starts in the lobby (P2-8 #143)
 	Players.PlayerAdded:Connect(syncAttributes)
 	RunService.Heartbeat:Connect(update)
 end
