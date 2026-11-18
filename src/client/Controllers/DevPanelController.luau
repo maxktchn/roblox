@@ -13,6 +13,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local BossPowers = require(ReplicatedStorage.Config.BossPowers)
 local DevTools = require(ReplicatedStorage.Config.DevTools)
 local Gadgets = require(ReplicatedStorage.Config.Gadgets)
+local Gear = require(ReplicatedStorage.Config.Gear)
+local GearMath = require(ReplicatedStorage.Shared.GearMath)
 local Ingredients = require(ReplicatedStorage.Config.Ingredients)
 local Recipes = require(ReplicatedStorage.Config.Recipes)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
@@ -280,6 +282,44 @@ local function buildPanel()
 			send("Give", id)
 		end)
 	end
+
+	-- ACCOUNT (P2-4): things kept in the save. Moves to its own tab with the DEV menu (#140).
+	makeHeader("ACCOUNT: gear (equipped, used from the next run)")
+	local account = makeGrid()
+	-- Tap the rarity button to cycle Common -> Legendary, then tap an item to give it at Lv 1.
+	local rarityIndex = 1
+	local rarityButton: TextButton
+	local function showRarity()
+		local rarity = Gear.Rarities[rarityIndex]
+		rarityButton.Text = rarity.Id
+		rarityButton.BackgroundColor3 = rarity.Color
+	end
+	rarityButton = makeButton(account, "", COLORS.button, function()
+		rarityIndex = rarityIndex % #Gear.Rarities + 1
+		showRarity()
+	end)
+	showRarity()
+	local itemIds = {}
+	for id in Gear.Items do
+		table.insert(itemIds, id)
+	end
+	table.sort(itemIds, function(a, b)
+		return GearMath.itemName(a) < GearMath.itemName(b)
+	end)
+	for _, id in itemIds do
+		makeButton(account, GearMath.itemName(id), COLORS.button, function()
+			send("GiveGear", { Item = id, Rarity = Gear.Rarities[rarityIndex].Id, Level = 1 })
+		end)
+	end
+	makeButton(account, "+1000 gold", COLORS.recipe, function()
+		send("GiveGold", 1000)
+	end)
+	makeButton(account, "+50 materials", COLORS.recipe, function()
+		send("GiveMaterials", 50)
+	end)
+	makeButton(account, "Reset gear", COLORS.danger, function()
+		send("ResetGear")
+	end)
 end
 
 local function updateGodButton()

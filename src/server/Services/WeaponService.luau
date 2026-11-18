@@ -129,7 +129,7 @@ end
 -- Rolled separately for every enemy hit, so a big swing can mix crits and normal hits.
 -- Also returns whether it was a crit (crits show a bigger damage number).
 local function rollDamage(baseDamage: number, critBonus: number?): (number, boolean)
-	local damage = baseDamage * (1 + StatsService.getStat("Damage"))
+	local damage = baseDamage * StatsService.getDamageMultiplier()
 	local isCrit = math.random() < StatsService.getStat("CritChance") + (critBonus or 0)
 	if isCrit then
 		damage *= RunRules.CritDamageMultiplier
@@ -460,7 +460,7 @@ local function updateSplats(deltaTime: number)
 						if splat.canCrit then
 							dealRolledDamage(enemyId, splat.damage, nil, weaponId)
 						else
-							dealDamage(enemyId, splat.damage * (1 + StatsService.getStat("Damage")), "Hit", weaponId)
+							dealDamage(enemyId, splat.damage * StatsService.getDamageMultiplier(), "Hit", weaponId)
 						end
 					end
 				end
@@ -841,7 +841,7 @@ local function updateBurns(deltaTime: number)
 		if burn.tickTimer <= 0 then
 			burn.tickTimer += RunRules.BurnTickSeconds
 			-- Burns get Hot Sauce but can't crit.
-			local damage = burn.dps * RunRules.BurnTickSeconds * (1 + StatsService.getStat("Damage"))
+			local damage = burn.dps * RunRules.BurnTickSeconds * StatsService.getDamageMultiplier()
 			dealDamage(enemyId, damage, "Burn", burn.weaponId)
 		end
 		if burn.timeLeft <= 0 then

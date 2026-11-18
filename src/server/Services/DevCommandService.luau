@@ -17,6 +17,9 @@
 --   "Restart"          start a fresh run right now, even mid-run (RestartService)
 --   "UnlockPowers"     unlock every boss power, as if every boss had been beaten (UnlockService)
 --   "Bot", runs        let the playtest bot play `runs` runs (up to DevTools.BotMaxRuns); 0 stops it
+--   "GiveGear", { Item, Rarity, Level }  a new gear item, equipped straight away (used from the next run)
+--   "GiveGold", amount / "GiveMaterials", amount  add gold / add to each of the 5 materials
+--   "ResetGear"        back to a new save's gear: just the Common Chef's Knife, no gold or materials
 -- Replies go back with DevMessage(text) and show on the panel.
 --
 -- The player gets the attribute "IsDev" = true so the client knows to show the panel,
@@ -27,10 +30,14 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local BossPowers = require(ReplicatedStorage.Config.BossPowers)
+local DataService = require(script.Parent.DataService)
 local DevAccess = require(script.Parent.Parent.DevAccess)
 local DevTools = require(ReplicatedStorage.Config.DevTools)
 local EnemyService = require(script.Parent.EnemyService)
 local Gadgets = require(ReplicatedStorage.Config.Gadgets)
+local Gear = require(ReplicatedStorage.Config.Gear)
+local GearMath = require(ReplicatedStorage.Shared.GearMath)
+local GearService = require(script.Parent.GearService)
 local Ingredients = require(ReplicatedStorage.Config.Ingredients)
 local MiniBossService = require(script.Parent.MiniBossService)
 local PlaytestBotService = require(script.Parent.PlaytestBotService)
@@ -188,6 +195,52 @@ end
 ACTIONS.Wipe = function(player)
 	EnemyService.clearAll()
 	reply(player, "Enemies removed")
+end
+
+-- Most gold or materials one tap can add.
+local MAX_CURRENCY_AT_ONCE = 1000000
+
+ACTIONS.GiveGear = function(player, arg)
+	if type(arg) ~= "table" then
+		return
+	end
+	local itemId, rarity, level = (arg :: any).Item, (arg :: any).Rarity, toWholeNumber((arg :: any).Level)
+	if type(itemId) ~= "string" or type(rarity) ~= "string" or not Gear.Items[itemId] then
+		return
+	end
+	local id = GearService.give(player, itemId, rarity, level)
+	local data = DataService.get(player)
+	local slot = GearMath.slot(itemId)
+	if not (id and data and slot) then
+		reply(player, "Can't give gear (save not loaded?)")
+		return
+	end
+	-- DEV shortcut: equip it straight away (the Gear screen's equip comes with #137/#138).
+	data.Gear.Equipped[slot] = id
+	reply(player, `{rarity} {GearMath.itemName(itemId)} equipped (next run)`)
+end
+
+ACTIONS.GiveGold = function(player, arg)
+	local amount = toWholeNumber(arg)
+	if amount then
+		GearService.addCurrency(player, "Gold", math.clamp(amount, 0, MAX_CURRENCY_AT_ONCE))
+		reply(player, `Gold: {GearService.getCurrency(player, "Gold")}`)
+	end
+end
+
+ACTIONS.GiveMaterials = function(player, arg)
+	local amount = toWholeNumber(arg)
+	if amount then
+		for _, slot: any in Gear.Slots do
+			GearService.addCurrency(player, slot.Material, math.clamp(amount, 0, MAX_CURRENCY_AT_ONCE))
+		end
+		reply(player, `+{amount} of each material`)
+	end
+end
+
+ACTIONS.ResetGear = function(player)
+	GearService.resetGear(player)
+	reply(player, "Gear reset: just the Chef's Knife (next run)")
 end
 
 local function markDev(player: Player)

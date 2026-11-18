@@ -5,7 +5,9 @@
 -- (WeaponService, RunManager, UpgradeService...) require it without circular requires.
 --
 -- How to use a stat: percent stats are fractions, so the final value is base * (1 + bonus).
---   damage = baseDamage * (1 + StatsService.getStat("Damage"))
+-- Damage and max HP also include gear (P2-4), so use the multipliers for those:
+--   damage = baseDamage * StatsService.getDamageMultiplier()
+--   maxHp  = RunRules.ChefMaxHp * StatsService.getMaxHpMultiplier()
 -- Flat stats (Armor) are added as-is:  hit = rawDamage - StatsService.getStat("Armor")
 --
 -- The chef's walk speed is set here too, and only here (#117): base RunRules.ChefWalkSpeed,
@@ -26,6 +28,10 @@ local StatsService = {}
 local ingredientLevels: { [string]: number } = {}
 -- How much slower the chef walks right now (0 = full speed, 0.4 = 40% slower).
 local slow = 0
+-- This run's gear bonuses (GearService sets them when a run starts, P2-4). Gear is its own
+-- multiplier on top of ingredients, so a gear upgrade isn't watered down by Hot Sauce or Bread.
+local gearAttack = 0
+local gearHp = 0
 
 -- Copy owned ingredient levels onto the run's player (nil = not owned).
 local function syncAttributes()
@@ -69,6 +75,23 @@ function StatsService.getStat(stat: Ingredients.Stat): number
 		end
 	end
 	return total
+end
+
+-- Set this run's gear bonuses (0.28 = +28%). GearService calls this when a run starts; reset()
+-- leaves them alone.
+function StatsService.setGearBonuses(attack: number, hp: number)
+	gearAttack = attack
+	gearHp = hp
+end
+
+-- Everything that multiplies the chef's damage: gear Attack, then ingredients (Hot Sauce).
+function StatsService.getDamageMultiplier(): number
+	return (1 + gearAttack) * (1 + StatsService.getStat("Damage"))
+end
+
+-- Everything that multiplies the chef's max HP: gear HP, then ingredients (Bread).
+function StatsService.getMaxHpMultiplier(): number
+	return (1 + gearHp) * (1 + StatsService.getStat("MaxHp"))
 end
 
 -- The chef's walk speed right now, in studs per second.

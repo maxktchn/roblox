@@ -14,6 +14,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local BossService = require(script.Parent.BossService)
 local EliteService = require(script.Parent.EliteService)
 local EnemyService = require(script.Parent.EnemyService)
+local GearService = require(script.Parent.GearService)
 local JuiceService = require(script.Parent.JuiceService)
 local MiniBossService = require(script.Parent.MiniBossService)
 local PickupService = require(script.Parent.PickupService)
@@ -43,6 +44,8 @@ function RestartService.restart()
 	StatsService.reset() -- no ingredients
 	UpgradeService.reset() -- Lv 1, rerolls back, closes any open cards
 	RunManager.reset() -- full HP, 0:00, timeline from the start, RunState "Playing"
+	-- After the run reset: the gear's max HP shows on RunManager's next frame (full HP).
+	GearService.startRun() -- this run's gear, from what's equipped now (P2-4)
 	RunReportService.reset() -- a new report for the new run
 	UnlockService.clearJustUnlocked() -- unlocks stay; only the banner's announcement goes
 

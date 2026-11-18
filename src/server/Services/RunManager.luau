@@ -243,9 +243,9 @@ end
 local hp = RunRules.ChefMaxHp
 local lastMaxHp = RunRules.ChefMaxHp
 
--- Max HP right now: base plus Bread's bonus (PRD §3.3).
+-- Max HP right now: base times gear HP and Bread's bonus (PRD §3.3, §4.1).
 local function getMaxHp(): number
-	return RunRules.ChefMaxHp * (1 + StatsService.getStat("MaxHp"))
+	return RunRules.ChefMaxHp * StatsService.getMaxHpMultiplier()
 end
 
 -- If max HP went up (a Bread card), the chef gains that much HP too, like most survivors games.
