@@ -25,7 +25,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local BossPowers = require(ReplicatedStorage.Config.BossPowers)
 local Gadgets = require(ReplicatedStorage.Config.Gadgets)
-local GearController = require(script.Parent.GearController)
 local Ingredients = require(ReplicatedStorage.Config.Ingredients)
 local Recipes = require(ReplicatedStorage.Config.Recipes)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
@@ -85,8 +84,8 @@ local runOverPanel: Frame
 local runOverTitle: TextLabel
 local runOverStats: TextLabel
 local runOverUnlock: TextLabel
-local playAgainButton: TextButton
-local gearButton: TextButton
+local continueButton: TextButton
+local orderUpOpen = false -- the "Order Up!" cards are on screen
 
 -- Helper: a text label in the game font.
 local function makeLabel(parent: Instance, name: string, size: number): TextLabel
@@ -281,33 +280,19 @@ local function buildScreen()
 	runOverUnlock.TextColor3 = COLORS.tips
 	runOverUnlock.Visible = false
 
-	-- "Play again" (#50): the server starts a fresh run (RestartService).
-	playAgainButton = Instance.new("TextButton")
-	playAgainButton.Name = "PlayAgain"
-	playAgainButton.AnchorPoint = Vector2.new(1, 0)
-	playAgainButton.Position = UDim2.new(0.5, -6, 0, 172)
-	playAgainButton.Size = UDim2.fromOffset(180, 56) -- big enough for a thumb (PRD §7.4); same width as Gear, so the pair is centred
-	playAgainButton.BackgroundColor3 = COLORS.tips
-	playAgainButton.Font = Enum.Font.FredokaOne
-	playAgainButton.TextSize = 26
-	playAgainButton.TextColor3 = COLORS.ink
-	playAgainButton.Text = "Play again"
-	corner(playAgainButton, UDim.new(0, 12))
-	playAgainButton.Parent = runOverPanel
-
-	-- "Gear" (P2-4 #138): the Gear screen, until the lobby (#109) has its own button.
-	gearButton = Instance.new("TextButton")
-	gearButton.Name = "Gear"
-	gearButton.AnchorPoint = Vector2.new(0, 0)
-	gearButton.Position = UDim2.new(0.5, 6, 0, 172)
-	gearButton.Size = UDim2.fromOffset(180, 56)
-	gearButton.BackgroundColor3 = COLORS.paper
-	gearButton.Font = Enum.Font.FredokaOne
-	gearButton.TextSize = 26
-	gearButton.TextColor3 = COLORS.ink
-	gearButton.Text = "Gear"
-	corner(gearButton, UDim.new(0, 12))
-	gearButton.Parent = runOverPanel
+	-- "Continue" (P2-8 #143): back to the lobby (RestartService). Play is in the lobby now.
+	continueButton = Instance.new("TextButton")
+	continueButton.Name = "Continue"
+	continueButton.AnchorPoint = Vector2.new(0.5, 0)
+	continueButton.Position = UDim2.new(0.5, 0, 0, 172)
+	continueButton.Size = UDim2.fromOffset(220, 56) -- big enough for a thumb (PRD §7.4)
+	continueButton.BackgroundColor3 = COLORS.tips
+	continueButton.Font = Enum.Font.FredokaOne
+	continueButton.TextSize = 26
+	continueButton.TextColor3 = COLORS.ink
+	continueButton.Text = "Continue"
+	corner(continueButton, UDim.new(0, 12))
+	continueButton.Parent = runOverPanel
 end
 
 -- The run-over banner, with how far the player got.
@@ -315,9 +300,13 @@ local function updateRunState()
 	local state = player:GetAttribute("RunState")
 	local over = state == "Lost" or state == "Won"
 	runOverPanel.Visible = over
+	-- The HUD and the chef's HP bar are for runs: hidden in the lobby (P2-8 #143) and while the
+	-- "Order Up!" cards are open (nothing on it changes during a pick).
+	gui.Enabled = state ~= "Lobby" and not orderUpOpen
+	hpBillboard.Enabled = state ~= "Lobby"
 	-- Ready for the next tap whenever the banner (re)appears.
-	playAgainButton.Text = "Play again"
-	playAgainButton.Active = true
+	continueButton.Text = "Continue"
+	continueButton.Active = true
 	if over then
 		if state == "Won" then
 			runOverTitle.Text = "SHIFT SURVIVED!"
@@ -483,15 +472,14 @@ function HUDController:init()
 end
 
 function HUDController:start()
-	local requestRestart = Remotes.get("RequestRestart")
-	gearButton.Activated:Connect(GearController.open)
-	playAgainButton.Activated:Connect(function()
-		if not playAgainButton.Active then
-			return -- already asked: wait for the new run
+	local requestLobby = Remotes.get("RequestLobby")
+	continueButton.Activated:Connect(function()
+		if not continueButton.Active then
+			return -- already asked: wait for the lobby
 		end
-		playAgainButton.Active = false
-		playAgainButton.Text = "Starting..."
-		requestRestart:FireServer()
+		continueButton.Active = false
+		continueButton.Text = "..."
+		requestLobby:FireServer()
 	end)
 
 	local playerGui = player:WaitForChild("PlayerGui")
@@ -523,7 +511,8 @@ function HUDController:start()
 	task.spawn(function()
 		local orderUp = playerGui:WaitForChild("OrderUp") :: ScreenGui
 		local function sync()
-			gui.Enabled = not orderUp.Enabled
+			orderUpOpen = orderUp.Enabled
+			updateRunState()
 		end
 		sync()
 		orderUp:GetPropertyChangedSignal("Enabled"):Connect(sync)
