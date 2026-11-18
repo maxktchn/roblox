@@ -286,7 +286,7 @@ local function buildScreen()
 	playAgainButton.Name = "PlayAgain"
 	playAgainButton.AnchorPoint = Vector2.new(1, 0)
 	playAgainButton.Position = UDim2.new(0.5, -6, 0, 172)
-	playAgainButton.Size = UDim2.fromOffset(200, 56) -- big enough for a thumb (PRD §7.4)
+	playAgainButton.Size = UDim2.fromOffset(180, 56) -- big enough for a thumb (PRD §7.4); same width as Gear, so the pair is centred
 	playAgainButton.BackgroundColor3 = COLORS.tips
 	playAgainButton.Font = Enum.Font.FredokaOne
 	playAgainButton.TextSize = 26
@@ -300,7 +300,7 @@ local function buildScreen()
 	gearButton.Name = "Gear"
 	gearButton.AnchorPoint = Vector2.new(0, 0)
 	gearButton.Position = UDim2.new(0.5, 6, 0, 172)
-	gearButton.Size = UDim2.fromOffset(160, 56)
+	gearButton.Size = UDim2.fromOffset(180, 56)
 	gearButton.BackgroundColor3 = COLORS.paper
 	gearButton.Font = Enum.Font.FredokaOne
 	gearButton.TextSize = 26
