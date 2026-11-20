@@ -53,6 +53,19 @@ local function watchEnemyPart(part: Instance)
 	end)
 end
 
+-- The lobby's camera (P2-8 #144): nil = the run camera above; "Home" = the same overhead view
+-- (LobbyController blurs it); "Gear" = in front of the chef, who sits on the left of the screen
+-- so the Gear panel fits on the right.
+export type LobbyView = "Home" | "Gear"
+local lobbyView: LobbyView? = nil
+local GEAR_VIEW_DISTANCE = 9 -- studs in front of the chef
+local GEAR_VIEW_HEIGHT = 2.5 -- studs above the chef's middle
+local GEAR_VIEW_SIDESTEP = 4 -- studs the camera moves right, which puts the chef left of centre
+
+function CameraController.setLobbyView(view: LobbyView?)
+	lobbyView = view
+end
+
 local function update(deltaTime: number)
 	local camera = workspace.CurrentCamera
 	local character = player.Character
@@ -66,6 +79,11 @@ local function update(deltaTime: number)
 	camera.FieldOfView = RunRules.CameraFieldOfView
 
 	local target = root.Position
+	if lobbyView == "Gear" then
+		local eye = target + root.CFrame.LookVector * GEAR_VIEW_DISTANCE + Vector3.new(0, GEAR_VIEW_HEIGHT, 0)
+		camera.CFrame = CFrame.lookAt(eye, target) * CFrame.new(GEAR_VIEW_SIDESTEP, 0, 0)
+		return
+	end
 	-- The shake moves the camera without turning it (applied in the camera's own space).
 	camera.CFrame = CFrame.lookAt(target + OFFSET, target) * CFrame.new(shakeOffset(deltaTime))
 end

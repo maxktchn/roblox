@@ -22,6 +22,8 @@
 --
 -- Player attributes:
 --   "SaveStatus"  set here: "Loading", then "On" (saving) or "Off" (playing without saving)
+--   "LifetimeRuns", "LifetimeWins", "BestWinSeconds"  set here from the save's Lifetime stats, on
+--                 load and after every finished run (the lobby's Home screen shows them, P2-8)
 --   read here:    "RunState" and "RunSeconds" (RunManager), "Kills" (WeaponService)
 
 local Players = game:GetService("Players")
@@ -60,6 +62,7 @@ export type Data = {
 	-- Chapters and starters (#151, UnlockService). Cleared: chapters won at least once.
 	-- Starters: starters already given by their UnlockRule (never given twice).
 	Unlocks: { Cleared: { [string]: boolean }?, Starters: { [string]: boolean }? },
+	Cookbook: { [string]: boolean }, -- [recipeId] = true once made in a finished run (P2-8 #145)
 }
 
 local TEMPLATE: Data = {
@@ -70,6 +73,7 @@ local TEMPLATE: Data = {
 	Gear = { NextId = 1, Items = {}, Equipped = {} }, -- GearService gives the free knife on load
 	Talents = {},
 	Unlocks = {},
+	Cookbook = {},
 }
 
 type Session = {
@@ -79,6 +83,7 @@ type Session = {
 
 local sessions: { [Player]: Session } = {}
 local loadedCallbacks: { (Player, Data) -> () } = {}
+local runEndedCallbacks: { (Player, Data, string) -> () } = {}
 -- Counts loads per player, so an older load that finishes late (after a reload or a leave)
 -- knows it's out of date and lets go of its profile.
 local loadNumber: { [Player]: number } = {}
@@ -103,7 +108,15 @@ local function setStatus(player: Player, status: string)
 	player:SetAttribute("SaveStatus", status)
 end
 
+-- Copy the lifetime stats onto the player for the lobby's Home screen.
+local function syncLifetime(player: Player, data: Data)
+	player:SetAttribute("LifetimeRuns", data.Lifetime.RunsPlayed)
+	player:SetAttribute("LifetimeWins", data.Lifetime.RunsWon)
+	player:SetAttribute("BestWinSeconds", data.Lifetime.BestWinSeconds)
+end
+
 local function announceLoaded(player: Player, data: Data)
+	syncLifetime(player, data)
 	for _, callback in loadedCallbacks do
 		callback(player, data)
 	end
@@ -195,6 +208,11 @@ local function onRunEnded(player: Player, result: string)
 			lifetime.BestWinSeconds = seconds
 		end
 	end
+	syncLifetime(player, data)
+	-- Others add what the run earned (the Cookbook now, run rewards later) before the save.
+	for _, callback in runEndedCallbacks do
+		callback(player, data, result)
+	end
 	DataService.saveNow(player)
 end
 
@@ -216,6 +234,13 @@ function DataService.onLoaded(callback: (Player, Data) -> ())
 	for player, session in sessions do
 		callback(player, session.data)
 	end
+end
+
+-- Called when a run ends (Won or Lost), after the lifetime stats and just before the save, with
+-- the player's save table and the result. Add what the run earned to your own section here.
+-- Runs that end before the save has loaded don't call it.
+function DataService.onRunEnded(callback: (Player, Data, string) -> ())
+	table.insert(runEndedCallbacks, callback)
 end
 
 -- The player's save table, or nil until it's loaded. Change only your own section.
