@@ -19,8 +19,15 @@ local CookbookService = {}
 -- Recipes taken in the current run, not saved yet.
 local foundThisRun: { [string]: boolean } = {}
 
--- Copy the saved Cookbook onto the player as attributes.
+-- Copy the saved Cookbook onto the player as attributes. Markers for recipes no longer in the
+-- save are removed first (a DEV save reset or reload can bring a smaller Cookbook).
 local function syncAttributes(player: Player, data: DataService.Data)
+	for name in player:GetAttributes() do
+		local recipeId = string.match(name, "^Found_(.+)$")
+		if recipeId and not data.Cookbook[recipeId] then
+			player:SetAttribute(name, nil)
+		end
+	end
 	for recipeId in data.Cookbook do
 		player:SetAttribute(`Found_{recipeId}`, true)
 	end
