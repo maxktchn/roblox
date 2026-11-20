@@ -41,6 +41,8 @@ local WeaponService = {}
 
 -- Weapon id -> current level (1 to 5). The run starts with the starter at Lv 1.
 local levels: { [string]: number } = {}
+-- This run's starter: the equipped Utensil (setStarter, #150), RunRules.Starter until it's known.
+local runStarter = RunRules.Starter
 -- Weapon id -> seconds until it can attack again.
 local cooldowns: { [string]: number } = {}
 
@@ -80,6 +82,17 @@ local THROWN_KNIFE_RANGE = 30
 export type GearBurn = { Chance: number, BurnDps: number, BurnSeconds: number, Spreads: boolean }
 local gearBurn: GearBurn? = nil
 local GEAR_BURN_ID = "OvenMitts" -- the burn's source in the run report
+-- Epic/Legendary Frying Pan and Rolling Pin (#149): what every hit by that starter (or its
+-- recipe) does on top of its damage. Keyed by starter id; nil = off.
+export type StarterHitEffect = {
+	StunSeconds: number?, -- Frying Pan: freezes the enemy hit with the "Stun" look
+	Spreads: boolean?, -- Frying Pan Legendary: the stun also hits enemies within STUN_SPREAD_RADIUS
+	Slow: number?, -- Rolling Pin: slows the enemy hit
+	SlowSeconds: number?,
+	DamageTakenBonus: number?, -- Rolling Pin Legendary: extra damage taken while slowed
+}
+local starterHitEffects: { [string]: StarterHitEffect? } = {}
+local STUN_SPREAD_RADIUS = 4 -- studs from the enemy hit (to the other enemy's centre)
 local FIRE_SPREAD_RADIUS = 6 -- studs: a burning enemy that dies lights the nearest one this close
 
 local kills = 0 -- enemies defeated this run (shown on the HUD)
@@ -218,10 +231,43 @@ local function ignite(enemyId: number, dps: number, seconds: number, weaponId: s
 	end
 end
 
+-- The starter a weapon belongs to: itself if it's a starter, its starter if it's a starter's
+-- recipe, otherwise nil.
+local function starterLineOf(weaponId: string): string?
+	if Starters[weaponId] then
+		return weaponId
+	end
+	local recipe = Recipes[weaponId]
+	return if recipe and Starters[recipe.Weapon] then recipe.Weapon else nil
+end
+
+-- A Frying Pan or Rolling Pin gear effect on one enemy just hit (`position` is where it was).
+local function applyStarterHitEffect(enemyId: number, position: Vector3, effect: StarterHitEffect)
+	if effect.StunSeconds then
+		EnemyService.freeze(enemyId, effect.StunSeconds, nil, "Stun")
+		if effect.Spreads then
+			for _, otherId in EnemyService.getEnemiesInRadius(position, STUN_SPREAD_RADIUS) do
+				if otherId ~= enemyId then
+					EnemyService.freeze(otherId, effect.StunSeconds, nil, "Stun")
+				end
+			end
+		end
+	end
+	if effect.Slow and effect.SlowSeconds then
+		EnemyService.slow(enemyId, effect.Slow, effect.SlowSeconds, effect.DamageTakenBonus)
+	end
+end
+
 -- Hit one enemy with a weapon: damage now, plus a burn if the weapon has one (or the Oven
 -- Mitts' gear effect rolls it). damageScale (PierceFalloff) scales the hit, not the burn.
 local function hit(enemyId: number, stats: WeaponLevel, weaponId: string, damageScale: number?)
+	local line = starterLineOf(weaponId)
+	local effect = line and starterHitEffects[line]
+	local position = if effect then EnemyService.getEnemyPosition(enemyId) else nil
 	dealRolledDamage(enemyId, stats.Damage * (damageScale or 1), stats.CritBonus, weaponId)
+	if effect and position then
+		applyStarterHitEffect(enemyId, position, effect)
+	end
 	if stats.BurnDps and stats.BurnSeconds then
 		ignite(enemyId, stats.BurnDps, stats.BurnSeconds, weaponId)
 	end
@@ -273,114 +319,6 @@ local function getEnemiesInReach(origin: Vector3, reach: number): { number }
 		end
 	end
 	return found
-end
-
--- How far past its Range an AimAtNearest weapon looks for a target, so it turns toward an
--- enemy that is about to step into reach instead of spraying at nothing.
-local NEAREST_SEARCH_EXTRA = 4
-
--- Which way a weapon attacks:
---   * Aimed weapons (the starter): the player's aim, once they've aimed.
---   * AimAtNearest weapons (Pepper Shaker): the nearest enemy, if one is close.
---   * Otherwise the way the chef faces, flattened so looking up or down doesn't matter.
-local function getAttackDirection(weaponId: string, root: BasePart, range: number): Vector3
-	local config: any = Starters[weaponId] or Gadgets[weaponId] or Recipes[weaponId]
-	if config and config.Aimed and aim then
-		return aim
-	end
-	if config and config.AimAtNearest then
-		local nearestDirection: Vector3? = nil
-		local nearestDistance = math.huge
-		for _, enemyId in getEnemiesInReach(root.Position, range + NEAREST_SEARCH_EXTRA) do
-			local position = EnemyService.getEnemyPosition(enemyId)
-			if position then
-				local offset = Vector3.new(position.X - root.Position.X, 0, position.Z - root.Position.Z)
-				local distance = offset.Magnitude
-				if distance > 0.01 and distance < nearestDistance then
-					nearestDistance = distance
-					nearestDirection = offset.Unit
-				end
-			end
-		end
-		if nearestDirection then
-			return nearestDirection
-		end
-	end
-	local look = root.CFrame.LookVector
-	return Vector3.new(look.X, 0, look.Z).Unit
-end
-
--- ARC: hit every enemy inside a slice of circle in front of the chef.
--- An Arc swing that is still sweeping (RunRules.SlashSeconds). Enemies that step into the arc
--- while the blade is drawn are hit too, once each, so what looks slashed is slashed.
-type Swing = {
-	weaponId: string,
-	stats: WeaponLevel,
-	facing: Vector3, -- fixed when the swing starts; the arc moves with the chef like the drawing
-	timeLeft: number,
-	alreadyHit: { [number]: boolean },
-}
-local swings: { Swing } = {}
-
--- Hit every enemy whose body is inside this swing's arc around `origin` that it hasn't hit yet.
-local function checkSwing(swing: Swing, origin: Vector3)
-	local stats = swing.stats
-	local halfArc = math.rad((stats.ArcDegrees or 90) / 2)
-	for _, enemyId in getEnemiesInReach(origin, stats.Range) do
-		local position = EnemyService.getEnemyPosition(enemyId)
-		if position and not swing.alreadyHit[enemyId] then
-			local offset = Vector3.new(position.X - origin.X, 0, position.Z - origin.Z)
-			local distance = offset.Magnitude
-			-- Inside the swing if ANY part of its body is: the angle to its centre may be past the
-			-- edge of the arc by as much as its half width covers at that distance. (Checking only
-			-- the centre missed enemies the drawn blade visibly passed over.)
-			-- An enemy overlapping the chef counts as hit whatever its direction.
-			local overlapping = distance <= enemyHalfDepth(enemyId)
-			local angle = math.acos(math.clamp(swing.facing:Dot(offset / math.max(distance, 0.01)), -1, 1))
-			local bodyAngle = math.asin(math.min(enemyHalfWidth(enemyId) / math.max(distance, 0.01), 1))
-			if overlapping or angle <= halfArc + bodyAngle then
-				swing.alreadyHit[enemyId] = true
-				hit(enemyId, stats, swing.weaponId)
-			end
-		end
-	end
-end
-
-local function attackArc(weaponId: string, stats: WeaponLevel, root: BasePart)
-	-- The aim (starter), the nearest enemy (Pepper Shaker), or the way the chef faces.
-	local facing = getAttackDirection(weaponId, root, stats.Range)
-	local swing: Swing = {
-		weaponId = weaponId,
-		stats = stats,
-		facing = facing,
-		timeLeft = RunRules.SlashSeconds,
-		alreadyHit = {},
-	}
-	checkSwing(swing, root.Position) -- everything already in the arc is hit straight away
-	table.insert(swings, swing)
-	sendFx(weaponId, facing, stats.Range, stats.ArcDegrees or 90)
-end
-
--- Every frame: keep live swings hitting enemies that walk into them, until the sweep ends.
-local function updateSwings(deltaTime: number, root: BasePart)
-	-- Walk backwards so removing a finished swing doesn't skip the next one.
-	for i = #swings, 1, -1 do
-		local swing = swings[i]
-		swing.timeLeft -= deltaTime
-		if swing.timeLeft <= 0 then
-			table.remove(swings, i)
-		else
-			checkSwing(swing, root.Position)
-		end
-	end
-end
-
--- AURA: hit every enemy in a circle around the chef.
-local function attackAura(weaponId: string, stats: WeaponLevel, root: BasePart)
-	for _, enemyId in getEnemiesInReach(root.Position, stats.Range) do
-		hit(enemyId, stats, weaponId)
-	end
-	sendFx(weaponId, stats.Range)
 end
 
 -- SPLATS: flat puddles on the floor that slow enemies standing on them and may hurt them
@@ -493,6 +431,129 @@ local function updateSplats(deltaTime: number)
 	end
 end
 
+-- How far past its Range an AimAtNearest weapon looks for a target, so it turns toward an
+-- enemy that is about to step into reach instead of spraying at nothing.
+local NEAREST_SEARCH_EXTRA = 4
+
+-- Which way a weapon attacks:
+--   * Aimed weapons (the starter): the player's aim, once they've aimed.
+--   * AimAtNearest weapons (Pepper Shaker): the nearest enemy, if one is close.
+--   * Otherwise the way the chef faces, flattened so looking up or down doesn't matter.
+local function getAttackDirection(weaponId: string, root: BasePart, range: number): Vector3
+	local config: any = Starters[weaponId] or Gadgets[weaponId] or Recipes[weaponId]
+	if config and config.Aimed and aim then
+		return aim
+	end
+	if config and config.AimAtNearest then
+		local nearestDirection: Vector3? = nil
+		local nearestDistance = math.huge
+		for _, enemyId in getEnemiesInReach(root.Position, range + NEAREST_SEARCH_EXTRA) do
+			local position = EnemyService.getEnemyPosition(enemyId)
+			if position then
+				local offset = Vector3.new(position.X - root.Position.X, 0, position.Z - root.Position.Z)
+				local distance = offset.Magnitude
+				if distance > 0.01 and distance < nearestDistance then
+					nearestDistance = distance
+					nearestDirection = offset.Unit
+				end
+			end
+		end
+		if nearestDirection then
+			return nearestDirection
+		end
+	end
+	local look = root.CFrame.LookVector
+	return Vector3.new(look.X, 0, look.Z).Unit
+end
+
+-- ARC: hit every enemy inside a slice of circle in front of the chef.
+-- An Arc swing that is still sweeping (RunRules.SlashSeconds). Enemies that step into the arc
+-- while the blade is drawn are hit too, once each, so what looks slashed is slashed.
+type Swing = {
+	weaponId: string,
+	stats: WeaponLevel,
+	facing: Vector3, -- fixed when the swing starts; the arc moves with the chef like the drawing
+	timeLeft: number,
+	alreadyHit: { [number]: boolean },
+}
+local swings: { Swing } = {}
+local FIRE_ARC_REACH = 0.7 -- Flambé Pan: its fire lands this much of the way out along the swing
+
+-- Hit every enemy whose body is inside this swing's arc around `origin` that it hasn't hit yet.
+local function checkSwing(swing: Swing, origin: Vector3)
+	local stats = swing.stats
+	local halfArc = math.rad((stats.ArcDegrees or 90) / 2)
+	for _, enemyId in getEnemiesInReach(origin, stats.Range) do
+		local position = EnemyService.getEnemyPosition(enemyId)
+		if position and not swing.alreadyHit[enemyId] then
+			local offset = Vector3.new(position.X - origin.X, 0, position.Z - origin.Z)
+			local distance = offset.Magnitude
+			-- Inside the swing if ANY part of its body is: the angle to its centre may be past the
+			-- edge of the arc by as much as its half width covers at that distance. (Checking only
+			-- the centre missed enemies the drawn blade visibly passed over.)
+			-- An enemy overlapping the chef counts as hit whatever its direction.
+			local overlapping = distance <= enemyHalfDepth(enemyId)
+			local angle = math.acos(math.clamp(swing.facing:Dot(offset / math.max(distance, 0.01)), -1, 1))
+			local bodyAngle = math.asin(math.min(enemyHalfWidth(enemyId) / math.max(distance, 0.01), 1))
+			if overlapping or angle <= halfArc + bodyAngle then
+				swing.alreadyHit[enemyId] = true
+				hit(enemyId, stats, swing.weaponId)
+				if stats.Knockback then
+					EnemyService.push(enemyId, origin, stats.Knockback) -- Frying Pan (#148)
+				end
+			end
+		end
+	end
+end
+
+local function attackArc(weaponId: string, stats: WeaponLevel, root: BasePart)
+	-- The aim (starter), the nearest enemy (Pepper Shaker), or the way the chef faces.
+	local facing = getAttackDirection(weaponId, root, stats.Range)
+	local swing: Swing = {
+		weaponId = weaponId,
+		stats = stats,
+		facing = facing,
+		timeLeft = RunRules.SlashSeconds,
+		alreadyHit = {},
+	}
+	checkSwing(swing, root.Position) -- everything already in the arc is hit straight away
+	table.insert(swings, swing)
+	sendFx(weaponId, facing, stats.Range, stats.ArcDegrees or 90)
+	-- Flambé Pan (#148): fire splats along the arc, FIRE_ARC_REACH of the way out.
+	local fire = stats.FireArc
+	if fire then
+		local halfArc = math.rad((stats.ArcDegrees or 90) / 2)
+		for i = 1, fire.Splats do
+			local t = if fire.Splats > 1 then (i - 1) / (fire.Splats - 1) else 0.5
+			local direction = CFrame.fromAxisAngle(Vector3.yAxis, -halfArc + t * 2 * halfArc):VectorToWorldSpace(facing)
+			local position = root.Position + direction * stats.Range * FIRE_ARC_REACH
+			dropSplat(weaponId, position, fire.Width, fire.Seconds, 0, fire.Damage, false, RunRules.MaxFireSplats)
+		end
+	end
+end
+
+-- Every frame: keep live swings hitting enemies that walk into them, until the sweep ends.
+local function updateSwings(deltaTime: number, root: BasePart)
+	-- Walk backwards so removing a finished swing doesn't skip the next one.
+	for i = #swings, 1, -1 do
+		local swing = swings[i]
+		swing.timeLeft -= deltaTime
+		if swing.timeLeft <= 0 then
+			table.remove(swings, i)
+		else
+			checkSwing(swing, root.Position)
+		end
+	end
+end
+
+-- AURA: hit every enemy in a circle around the chef.
+local function attackAura(weaponId: string, stats: WeaponLevel, root: BasePart)
+	for _, enemyId in getEnemiesInReach(root.Position, stats.Range) do
+		hit(enemyId, stats, weaponId)
+	end
+	sendFx(weaponId, stats.Range)
+end
+
 -- The enemies within `range` of `origin`, nearest edge first.
 type Target = { id: number, position: Vector3, distance: number }
 local function getNearestTargets(origin: Vector3, range: number): { Target }
@@ -535,6 +596,15 @@ end
 -- `Count` shots fanned out toward the nearest one.
 local function attackProjectile(weaponId: string, stats: WeaponLevel, root: BasePart)
 	local origin = root.Position
+	local config: any = Starters[weaponId] or Recipes[weaponId]
+	if config and config.Aimed then
+		-- Rolling Pin (#147): rolls toward the aim (or the way the chef faces), enemies or not.
+		local direction = getAttackDirection(weaponId, root, stats.Range)
+		for _ = 1, stats.Count or 1 do
+			launchShot(weaponId, stats, origin, direction)
+		end
+		return
+	end
 	local targets = getNearestTargets(origin, stats.Range)
 	local count = stats.Count or 1
 	if stats.Spread then
@@ -558,6 +628,16 @@ local function attackProjectile(weaponId: string, stats: WeaponLevel, root: Base
 	end
 end
 
+-- Rolling Pin (#147): its damage fades with how far it has rolled (see FullDamageRange).
+local function rollScale(stats: WeaponLevel, traveled: number): number
+	local full, min = stats.FullDamageRange, stats.MinDamageScale
+	if not (full and min) or traveled <= full then
+		return 1
+	end
+	local t = math.clamp((traveled - full) / math.max(stats.Range - full, 0.01), 0, 1)
+	return 1 + (min - 1) * t
+end
+
 -- Move every shot. It hits enemies it comes close to (each once), up to its Pierce (1 = the
 -- first one stops it), slowing, freezing or leaving butter as its weapon says; it ends at
 -- max distance.
@@ -570,7 +650,9 @@ local function updateShots(deltaTime: number)
 		shot.position += shot.direction * step
 		shot.traveled += step
 
-		for _, target in getEnemiesInReach(shot.position, RunRules.ProjectileHitRadius) do
+		-- A wide shot (the Rolling Pin's Width) hits across its whole path.
+		local reach = if stats.Width then stats.Width / 2 else RunRules.ProjectileHitRadius
+		for _, target in getEnemiesInReach(shot.position, reach) do
 			if shot.hitsLeft <= 0 then
 				break
 			end
@@ -578,13 +660,17 @@ local function updateShots(deltaTime: number)
 				shot.alreadyHit[target] = true
 				shot.hitsLeft -= 1
 				local position = EnemyService.getEnemyPosition(target)
-				hit(target, stats, shot.weaponId, shot.damageScale)
+				hit(target, stats, shot.weaponId, shot.damageScale * rollScale(stats, shot.traveled))
 				shot.damageScale *= 1 - (stats.PierceFalloff or 0)
 				if stats.Slow then
 					EnemyService.slow(target, stats.Slow, stats.SlowSeconds or 1.5)
 				end
 				if stats.Freeze then
 					EnemyService.freeze(target, stats.Freeze, stats.FrozenBonus)
+				end
+				local flatten = stats.Flatten
+				if flatten then
+					EnemyService.freeze(target, flatten.Seconds, flatten.DamageBonus, "Flat") -- Steamroller
 				end
 				local slick = stats.Slick
 				if slick and position then
@@ -930,11 +1016,11 @@ local ATTACKS: { [string]: (string, WeaponLevel, BasePart) -> () } = {
 
 -- The starter, or the recipe it evolved into (the knife's gear effect carries over).
 local function isStarterLine(weaponId: string): boolean
-	if weaponId == RunRules.Starter then
+	if weaponId == runStarter then
 		return true
 	end
 	local recipe = Recipes[weaponId]
-	return recipe ~= nil and recipe.Weapon == RunRules.Starter
+	return recipe ~= nil and recipe.Weapon == runStarter
 end
 
 -- Epic/Legendary Chef's Knife: throw a knife straight ahead (the aim, or the way the chef
@@ -1055,6 +1141,12 @@ function WeaponService.setExtraKnifeEvery(every: number?)
 	extraKnifeEvery = every
 end
 
+-- Epic/Legendary Frying Pan or Rolling Pin (GearEffectsService, #149): what hits by that starter
+-- and its recipe also do. nil turns it off.
+function WeaponService.setStarterHitEffect(starterId: string, effect: StarterHitEffect?)
+	starterHitEffects[starterId] = effect
+end
+
 -- Epic/Legendary Oven Mitts (GearEffectsService): hits may burn. nil turns it off.
 function WeaponService.setGearBurn(burn: GearBurn?)
 	gearBurn = burn
@@ -1098,9 +1190,11 @@ function WeaponService.reset()
 	table.clear(pendingHits)
 	table.clear(damageByWeapon)
 	extraKnifeEvery, gearBurn = nil, nil -- GearEffectsService turns them on again for the new run
+	table.clear(starterHitEffects)
 	starterAttacks, extraKnives = 0, 0
 	aim = nil -- a new run: the knife uses facing until the player aims again
-	levels[RunRules.Starter] = 1
+	runStarter = RunRules.Starter -- GearService fixes the run gear next, which sets the real starter
+	levels[runStarter] = 1
 	kills = 0
 	local player = getRunPlayer()
 	if player then
@@ -1132,7 +1226,27 @@ function WeaponService:init()
 		floorY = center.Y
 	end
 	table.clear(levels)
-	levels[RunRules.Starter] = 1
+	levels[runStarter] = 1
+end
+
+-- This run's starter weapon id.
+function WeaponService.getStarter(): string
+	return runStarter
+end
+
+-- Make `starterId` (the equipped Utensil, #150) this run's starter, in place of the current one.
+-- Only while the current starter is still untouched (Lv 1, not evolved), i.e. as the run starts
+-- or when the save arrives in its first moments. Unknown or unplayable starters are ignored.
+function WeaponService.setStarter(starterId: string)
+	local starter = Starters[starterId]
+	if starterId == runStarter or not (starter and starter.Levels) or levels[runStarter] ~= 1 then
+		return
+	end
+	levels[runStarter] = nil
+	cooldowns[runStarter] = nil
+	runStarter = starterId
+	levels[starterId] = 1
+	syncAttributes()
 end
 
 function WeaponService:start()

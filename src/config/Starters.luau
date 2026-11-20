@@ -8,11 +8,22 @@ local WeaponTypes = require(ReplicatedStorage.Shared.WeaponTypes)
 
 export type Unlock = "Free" | "Achievement" | "Chest"
 
+-- How an "Achievement" starter is earned (#151). UnlockService checks it when a run ends and
+-- gives a Common Lv 1 copy the first time it's met.
+--   ClearChapter: win a run of Chapter (a Chapters.luau id)
+--   Kills:        Count enemies defeated in all finished runs together (Lifetime.Kills)
+export type UnlockRule = {
+	Kind: "ClearChapter" | "Kills",
+	Chapter: string?,
+	Count: number?,
+	Text: string, -- for players: what to do
+}
+
 export type Starter = {
 	Name: string,
 	Attack: string, -- description for players
 	Unlock: Unlock,
-	Achievement: string?,
+	UnlockRule: UnlockRule?, -- "Achievement" starters only
 	Mvp: boolean,
 	-- Only starters playable so far have these:
 	Shape: WeaponTypes.Shape?,
@@ -21,6 +32,7 @@ export type Starter = {
 	-- Aimed: swings toward where the player aims (mouse / aim stick) instead of the way the
 	-- chef faces (PRD §2.2). Only starters and their recipes; checked by ConfigCheck.
 	Aimed: boolean?,
+	ShotSize: Vector3?, -- Projectile only: the flying part (the Rolling Pin's pin; X is set from Width)
 }
 
 local Starters: { [string]: Starter } = {
@@ -40,24 +52,101 @@ local Starters: { [string]: Starter } = {
 			{ Damage = 20, Cooldown = 0.55, Range = 12, ArcDegrees = 120 },
 		},
 	},
+	-- P2-6b (#148): a half-circle swing that knocks enemies back (elites half as far, bosses not
+	-- at all). A little less damage than the knife; it buys space instead.
 	FryingPan = {
 		Name = "Frying Pan",
-		Attack = "Wide swing with heavy knockback",
+		Attack = "Wide swing toward where you aim, knocking enemies back",
+		Aimed = true,
 		Unlock = "Chest",
 		Mvp = true,
+		Shape = "Arc",
+		FxColor = Color3.fromRGB(70, 70, 80),
+		Levels = {
+			{ Damage = 12, Cooldown = 1.1, Range = 9, ArcDegrees = 180, Knockback = 3 },
+			{ Damage = 15, Cooldown = 1.1, Range = 9, ArcDegrees = 180, Knockback = 3 },
+			{ Damage = 15, Cooldown = 0.95, Range = 9.5, ArcDegrees = 190, Knockback = 3.5 },
+			{ Damage = 18, Cooldown = 0.95, Range = 10, ArcDegrees = 190, Knockback = 3.5 },
+			{ Damage = 20, Cooldown = 0.85, Range = 10, ArcDegrees = 200, Knockback = 4 },
+		},
 	},
+	-- P2-6a (#147): a pin rolls toward where you aim and hits every enemy in its path once.
+	-- Range is how far it rolls; Width how wide its path is. Full damage for FullDamageRange
+	-- studs, then it fades to MinDamageScale by the end of the roll, so the crowd you aim at
+	-- takes the hit and stragglers far behind only get grazed.
 	RollingPin = {
 		Name = "Rolling Pin",
-		Attack = "Rolls forward, hits everything in its path",
+		Attack = "Rolls toward where you aim, hitting everything in its path",
+		Aimed = true,
 		Unlock = "Achievement",
-		Achievement = "Clear Chapter 1",
+		UnlockRule = { Kind = "ClearChapter", Chapter = "DinerKitchen", Text = "Clear Chapter 1" },
 		Mvp = true,
+		Shape = "Projectile",
+		FxColor = Color3.fromRGB(205, 160, 110),
+		ShotSize = Vector3.new(4, 1, 1),
+		Levels = {
+			{
+				Damage = 14,
+				Cooldown = 1.4,
+				Range = 20,
+				Count = 1,
+				Speed = 32,
+				Pierce = 99,
+				Width = 4,
+				FullDamageRange = 8,
+				MinDamageScale = 0.4,
+			},
+			{
+				Damage = 17,
+				Cooldown = 1.4,
+				Range = 20,
+				Count = 1,
+				Speed = 32,
+				Pierce = 99,
+				Width = 4,
+				FullDamageRange = 8,
+				MinDamageScale = 0.4,
+			},
+			{
+				Damage = 17,
+				Cooldown = 1.2,
+				Range = 22,
+				Count = 1,
+				Speed = 32,
+				Pierce = 99,
+				Width = 4.5,
+				FullDamageRange = 9,
+				MinDamageScale = 0.4,
+			},
+			{
+				Damage = 20,
+				Cooldown = 1.2,
+				Range = 24,
+				Count = 1,
+				Speed = 32,
+				Pierce = 99,
+				Width = 4.5,
+				FullDamageRange = 9,
+				MinDamageScale = 0.4,
+			},
+			{
+				Damage = 24,
+				Cooldown = 1.0,
+				Range = 26,
+				Count = 1,
+				Speed = 32,
+				Pierce = 99,
+				Width = 5,
+				FullDamageRange = 10,
+				MinDamageScale = 0.4,
+			},
+		},
 	},
 	MeatCleaver = {
 		Name = "Meat Cleaver",
 		Attack = "Thrown, comes back like a boomerang",
 		Unlock = "Achievement",
-		Achievement = "Defeat 5,000 enemies total",
+		UnlockRule = { Kind = "Kills", Count = 5000, Text = "Defeat 5,000 enemies total" },
 		Mvp = false,
 	},
 	Whisk = {

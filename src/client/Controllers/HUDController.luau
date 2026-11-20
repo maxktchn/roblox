@@ -10,6 +10,7 @@
 --   "Hp", "MaxHp"                   RunManager, the chef's HP (#9)
 --   "RunState"                      RunManager: "Playing", "Lost" or "Won" (shows the run-over banner)
 --   "JustUnlocked"                  UnlockService: a boss power this run unlocked (line on the banner)
+--   "JustUnlockedStarter"           UnlockService: a starter this run unlocked (same line, #151)
 --   "SaveStatus"                    DataService: "Off" shows the not-saving banner (P2-1, #114)
 --   "ApronReady"                    GearEffectsService: the Apron's block is ready (true), used up
 --                                   (false) or not equipped (nil) (P2-4, #139)
@@ -323,9 +324,14 @@ local function updateRunState()
 			runOverTitle.Text = "SHIFT OVER"
 			runOverTitle.TextColor3 = COLORS.hpLow
 		end
-		local unlockedName = player:GetAttribute("JustUnlocked")
-		runOverUnlock.Visible = type(unlockedName) == "string"
-		runOverUnlock.Text = `New power unlocked: {unlockedName}`
+		local power = player:GetAttribute("JustUnlocked")
+		local starter = player:GetAttribute("JustUnlockedStarter")
+		local hasPower, hasStarter = type(power) == "string", type(starter) == "string"
+		runOverUnlock.Visible = hasPower or hasStarter
+		runOverUnlock.Text = if hasPower and hasStarter
+			then `New power: {power} · New starter: {starter}`
+			elseif hasStarter then `New starter unlocked: {starter}`
+			else `New power unlocked: {power}`
 		runOverStats.Text =
 			`Reached Lv {player:GetAttribute("Level") or 1} · Defeated {player:GetAttribute("Kills") or 0}`
 	end
@@ -503,7 +509,7 @@ function HUDController:start()
 			updateIcons()
 		elseif name == "Hp" or name == "MaxHp" then
 			updateHp()
-		elseif name == "RunState" or name == "JustUnlocked" then
+		elseif name == "RunState" or name == "JustUnlocked" or name == "JustUnlockedStarter" then
 			updateRunState()
 		else
 			updateNumbers()

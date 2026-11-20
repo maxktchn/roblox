@@ -385,7 +385,8 @@ local function tile(parent: Instance, id: string, record: GearMath.ItemRecord, o
 	b.TextScaled = false
 	b.TextSize = 14
 	b.TextWrapped = true
-	b.Text = `{GearMath.itemName(record.Item)}\nLv {record.Level}{if isEquipped(id) then "  E" else ""}`
+	local new = if record.New then "NEW " else ""
+	b.Text = `{new}{GearMath.itemName(record.Item)}\nLv {record.Level}{if isEquipped(id) then "  E" else ""}`
 	local stroke = Instance.new("UIStroke")
 	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	stroke.Color = rarityColor(record.Rarity)
@@ -717,6 +718,10 @@ function GearController.open()
 	confirmBox.Visible = false
 	gui.Enabled = true
 	drawMain()
+	-- Opening the screen counts as seeing new items (#151): the Gear button's NEW badge goes.
+	if player:GetAttribute("GearNew") then
+		gearAction:FireServer("SeenNew")
+	end
 end
 
 function GearController.close()

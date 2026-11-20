@@ -20,6 +20,7 @@
 --   "GiveGear", { Item, Rarity, Level }  a new gear item, equipped straight away (used from the next run)
 --   "GiveGold", amount / "GiveMaterials", amount  add gold / add to each of the 5 materials
 --   "ResetGear"        back to a new save's gear: just the Common Chef's Knife, no gold or materials
+--   "ResetUnlocks"     forget cleared chapters and given starters (clear Chapter 1 to get the Rolling Pin again)
 -- Replies go back with DevMessage(text) and show on the panel.
 --
 -- The player gets the attribute "IsDev" = true so the client knows to show the panel,
@@ -239,6 +240,11 @@ ACTIONS.GiveMaterials = function(player, arg)
 		GearService.sendState(player)
 		reply(player, `+{amount} of each material`)
 	end
+end
+
+ACTIONS.ResetUnlocks = function(player)
+	UnlockService.resetUnlocks(player)
+	reply(player, "Unlocks reset: win Chapter 1 to unlock the Rolling Pin again")
 end
 
 ACTIONS.ResetGear = function(player)

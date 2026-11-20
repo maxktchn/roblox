@@ -51,8 +51,16 @@ type EnemyRecord = {
 	slow: number,
 	slowTime: number,
 	frozenBonus: number, -- extra damage taken from weapons while frozen (Deep Freeze)
-	chill: number, -- what its part shows: 0 normal, 1 slowed, 2 frozen
+	slowBonus: number, -- extra damage taken while slowed at all (Legendary Rolling Pin, #149)
+	-- How a freeze looks (#147): "Ice" (Deep Freeze), "Flat" (Steamroller), "Stun" (Frying Pan gear).
+	look: FreezeLook,
+	shown: string, -- what its part shows now: "None", "Slowed", or a FreezeLook
+	-- Knockback still to happen (push): studs per second, and seconds left of the slide.
+	pushVelocity: Vector3,
+	pushTime: number,
 }
+
+export type FreezeLook = "Ice" | "Flat" | "Stun"
 
 -- Where unused parts wait: far below the floor, out of sight.
 local PARK_CFRAME = CFrame.new(0, -200, 0)
@@ -72,6 +80,7 @@ local ELITE_PREFIX = "Elite_"
 -- Slowed and frozen enemies (#128) look icy: their part's material changes (not its colour,
 -- which the client's hit flash uses), and a frozen one also shines.
 local SLOWED_MATERIAL = Enum.Material.Ice
+local FLAT_HEIGHT = 0.4 -- a flattened enemy's part is this much of its height (Steamroller, #147)
 local FROZEN_REFLECTANCE = 0.5
 -- A winding-up charger wobbles side to side this far (studs) and this fast (radians per second).
 local WINDUP_WOBBLE = 0.3
@@ -293,10 +302,14 @@ local function spawnWithConfig(enemyType: string, config: Enemies.Enemy, positio
 		direction = direction,
 		windup = if config.Movement == "Charge" then RunRules.ChargeWindupSeconds else 0,
 		planted = false,
+		pushVelocity = Vector3.zero,
+		pushTime = 0,
 		slow = 0,
 		slowTime = 0,
 		frozenBonus = 0,
-		chill = 0,
+		slowBonus = 0,
+		look = "Ice",
+		shown = "None",
 	}
 	-- A pooled part may still look icy from its last enemy.
 	enemy.part.Material = Enum.Material.SmoothPlastic
@@ -459,13 +472,21 @@ function EnemyService.plant(enemyId: EnemyId)
 	end
 end
 
--- Show whether an enemy is slowed or frozen on its part (only when that changes).
+-- Show whether an enemy is slowed or frozen on its part (only when that changes). Slowed and
+-- "Ice" frozen look icy; "Flat" squashes the part; "Stun" wobbles it (in moveEnemies).
 local function updateChill(enemy: EnemyRecord)
-	local chill = if enemy.slow >= 1 then 2 elseif enemy.slow > 0 then 1 else 0
-	if chill ~= enemy.chill then
-		enemy.chill = chill
-		enemy.part.Material = if chill > 0 then SLOWED_MATERIAL else Enum.Material.SmoothPlastic
-		enemy.part.Reflectance = if chill == 2 then FROZEN_REFLECTANCE else 0
+	local shown = if enemy.slow >= 1 then enemy.look elseif enemy.slow > 0 then "Slowed" else "None"
+	if shown ~= enemy.shown then
+		local wasFlat = enemy.shown == "Flat"
+		enemy.shown = shown
+		local icy = shown == "Slowed" or shown == "Ice"
+		enemy.part.Material = if icy then SLOWED_MATERIAL else Enum.Material.SmoothPlastic
+		enemy.part.Reflectance = if shown == "Ice" then FROZEN_REFLECTANCE else 0
+		if shown == "Flat" then
+			enemy.part.Size = enemy.config.Size * Vector3.new(1, FLAT_HEIGHT, 1)
+		elseif wasFlat then
+			enemy.part.Size = enemy.config.Size
+		end
 	end
 end
 
@@ -473,7 +494,8 @@ end
 -- the strongest one wins, and one of the same strength extends the time. The enemy's
 -- SlowTaken scales it (the mini-boss takes half, so a freeze only slows it 50%; the final boss
 -- takes none). Does nothing if the enemy is dead.
-function EnemyService.slow(enemyId: EnemyId, fraction: number, seconds: number)
+-- `damageBonus` (Legendary Rolling Pin: 0.2) is extra damage it takes while this slow lasts.
+function EnemyService.slow(enemyId: EnemyId, fraction: number, seconds: number, damageBonus: number?)
 	local enemy = alive[enemyId]
 	if not enemy or fraction <= 0 or seconds <= 0 then
 		return
@@ -486,8 +508,11 @@ function EnemyService.slow(enemyId: EnemyId, fraction: number, seconds: number)
 		enemy.slow = taken
 		enemy.slowTime = seconds
 		enemy.frozenBonus = 0
+		enemy.slowBonus = damageBonus or 0
+		enemy.look = "Ice"
 	elseif math.abs(taken - enemy.slow) <= 1e-6 then
 		enemy.slowTime = math.max(enemy.slowTime, seconds)
+		enemy.slowBonus = math.max(enemy.slowBonus, damageBonus or 0)
 	end
 	updateChill(enemy)
 end
@@ -495,11 +520,16 @@ end
 -- Freeze one enemy (#128): it can't move for `seconds` (it still hurts on contact).
 -- `damageBonus` (Deep Freeze: 0.25) is extra damage it takes from weapons while frozen.
 -- Enemies that only take part of a slow are slowed instead, and get no bonus.
-function EnemyService.freeze(enemyId: EnemyId, seconds: number, damageBonus: number?)
+-- `look` is how it shows (default "Ice"): "Flat" for a Steamroller, "Stun" for a Frying Pan stun.
+function EnemyService.freeze(enemyId: EnemyId, seconds: number, damageBonus: number?, look: FreezeLook?)
 	EnemyService.slow(enemyId, 1, seconds)
 	local enemy = alive[enemyId]
-	if enemy and enemy.slow >= 1 and damageBonus then
-		enemy.frozenBonus = math.max(enemy.frozenBonus, damageBonus)
+	if enemy and enemy.slow >= 1 then
+		if damageBonus then
+			enemy.frozenBonus = math.max(enemy.frozenBonus, damageBonus)
+		end
+		enemy.look = look or "Ice"
+		updateChill(enemy)
 	end
 end
 
@@ -509,10 +539,14 @@ function EnemyService.getSlow(enemyId: EnemyId): number
 	return if enemy then enemy.slow else 0
 end
 
--- Extra damage an enemy takes from weapons right now (a Deep Freeze freeze). 0 if none or dead.
+-- Extra damage an enemy takes from weapons right now: a Deep Freeze or Steamroller freeze, or a
+-- Legendary Rolling Pin slow. 0 if none or dead.
 function EnemyService.getDamageTakenBonus(enemyId: EnemyId): number
 	local enemy = alive[enemyId]
-	return if enemy and enemy.slow >= 1 then enemy.frozenBonus else 0
+	if not enemy or enemy.slow <= 0 then
+		return 0
+	end
+	return if enemy.slow >= 1 then math.max(enemy.frozenBonus, enemy.slowBonus) else enemy.slowBonus
 end
 
 function EnemyService.getEnemyPart(enemyId: EnemyId): BasePart?
@@ -550,19 +584,34 @@ function EnemyService.pull(enemyId: EnemyId, toward: Vector3, studs: number)
 	enemy.position = clampToArena(enemy.position + offset / distance * step)
 end
 
--- Push one enemy `studs` directly away from `from` (Microwave Pulse knockback, #66): the mirror
--- of pull. Stays inside the arena. Bosses are too heavy to push: nothing happens. The part
--- follows on the next frame.
+-- Push one enemy `studs` directly away from `from` (Microwave Pulse knockback #66, Frying Pan
+-- #148): it slides there over RunRules.PushSeconds instead of jumping (a new push replaces one
+-- still sliding). Stays inside the arena. Bosses are too heavy to push: nothing happens. Elites
+-- move RunRules.ElitePushScale of the distance.
 function EnemyService.push(enemyId: EnemyId, from: Vector3, studs: number)
 	local enemy = alive[enemyId]
 	if not enemy or Bosses[enemy.enemyType] or studs <= 0 then
 		return
 	end
+	if enemy.config.IsElite then
+		studs *= RunRules.ElitePushScale
+	end
 	local away = Vector3.new(enemy.position.X - from.X, 0, enemy.position.Z - from.Z)
 	if away.Magnitude < 0.01 then
 		away = Vector3.new(math.cos(enemyId), 0, math.sin(enemyId)) -- right on the spot: pick a side
 	end
-	enemy.position = clampToArena(enemy.position + away.Unit * studs)
+	enemy.pushVelocity = away.Unit * studs / RunRules.PushSeconds
+	enemy.pushTime = RunRules.PushSeconds
+end
+
+-- Slide a pushed enemy along for this frame (on top of its own movement).
+local function slidePushed(enemy: EnemyRecord, deltaTime: number)
+	if enemy.pushTime <= 0 then
+		return
+	end
+	local step = math.min(deltaTime, enemy.pushTime)
+	enemy.pushTime -= step
+	enemy.position = clampToArena(enemy.position + enemy.pushVelocity * step)
 end
 
 -- An enemy's shape for distance checks. Enemies turn to face the chef (chasers) or the way they
@@ -815,10 +864,12 @@ local function moveEnemies(deltaTime: number, chefPosition: Vector3)
 			if enemy.slowTime <= 0 then
 				enemy.slow = 0
 				enemy.frozenBonus = 0
+				enemy.slowBonus = 0
 				updateChill(enemy)
 			end
 		end
 		moveEnemy(enemy, deltaTime, chefPosition)
+		slidePushed(enemy, deltaTime)
 	end
 	separateEnemies(deltaTime, chefPosition)
 
@@ -828,9 +879,12 @@ local function moveEnemies(deltaTime: number, chefPosition: Vector3)
 	for _, enemy in alive do
 		table.insert(moveParts, enemy.part)
 		local shown = enemy.position
-		if enemy.windup > 0 then
-			-- A charger about to roll wobbles side to side (only the part; the record stays put).
+		if enemy.windup > 0 or enemy.shown == "Stun" then
+			-- A charger about to roll, or a stunned enemy, wobbles side to side (only the part).
 			shown += Vector3.new(-enemy.direction.Z, 0, enemy.direction.X) * wobble
+		elseif enemy.shown == "Flat" then
+			-- Flattened: the squashed part sits on the floor.
+			shown -= Vector3.new(0, enemy.config.Size.Y * (1 - FLAT_HEIGHT) / 2, 0)
 		end
 		table.insert(moveCFrames, CFrame.lookAt(shown, shown + enemy.direction))
 	end

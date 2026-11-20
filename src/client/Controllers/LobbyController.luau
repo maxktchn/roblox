@@ -12,8 +12,8 @@
 -- "Coming soon" until their topics (#107, #108) fill them.
 --
 -- Reads: "RunState", "Chapter" (RunManager), "LifetimeRuns"/"LifetimeWins"/"BestWinSeconds"
--- (DataService), "Found_<recipeId>" (CookbookService), and the GearState remote (gold and the
--- Utensil item, GearService).
+-- (DataService), "Found_<recipeId>" (CookbookService), "GearNew" (GearService, the GEAR tab's NEW
+-- badge), and the GearState remote (gold and the Utensil item, GearService).
 -- Sends: RequestRestart when Play is tapped (accepted only in the lobby).
 
 local Lighting = game:GetService("Lighting")
@@ -54,6 +54,7 @@ local COLORS = {
 	gold = Color3.fromRGB(240, 185, 40),
 	ink = Color3.fromRGB(45, 35, 30),
 	tab = Color3.fromRGB(70, 62, 56),
+	newBadge = Color3.fromRGB(220, 60, 50), -- the NEW badge (the HUD's low-HP red)
 	hidden = Color3.fromRGB(20, 18, 17), -- an unfound recipe's card
 	recipe = Color3.fromRGB(230, 175, 30), -- a found recipe's border (as on the Order Up! cards)
 }
@@ -163,12 +164,13 @@ end
 -- Cookbook (#145)
 --------------------------------------------------------------------------------
 
--- Recipes a run can reach: playable, made from the starter or a pool gadget plus a pool
--- ingredient. The others (Frying Pan's, the Meat Cleaver's...) don't show until they can be made.
+-- Recipes a run can reach: playable, made from a starter (any Utensil can start a run, #150) or a
+-- pool gadget plus a pool ingredient. The others (the Meat Cleaver's...) don't show until they can
+-- be made.
 local function reachableRecipes(): { string }
 	local ids = {}
 	for id, recipe in Recipes do
-		local weaponInPool = recipe.Weapon == RunRules.Starter
+		local weaponInPool = Starters[recipe.Weapon] ~= nil
 			or table.find(RunRules.UpgradePool.Gadgets, recipe.Weapon) ~= nil
 		local ingredientInPool = table.find(RunRules.UpgradePool.Ingredients, recipe.Ingredient) ~= nil
 		if recipe.Levels and weaponInPool and ingredientInPool then
@@ -348,6 +350,27 @@ local function build()
 		end)
 		b.Parent = bar
 		tabButtons[name] = b
+		if name == "GEAR" then
+			-- NEW badge (#151): an item is new and the Gear screen hasn't been opened since
+			-- (player attribute "GearNew", GearService; opening Gear clears it).
+			local badge = Instance.new("TextLabel")
+			badge.Name = "NewBadge"
+			badge.AnchorPoint = Vector2.new(1, 0)
+			badge.Position = UDim2.new(1, 6, 0, -6)
+			badge.Size = UDim2.fromOffset(44, 20)
+			badge.ZIndex = 2
+			badge.BackgroundColor3 = COLORS.newBadge
+			badge.Font = Enum.Font.FredokaOne
+			badge.TextSize = 14
+			badge.TextColor3 = Color3.new(1, 1, 1)
+			badge.Text = "NEW"
+			badge.Visible = player:GetAttribute("GearNew") == true
+			corner(badge, 8)
+			badge.Parent = b
+			player:GetAttributeChangedSignal("GearNew"):Connect(function()
+				badge.Visible = player:GetAttribute("GearNew") == true
+			end)
+		end
 	end
 	goldLabel = label(gui, "Gold", "Gold: Loading...", 18)
 	goldLabel.AnchorPoint = Vector2.new(1, 0)

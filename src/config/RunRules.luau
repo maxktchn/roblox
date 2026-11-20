@@ -26,7 +26,8 @@ return {
 	-- An enemy hurts the chef when it is within touching distance plus this many studs.
 	ContactReach = 0.75,
 
-	-- Phase 1 has no lobby, so every run starts with this starter (PRD §9). Checked by ConfigCheck.
+	-- The starter a run begins with until the save says which Utensil is equipped (it then
+	-- becomes the run's starter, #150). Also the free utensil every player owns. Checked by ConfigCheck.
 	Starter = "ChefsKnife",
 
 	-- Aiming (PRD §2.2): the client sends its aim direction at most this many times a second;
@@ -52,6 +53,10 @@ return {
 	TrailMoveSpeed = 2, -- studs per second: slower than this counts as standing still
 	MaxTrailSplats = 40, -- per trail weapon; a new splat removes the oldest
 	MaxSlicks = 20, -- Buttered Barrage's butter slicks (#132); a new one removes the oldest
+	MaxFireSplats = 20, -- Flambé Pan's burning arcs (#148); a new splat removes the oldest
+	-- Knockback (Frying Pan, Microwave Pulse) moves elites this much of the distance; bosses not at all.
+	ElitePushScale = 0.5,
+	PushSeconds = 0.2, -- a knockback slides the enemy back over this long instead of jumping
 
 	-- Loadout (PRD §2.4)
 	StarterMaxLevel = 5,

@@ -21,7 +21,11 @@
 --   "Merge", { id x3 }    3 different copies of the same item and rarity -> 1 at the next rarity,
 --                         Lv 1, with 80% of the 3 copies' levelling spend back
 --   "Salvage", id         destroy it for its rarity's gold, 1 material and 80% of its levelling
---                         spend; never the equipped item or the last Chef's Knife
+--                         spend; never the equipped item or your last copy of a starter
+--                         (Utensil item: Chef's Knife, Rolling Pin, Frying Pan; #150)
+--   "SeenNew"             the Gear screen was opened: clear every item's New mark (#151).
+--                         Allowed during a run too (it changes nothing that matters to one).
+-- The player attribute "GearNew" is true while any item is marked New (the Gear button's badge).
 -- After every action (and on load, when a run starts or ends, and after DEV gear changes) the
 -- client gets GearState(state, message?): a copy of the items, equipped ids and currencies, plus
 -- CanChange (false while a run is on). `message` says why an action was refused.
@@ -34,6 +38,7 @@ local Gear = require(ReplicatedStorage.Config.Gear)
 local GearMath = require(ReplicatedStorage.Shared.GearMath)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local RunManager = require(script.Parent.RunManager)
+local Starters = require(ReplicatedStorage.Config.Starters)
 local StatsService = require(script.Parent.StatsService)
 
 local GearService = {}
@@ -223,6 +228,14 @@ end
 
 -- Send the player their gear state, with an optional message (why an action was refused).
 function GearService.sendState(player: Player, message: string?)
+	local data = DataService.get(player)
+	local anyNew = false
+	if data then
+		for _, record in data.Gear.Items do
+			anyNew = anyNew or record.New == true
+		end
+	end
+	player:SetAttribute("GearNew", if anyNew then true else nil)
 	local state = GearService.getState(player)
 	if state and gearStateRemote then
 		gearStateRemote:FireClient(player, state, message)
@@ -350,15 +363,16 @@ function GearService.salvage(player: Player, id: string): (boolean, string?)
 	if isEquipped(gear, id) then
 		return false, "Equip something else in its slot first"
 	end
-	if record.Item == FREE_ITEM then
-		local knives = 0
+	if Starters[record.Item] then
+		-- A starter you earned (or the free knife) can't be lost: keep at least one copy (#150).
+		local copies = 0
 		for _, other in gear.Items do
-			if other.Item == FREE_ITEM then
-				knives += 1
+			if other.Item == record.Item then
+				copies += 1
 			end
 		end
-		if knives <= 1 then
-			return false, `You always keep one {GearMath.itemName(FREE_ITEM)}`
+		if copies <= 1 then
+			return false, `You always keep one {GearMath.itemName(record.Item)}`
 		end
 	end
 	local gold, materialBack = GearMath.salvage(record)
@@ -391,6 +405,15 @@ function GearService.handleAction(player: Player, action: unknown, arg: unknown)
 		local newId
 		newId, why = GearService.merge(player, ids)
 		ok = newId ~= nil
+	elseif action == "SeenNew" then
+		local data = DataService.get(player)
+		if not data then
+			return
+		end
+		for _, record in data.Gear.Items do
+			record.New = nil
+		end
+		ok = true
 	elseif action == "Equip" or action == "LevelUp" or action == "Salvage" then
 		if type(arg) ~= "string" then
 			return
