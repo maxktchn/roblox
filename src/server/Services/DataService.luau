@@ -284,6 +284,27 @@ function DataService.reload(player: Player, simulateFailure: boolean?)
 	end
 end
 
+-- DEV ONLY: put a new player's save in place of this one (the DEV menu's "Reset my save", #140).
+-- When saving is On, the reset save is then saved and loaded again so every service picks it up;
+-- when Off, it's only reset in memory and announced as loaded. Yields.
+function DataService.resetSave(player: Player)
+	local session = sessions[player]
+	if not session then
+		return
+	end
+	-- Swap the contents in place: the profile keeps the same Data table.
+	local data: any = session.data
+	table.clear(data)
+	for key, value in copyTemplate() :: any do
+		data[key] = value
+	end
+	if session.profile then
+		DataService.reload(player)
+	else
+		announceLoaded(player, session.data)
+	end
+end
+
 function DataService:init()
 	-- In Studio, tests use their own store so they never touch real players' saves.
 	local storeName = Saving.SaveSlot .. (if RunService:IsStudio() then "_Studio" else "")

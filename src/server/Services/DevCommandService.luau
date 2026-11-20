@@ -15,12 +15,17 @@
 --   "God"              turn "can't die" on or off (HP refills every frame)
 --   "Wipe"             remove every enemy (no tips, no kills)
 --   "Restart"          start a fresh run right now, even mid-run (RestartService)
---   "UnlockPowers"     unlock every boss power, as if every boss had been beaten (UnlockService)
 --   "Bot", runs        let the playtest bot play `runs` runs (up to DevTools.BotMaxRuns); 0 stops it
 --   "GiveGear", { Item, Rarity, Level }  a new gear item, equipped straight away (used from the next run)
 --   "GiveGold", amount / "GiveMaterials", amount  add gold / add to each of the 5 materials
 --   "ResetGear"        back to a new save's gear: just the Common Chef's Knife, no gold or materials
 --   "ResetUnlocks"     forget cleared chapters and given starters (clear Chapter 1 to get the Rolling Pin again)
+--   "UnlockPowers"     unlock every boss power, as if every boss had been beaten (UnlockService)
+--   "LockPowers"       lock every boss power again (#140)
+--   "ReloadSave"       end the save session and load it again, as if the player rejoined (#140)
+--   "FailSave"         load again as if loading failed: the session plays without saving (#140)
+--   "ResetSave"        replace the save with a new player's (#140); also locks every boss power
+-- In the lobby (no run), the run-only actions (RUN_ONLY below) reply LOBBY_TEXT and do nothing.
 -- Replies go back with DevMessage(text) and show on the panel.
 --
 -- The player gets the attribute "IsDev" = true so the client knows to show the panel,
@@ -56,6 +61,10 @@ local WeaponService = require(script.Parent.WeaponService)
 local DevCommandService = {}
 
 local MAX_LEVELS_AT_ONCE = 20
+
+-- Actions that only make sense during a run: refused in the lobby so the reply never lies.
+local RUN_ONLY = { "LevelUp", "SetTime", "Boss", "Cheese", "Give", "Heal", "Wipe" }
+local LOBBY_TEXT = "Not in a run. Press Play or Restart run."
 
 local devMessage: RemoteEvent
 local godMode = false
@@ -247,6 +256,34 @@ ACTIONS.ResetUnlocks = function(player)
 	reply(player, "Unlocks reset: win Chapter 1 to unlock the Rolling Pin again")
 end
 
+local function lockAllPowers()
+	for _, id in RunRules.UpgradePool.BossPowers do
+		UnlockService.lock(id)
+	end
+end
+
+ACTIONS.LockPowers = function(player)
+	lockAllPowers()
+	reply(player, "All boss powers locked")
+end
+
+ACTIONS.ReloadSave = function(player)
+	DataService.reload(player)
+	reply(player, "Save reloaded")
+end
+
+ACTIONS.FailSave = function(player)
+	DataService.reload(player, true)
+	reply(player, "Save failure simulated: not saving")
+end
+
+ACTIONS.ResetSave = function(player)
+	-- Boss powers also live in memory (UnlockService) and would be merged back into the new save.
+	lockAllPowers()
+	DataService.resetSave(player)
+	reply(player, "Save reset to a new player's")
+end
+
 ACTIONS.ResetGear = function(player)
 	GearService.resetGear(player)
 	GearService.sendState(player)
@@ -260,6 +297,23 @@ local function markDev(player: Player)
 	end
 end
 
+-- One DevAction (the remote's handler; tests call it directly). Only from devs, only known
+-- actions; arguments are checked inside each action.
+function DevCommandService.handle(player: Player, action: unknown, arg: unknown)
+	if not DevAccess.isAllowed(player) or type(action) ~= "string" then
+		return
+	end
+	local handler = ACTIONS[action]
+	if not handler then
+		return
+	end
+	if RunManager.isInLobby() and table.find(RUN_ONLY, action) then
+		reply(player, LOBBY_TEXT)
+		return
+	end
+	handler(player, arg)
+end
+
 function DevCommandService:start()
 	devMessage = Remotes.get("DevMessage")
 
@@ -270,15 +324,7 @@ function DevCommandService:start()
 
 	-- DevAction(action, arg): only from devs, only known actions. Arguments are checked
 	-- inside each action.
-	Remotes.get("DevAction").OnServerEvent:Connect(function(player: Player, action: unknown, arg: unknown)
-		if not DevAccess.isAllowed(player) or type(action) ~= "string" then
-			return
-		end
-		local handler = ACTIONS[action]
-		if handler then
-			handler(player, arg)
-		end
-	end)
+	Remotes.get("DevAction").OnServerEvent:Connect(DevCommandService.handle)
 
 	RunService.Heartbeat:Connect(function()
 		if godMode and not RunManager.isRunOver() then
