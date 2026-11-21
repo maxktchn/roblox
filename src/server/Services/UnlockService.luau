@@ -13,6 +13,7 @@
 --   "JustUnlocked"  = "<power name>" set when this run unlocked something new, so the win
 --                                    banner can announce it; cleared when a new run starts
 --   "JustUnlockedStarter" = "<starter name>" the same for a starter (#151)
+--   "Cleared_<chapterId>" = true    for every chapter won at least once (the lobby's Chapters tab, #152)
 --
 -- Chapters and starters (P2-6e, #151): when a run ends, a won run's chapter is saved as
 -- cleared (data.Unlocks.Cleared), and every MVP starter whose UnlockRule (Starters.luau) is now
@@ -126,6 +127,21 @@ function UnlockService.getClearedChapters(): { [string]: boolean }
 	return if data then table.clone(getUnlocks(data).Cleared) else {}
 end
 
+-- Copy the save's cleared chapters onto the player. Markers no longer in the save go first (a DEV
+-- reset, save reset or reload can bring fewer).
+local function syncCleared(player: Player, data: DataService.Data)
+	local cleared = getUnlocks(data).Cleared
+	for name in player:GetAttributes() do
+		local id = string.match(name, "^Cleared_(.+)$")
+		if id and not cleared[id] then
+			player:SetAttribute(name, nil)
+		end
+	end
+	for id in cleared do
+		player:SetAttribute(`Cleared_{id}`, true)
+	end
+end
+
 -- Is this starter's UnlockRule met by the save (and this run's kills, not yet counted in it)?
 local function ruleMet(rule: Starters.UnlockRule, unlocks: any, kills: number): boolean
 	if rule.Kind == "ClearChapter" then
@@ -144,6 +160,7 @@ local function onRunEnded(result: "Won" | "Lost")
 	local unlocks = getUnlocks(data)
 	if result == "Won" then
 		unlocks.Cleared[RunManager.getChapter()] = true
+		syncCleared(player, data)
 	end
 	local runKills = player:GetAttribute("Kills")
 	local kills = data.Lifetime.Kills + (if type(runKills) == "number" then runKills else 0)
@@ -177,6 +194,7 @@ function UnlockService.resetUnlocks(player: Player)
 	local data = DataService.get(player)
 	if data then
 		data.Unlocks = { Cleared = {}, Starters = {} }
+		syncCleared(player, data)
 	end
 end
 
@@ -195,7 +213,7 @@ function UnlockService:start()
 
 	-- The save loaded: saved unlocks join the in-memory set (ids no longer in BossPowers are
 	-- left in the save but not unlocked), and unlocks gained before the load are saved too.
-	DataService.onLoaded(function(_player, data)
+	DataService.onLoaded(function(player, data)
 		for id in data.BossPowers do
 			if BossPowers[id] then
 				unlocked[id] = true
@@ -205,6 +223,7 @@ function UnlockService:start()
 			data.BossPowers[id] = true
 		end
 		syncAttributes()
+		syncCleared(player, data)
 	end)
 end
 

@@ -8,19 +8,26 @@
 --
 -- Tabs across the top: HOME, GEAR, TALENTS, CHAPTERS, SHOP, COOKBOOK. The lobby always opens on
 -- HOME. HOME and the flat tabs sit over the kitchen, blurred. GEAR turns the camera to face the
--- chef and docks the Gear screen (GearController) on the right. Talents, Chapters and Shop say
--- "Coming soon" until their topics (#107, #108) fill them.
+-- chef and docks the Gear screen (GearController) on the right. Talents and Shop say "Coming soon"
+-- until their topic (#108) fills them.
+--
+-- CHAPTERS (#152): one card per chapter by Order, with its twist line and state (ChapterMath).
+-- Tapping a playable one selects it and goes back to HOME, which shows it; Play starts it. The
+-- selection lasts until the server's own chapter changes (it isn't saved).
 --
 -- Reads: "RunState", "Chapter" (RunManager), "LifetimeRuns"/"LifetimeWins"/"BestWinSeconds"
--- (DataService), "Found_<recipeId>" (CookbookService), "GearNew" (GearService, the GEAR tab's NEW
--- badge), and the GearState remote (gold and the Utensil item, GearService).
--- Sends: RequestRestart when Play is tapped (accepted only in the lobby).
+-- (DataService), "Found_<recipeId>" (CookbookService), "Cleared_<chapterId>" (UnlockService),
+-- "GearNew" (GearService, the GEAR tab's NEW badge), and the GearState remote (gold and the
+-- Utensil item, GearService).
+-- Sends: RequestRestart(chapterId) when Play is tapped (accepted only in the lobby, for a chapter
+-- the player can play).
 
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local CameraController = require(script.Parent.CameraController)
+local ChapterMath = require(ReplicatedStorage.Shared.ChapterMath)
 local Chapters = require(ReplicatedStorage.Config.Chapters)
 local Gadgets = require(ReplicatedStorage.Config.Gadgets)
 local Gear = require(ReplicatedStorage.Config.Gear)
@@ -40,7 +47,6 @@ local TAB_NAMES = { "HOME", "GEAR", "TALENTS", "CHAPTERS", "SHOP", "COOKBOOK" }
 -- The "Coming soon" tabs: what each will hold.
 local COMING_SOON: { [string]: string } = {
 	TALENTS = "Spend gold on permanent upgrades",
-	CHAPTERS = "Pick which kitchen to cook in",
 	SHOP = "Chests and more",
 }
 local TAB_BAR_HEIGHT = 48 -- big enough for a thumb (PRD §7.4)
@@ -57,7 +63,9 @@ local COLORS = {
 	newBadge = Color3.fromRGB(220, 60, 50), -- the NEW badge (the HUD's low-HP red)
 	hidden = Color3.fromRGB(20, 18, 17), -- an unfound recipe's card
 	recipe = Color3.fromRGB(230, 175, 30), -- a found recipe's border (as on the Order Up! cards)
+	cleared = Color3.fromRGB(120, 200, 110), -- a cleared chapter's tick
 }
+local CHAPTER_CARD_HEIGHT = 64 -- full width, well over the 44 px a thumb needs (PRD §7.4)
 
 type GearState = {
 	Items: { [string]: { Item: string, Rarity: string, Level: number } },
@@ -77,6 +85,8 @@ local playButton: TextButton
 local gearState: GearState? = nil
 local cookbookList: ScrollingFrame
 local cookbookCount: TextLabel
+local chapterList: ScrollingFrame
+local selectedChapter: string? = nil -- picked on the Chapters tab; nil = the server's "Chapter"
 local currentTab = "HOME"
 
 local function inLobby(): boolean
@@ -129,9 +139,31 @@ end
 -- Home
 --------------------------------------------------------------------------------
 
-local function drawHome()
+-- Chapters won at least once, from the "Cleared_<id>" attributes.
+local function clearedChapters(): { [string]: boolean }
+	local cleared = {}
+	for name, value in player:GetAttributes() do
+		local id = string.match(name, "^Cleared_(.+)$")
+		if id and value == true then
+			cleared[id] = true
+		end
+	end
+	return cleared
+end
+
+-- The chapter Play will start: the one picked on the Chapters tab, else the server's.
+local function chapterToPlay(): string?
+	-- A pick that's no longer playable (a DEV unlock reset) is dropped, so Play is never refused.
+	if selectedChapter and ChapterMath.isPlayable(selectedChapter, clearedChapters()) then
+		return selectedChapter
+	end
 	local chapterId = player:GetAttribute("Chapter")
-	local chapter = if type(chapterId) == "string" then Chapters[chapterId] else nil
+	return if type(chapterId) == "string" then chapterId else nil
+end
+
+local function drawHome()
+	local chapterId = chapterToPlay()
+	local chapter = if chapterId then Chapters[chapterId] else nil
 	chapterLabel.Text = if chapter then `Chapter {chapter.Order}: {chapter.Name}` else ""
 
 	local state = gearState
@@ -238,6 +270,95 @@ local function drawCookbook()
 end
 
 --------------------------------------------------------------------------------
+-- Chapters (#152)
+--------------------------------------------------------------------------------
+
+local STATE_TEXT: { [string]: string } = {
+	Playable = "Play",
+	Cleared = "✓ Cleared",
+	ComingSoon = "🔒 Coming soon",
+}
+
+local drawChapters: () -> ()
+
+local function chapterCard(id: string, cleared: { [string]: boolean }, playing: string?)
+	local chapter = Chapters[id]
+	local state = ChapterMath.state(id, cleared)
+	local playable = state == "Playable" or state == "Cleared"
+	local selected = playable and id == playing
+
+	local card = Instance.new("TextButton")
+	card.Name = `Chapter_{id}`
+	card.LayoutOrder = chapter.Order
+	card.Size = UDim2.new(1, -8, 0, CHAPTER_CARD_HEIGHT)
+	card.BackgroundColor3 = if playable then COLORS.box else COLORS.hidden
+	card.AutoButtonColor = playable
+	card.Text = ""
+	card:SetAttribute("State", state) -- for tests
+	card:SetAttribute("Selected", selected)
+	corner(card, 10)
+	local stroke = Instance.new("UIStroke")
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	stroke.Color = if selected then COLORS.gold else COLORS.tab
+	stroke.Thickness = if selected then 3 else 2
+	stroke.Parent = card
+
+	local textColor = if playable then COLORS.paper else COLORS.faded
+	local number = label(card, "Number", tostring(chapter.Order), 30)
+	number.Position = UDim2.fromOffset(6, 0)
+	number.Size = UDim2.new(0, 44, 1, 0)
+	number.TextColor3 = if playable then COLORS.gold else COLORS.faded
+
+	local stateText = if state == "Locked"
+		then `🔒 Clear Chapter {chapter.Order - 1} first`
+		else STATE_TEXT[state :: string]
+	if selected then
+		stateText ..= " · Selected"
+	end
+	local stateLabel = label(card, "State", stateText, 16)
+	stateLabel.AnchorPoint = Vector2.new(1, 0)
+	stateLabel.Position = UDim2.new(1, -12, 0, 0)
+	stateLabel.Size = UDim2.fromScale(0.38, 1)
+	stateLabel.TextXAlignment = Enum.TextXAlignment.Right
+	stateLabel.TextColor3 = if state == "Cleared" then COLORS.cleared elseif selected then COLORS.gold else textColor
+
+	local name = label(card, "Name", chapter.Name, 20)
+	name.Position = UDim2.fromOffset(56, 8)
+	name.Size = UDim2.new(0.62, -60, 0, 26)
+	name.TextXAlignment = Enum.TextXAlignment.Left
+	name.TextTruncate = Enum.TextTruncate.AtEnd
+	name.TextColor3 = textColor
+	local twist = label(card, "Twist", chapter.Notes, 13)
+	twist.Position = UDim2.fromOffset(56, 34)
+	twist.Size = UDim2.new(0.62, -60, 0, 22)
+	twist.TextXAlignment = Enum.TextXAlignment.Left
+	twist.TextTruncate = Enum.TextTruncate.AtEnd
+	twist.Font = Enum.Font.GothamMedium
+	twist.TextColor3 = COLORS.faded
+
+	if playable then
+		card.Activated:Connect(function()
+			selectedChapter = id
+			LobbyController.showTab("HOME")
+		end)
+	end
+	card.Parent = chapterList
+end
+
+drawChapters = function()
+	for _, child in chapterList:GetChildren() do
+		if child:IsA("GuiObject") then
+			child:Destroy()
+		end
+	end
+	local cleared = clearedChapters()
+	local playing = chapterToPlay()
+	for _, id in ChapterMath.sortedIds() do
+		chapterCard(id, cleared, playing)
+	end
+end
+
+--------------------------------------------------------------------------------
 -- Tabs
 --------------------------------------------------------------------------------
 
@@ -269,6 +390,8 @@ function LobbyController.showTab(name: string)
 		drawHome()
 	elseif name == "COOKBOOK" then
 		drawCookbook()
+	elseif name == "CHAPTERS" then
+		drawChapters()
 	end
 end
 
@@ -410,7 +533,7 @@ local function build()
 	corner(playButton, 14)
 	playButton.Parent = home
 
-	-- TALENTS, CHAPTERS, SHOP: "Coming soon" until their topics fill them.
+	-- TALENTS, SHOP: "Coming soon" until their topic fills them.
 	for name, line in COMING_SOON do
 		local p = page(name, 420, 220)
 		pages[name] = p
@@ -427,6 +550,29 @@ local function build()
 		soon.Size = UDim2.new(1, 0, 0, 30)
 		soon.TextColor3 = COLORS.faded
 	end
+
+	-- CHAPTERS: one full-width card per chapter.
+	local chaptersPage = page("Chapters", 640, 330) -- 4 cards, no empty space below
+	pages.CHAPTERS = chaptersPage
+	chapterList = Instance.new("ScrollingFrame")
+	chapterList.Name = "List"
+	chapterList.Position = UDim2.fromOffset(12, 12)
+	chapterList.Size = UDim2.new(1, -24, 1, -24)
+	chapterList.BackgroundTransparency = 1
+	chapterList.BorderSizePixel = 0
+	chapterList.ScrollBarThickness = 6
+	chapterList.CanvasSize = UDim2.new()
+	chapterList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	chapterList.Parent = chaptersPage
+	local chapterLayout = Instance.new("UIListLayout")
+	chapterLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	chapterLayout.Padding = UDim.new(0, 8)
+	chapterLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	chapterLayout.Parent = chapterList
+	local chapterPadding = Instance.new("UIPadding")
+	chapterPadding.PaddingTop = UDim.new(0, 4)
+	chapterPadding.PaddingBottom = UDim.new(0, 4)
+	chapterPadding.Parent = chapterList
 
 	-- COOKBOOK: one card per reachable recipe, found or not.
 	local cookbook = page("Cookbook", 860, 520)
@@ -465,7 +611,7 @@ function LobbyController:start()
 		end
 		playButton.Active = false
 		playButton.Text = "..."
-		requestRestart:FireServer()
+		requestRestart:FireServer(chapterToPlay())
 	end)
 
 	Remotes.get("GearState").OnClientEvent:Connect(function(state: GearState)
@@ -477,7 +623,14 @@ function LobbyController:start()
 	player.AttributeChanged:Connect(function(name: string)
 		if name == "RunState" then
 			syncLobby()
-		elseif name == "Chapter" or name == "LifetimeRuns" or name == "LifetimeWins" or name == "BestWinSeconds" then
+		elseif name == "Chapter" then
+			selectedChapter = nil -- the server's chapter changed: follow it
+			if gui.Enabled then
+				drawHome()
+			end
+		elseif string.match(name, "^Cleared_") and gui.Enabled and currentTab == "CHAPTERS" then
+			drawChapters()
+		elseif name == "LifetimeRuns" or name == "LifetimeWins" or name == "BestWinSeconds" then
 			if gui.Enabled then
 				drawHome()
 			end
