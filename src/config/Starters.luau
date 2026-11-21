@@ -53,7 +53,8 @@ local Starters: { [string]: Starter } = {
 		},
 	},
 	-- P2-6b (#148): a half-circle swing that knocks enemies back (elites half as far, bosses not
-	-- at all). A little less damage than the knife; it buys space instead.
+	-- at all). Slower swings than the knife, about the same damage per second, plus the space.
+	-- After the #153 bot runs (Pan won 1 of 3, Knife 2/2, Pin 2/3), every level got +2 damage.
 	FryingPan = {
 		Name = "Frying Pan",
 		Attack = "Wide swing toward where you aim, knocking enemies back",
@@ -63,11 +64,11 @@ local Starters: { [string]: Starter } = {
 		Shape = "Arc",
 		FxColor = Color3.fromRGB(70, 70, 80),
 		Levels = {
-			{ Damage = 12, Cooldown = 1.1, Range = 9, ArcDegrees = 180, Knockback = 3 },
-			{ Damage = 15, Cooldown = 1.1, Range = 9, ArcDegrees = 180, Knockback = 3 },
-			{ Damage = 15, Cooldown = 0.95, Range = 9.5, ArcDegrees = 190, Knockback = 3.5 },
-			{ Damage = 18, Cooldown = 0.95, Range = 10, ArcDegrees = 190, Knockback = 3.5 },
-			{ Damage = 20, Cooldown = 0.85, Range = 10, ArcDegrees = 200, Knockback = 4 },
+			{ Damage = 14, Cooldown = 1.1, Range = 9, ArcDegrees = 180, Knockback = 3 },
+			{ Damage = 17, Cooldown = 1.1, Range = 9, ArcDegrees = 180, Knockback = 3 },
+			{ Damage = 17, Cooldown = 0.95, Range = 9.5, ArcDegrees = 190, Knockback = 3.5 },
+			{ Damage = 20, Cooldown = 0.95, Range = 10, ArcDegrees = 190, Knockback = 3.5 },
+			{ Damage = 22, Cooldown = 0.85, Range = 10, ArcDegrees = 200, Knockback = 4 },
 		},
 	},
 	-- P2-6a (#147): a pin rolls toward where you aim and hits every enemy in its path once.

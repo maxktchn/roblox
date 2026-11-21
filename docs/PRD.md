@@ -158,6 +158,8 @@ Rewards scale with how long the player survived and how far they got:
 
 **Chef's Knife starting values** (Lv 1 → Lv 5): damage 10 / 13 / 13 / 16 / 20, cooldown 0.8 / 0.8 / 0.65 / 0.65 / 0.55 s, range 10 / 10 / 11 / 12 / 12 studs, arc 90° / 90° / 100° / 100° / 120°.
 
+**Frying Pan starting values** (Lv 1 → Lv 5): damage 14 / 17 / 17 / 20 / 22 (raised by 2 after the #153 bot runs, where it won 1 of 3), cooldown 1.1 / 1.1 / 0.95 / 0.95 / 0.85 s, range 9 / 9 / 9.5 / 10 / 10 studs, arc 180° / 180° / 190° / 190° / 200°, knockback 3 / 3 / 3.5 / 3.5 / 4 studs.
+
 ### 3.2 Kitchen Gadgets (shared pool)
 | Gadget | Behavior | Recipe |
 |---|---|---|
