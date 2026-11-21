@@ -18,3 +18,6 @@ Thumbs.db
 .vscode/*
 !.vscode/settings.json
 !.vscode/extensions.json
+
+# Superpowers brainstorm mockups and plan ledgers
+.superpowers/
