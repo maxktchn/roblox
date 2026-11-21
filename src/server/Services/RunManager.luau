@@ -30,8 +30,9 @@ local RunManager = {}
 -- and how many spawn groups per second. An empty list means "stop spawning".
 export type PhaseCallback = (enemyTypes: { string }, spawnsPerSecond: number) -> ()
 
--- Phase 1 has one chapter (PRD §9). The lobby picks the chapter from Phase 2 on.
-local CHAPTER = "DinerKitchen"
+-- The run's chapter (a key of Chapters.luau). The lobby's Chapters tab picks it (#152): Play sends
+-- it and RestartService sets it here before the run starts. Not saved: a new server starts here.
+local chapter = "DinerKitchen"
 
 --------------------------------------------------------------------------------
 -- Pause
@@ -94,7 +95,7 @@ local rushShown: Chapters.Rush? = nil
 local rushStage: "Warning" | "On" | nil = nil
 
 local function getTimeline(): { Chapters.Phase }
-	return Chapters[CHAPTER].Timeline or {}
+	return Chapters[chapter].Timeline or {}
 end
 
 -- Which phase `seconds` falls in (#timeline + 1 once the timeline has ended).
@@ -154,7 +155,7 @@ local function updateRush()
 	local scale = 1
 	local shown: Chapters.Rush? = nil
 	local stage: "Warning" | "On" | nil = nil
-	local rushes: { Chapters.Rush } = Chapters[CHAPTER].Rushes or {}
+	local rushes: { Chapters.Rush } = Chapters[chapter].Rushes or {}
 	for _, rush in rushes do
 		if runSeconds >= rush.At and runSeconds < rush.At + rush.Seconds then
 			scale, shown, stage = rush.SpawnScale, rush, "On"
@@ -187,7 +188,7 @@ end
 
 -- Which chapter this run is in (a key of Chapters.luau).
 function RunManager.getChapter(): string
-	return CHAPTER
+	return chapter
 end
 
 -- Run `callback` once, when the timeline ends at RunRules.RunLengthSeconds: time for the
@@ -280,7 +281,7 @@ local function syncAttributes()
 		player:SetAttribute("MaxHp", math.ceil(lastMaxHp))
 		player:SetAttribute("RunSeconds", math.floor(runSeconds))
 		player:SetAttribute("RunState", if inLobby then "Lobby" else result or "Playing")
-		player:SetAttribute("Chapter", CHAPTER) -- for the lobby's Home screen (P2-8)
+		player:SetAttribute("Chapter", chapter) -- for the lobby's Home screen (P2-8)
 	end
 end
 
@@ -411,6 +412,18 @@ function RunManager.enterLobby()
 	rushShown, rushStage = nil, nil
 	syncRush()
 	syncAttributes()
+end
+
+-- Pick the next run's chapter (#152). Only in the lobby, and only a chapter with a Timeline; the
+-- caller (RestartService) checks it's unlocked. Returns whether it was set.
+function RunManager.setChapter(id: string): boolean
+	local config = Chapters[id]
+	if not inLobby or not (config and config.Timeline) then
+		return false
+	end
+	chapter = id
+	syncAttributes()
+	return true
 end
 
 -- True while in the lobby (between runs, before Play).

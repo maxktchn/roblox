@@ -301,7 +301,7 @@ All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with ga
 **Enemies in the timeline:** all five Chapter 1 enemies spawn (`RunRules.EnemyPool`, since P2-2 #122). The Big Cheese mini-boss arrives at 3:00 (#84): spawns stop and the clock holds at 3:00 until all its pieces are defeated, then the timeline carries on. At 6:00 the Microwave Monster arrives; defeating it wins the run.
 
 ### 3.7 Chapters (maps)
-- Chapters unlock in order. Beat a chapter's final boss to unlock the next one.
+- Chapters unlock in order. Beat a chapter's final boss to unlock the next one. A chapter without a timeline yet (2 to 4) shows "Coming soon" on the lobby's Chapters tab (#152) even when the one before it is cleared. Cleared chapters are saved (`Unlocks.Cleared`); the selected chapter is not.
 - Each run is about 6 minutes plus the boss fight (about 7 minutes of real time, since card picks pause the clock).
 
 | # | Map | Notes | MVP |
@@ -493,14 +493,14 @@ Gamepasses must only save time. Starting list:
 ## 7. UI/UX
 
 ### 7.1 Lobby screens
-For now the lobby is a set of **menu screens inside the run place** (see 8.1), shown before and between runs. Design: `docs/superpowers/specs/2026-11-17-lobby-design.md` (#109). It's a fourth run state, "Lobby": joining starts there, Play starts a run, and Continue on the run-over banner comes back. Tabs across the top: **Home, Gear, Talents, Chapters, Shop, Cookbook** (Talents, Chapters and Shop say "Coming soon" until #107 and #108 fill them; Battle Pass and Missions are hidden until Phase 3).
+For now the lobby is a set of **menu screens inside the run place** (see 8.1), shown before and between runs. Design: `docs/superpowers/specs/2026-11-17-lobby-design.md` (#109). It's a fourth run state, "Lobby": joining starts there, Play starts a run, and Continue on the run-over banner comes back. Tabs across the top: **Home, Gear, Talents, Chapters, Shop, Cookbook** (Talents and Shop say "Coming soon" until #108 fills them; Battle Pass and Missions are hidden until Phase 3).
 
 | Screen | Contents |
 |---|---|
 | Home | Play button, selected chapter, equipped starter, currencies |
 | Gear | 5 gear slots, inventory, level up, merge, reset |
 | Talents | Talent path, account level, unlock button |
-| Chapters | Chapter list, lock state, first-clear rewards |
+| Chapters | Chapter list (number, name, twist line, state: playable, Cleared, Locked or Coming soon); tap a playable one to select it for Play. First-clear rewards later |
 | Shop | Chests, gem bundles, gamepasses, odds info |
 | Battle Pass | Free and paid tracks, season timer |
 | Missions | Daily missions and progress |

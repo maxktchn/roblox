@@ -13,7 +13,7 @@ local NAMES = {
 	"RequestReroll", -- client -> server: reroll the current offer
 	"CloseCards", -- server -> client: the offer ended without a pick (e.g. the run was reset), hide the cards
 	"WeaponFx", -- server -> client: a weapon just attacked, draw its effect (visual only)
-	"RequestRestart", -- client -> server: Play in the lobby (only while in the lobby, P2-8)
+	"RequestRestart", -- client -> server: Play in the lobby (only while in the lobby, P2-8), with the chapter id (#152)
 	"RequestLobby", -- client -> server: Continue on the run-over banner (only once a run has ended)
 	"DevAction", -- client -> server: (action, arg) from the DEV panel; devs only, validated (DevCommandService)
 	"RunReport", -- server -> client: (text) end-of-run report for tuning; devs only (RunReportService)

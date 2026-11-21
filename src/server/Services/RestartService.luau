@@ -1,8 +1,8 @@
 --!strict
 -- Starting runs and going back to the lobby, in the same server, without rejoining (#50, P2-8 #143).
 --
--- The lobby's Play button sends RequestRestart: accepted only from the run's player, only in
--- the lobby. RestartService.restart() resets every system in order, then respawns the chef at
+-- The lobby's Play button sends RequestRestart with the chapter picked on the Chapters tab (#152):
+-- accepted only from the run's player, only in the lobby, only for a chapter they can play. RestartService.restart() resets every system in order, then respawns the chef at
 -- the map's SpawnLocation. The run-over banner's Continue button sends RequestLobby: accepted
 -- only once a run has ended; toLobby() clears the run and goes back to the lobby.
 --
@@ -13,6 +13,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local BossService = require(script.Parent.BossService)
+local ChapterMath = require(ReplicatedStorage.Shared.ChapterMath)
 local EliteService = require(script.Parent.EliteService)
 local EnemyService = require(script.Parent.EnemyService)
 local GearService = require(script.Parent.GearService)
@@ -77,11 +78,19 @@ function RestartService.toLobby()
 end
 
 -- The Play button (RequestRestart): only the run's player, only from the lobby. A double tap is
--- ignored: the first one already left the lobby.
-function RestartService.requestPlay(player: Player)
-	if player == Players:GetPlayers()[1] and RunManager.isInLobby() then
-		RestartService.restart()
+-- ignored: the first one already left the lobby. `chapterId` is the chapter to play (nil = the
+-- current one); one that's locked, coming soon or unknown is refused and nothing starts.
+function RestartService.requestPlay(player: Player, chapterId: unknown?)
+	if player ~= Players:GetPlayers()[1] or not RunManager.isInLobby() then
+		return
 	end
+	if chapterId ~= nil then
+		if type(chapterId) ~= "string" or not ChapterMath.isPlayable(chapterId, UnlockService.getClearedChapters()) then
+			return
+		end
+		RunManager.setChapter(chapterId)
+	end
+	RestartService.restart()
 end
 
 -- The Continue button (RequestLobby): only the run's player, only once a run has ended.
