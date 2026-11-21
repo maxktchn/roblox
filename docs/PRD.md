@@ -411,7 +411,9 @@ A full maxed Legendary set is about **x2.8 damage and x2.5 HP**. Chapter 1 stays
 Materials come from runs, chests, daily missions, and the battle pass.
 
 ### 4.5 Talents
-- Players earn **account XP** from every run
+Design: `docs/superpowers/specs/2026-11-20-talents-chests-design.md` (#108).
+- Players earn **account XP** from every run (amount set by run rewards, #106; DEV tools until then)
+- **Account levels 1 to 30** (#161, tune `Talents.luau`): XP for Lv L to L+1 = **80 + 13 x (L - 1)**. At about 100 XP a run that's Lv 5 after ~4 runs, Lv 10 after ~12, Lv 30 after ~76. The lobby's Home shows the level and an XP bar; a level gained during a run shows on the run-over banner ("Account Lv 8!")
 - Each account level unlocks the next talent node, which the player buys with gold
 - **Standard nodes** repeat in a cycle: Attack, Max HP, Armor, Pie healing
 - **Special nodes** every 5 levels give bigger effects (for example, start each run with 1 extra Pie, or +1 reroll per run)
@@ -435,6 +437,7 @@ Players can start as many runs as they want. There is no energy or stamina cost.
 - **Starter drops:** Chest-drop starters (Frying Pan, Whisk, Ladle) come from both chest types, so every starter can be earned for free with gold. Premium Chests give better odds, which is the paid way to speed things up.
 - Starters drop as the Common version. If the player already owns it, the copy goes to their inventory for merging.
 
+- **Basic Chest** (#164, tune `Gear.Chests.Basic`): **500 gold** (about 2 runs), or 5,000 for **Open x10** (no discount). Each chest is a chest starter (**1%**, Common Lv 1; today only the Frying Pan), otherwise a random slot's item at Lv 1: **Common 75%, Fine 22%, Rare 3%**. Everything arrives marked New. The lobby's SHOP tab shows the odds and plays a short reveal.
 - **Starter drop odds:** 1% per Basic Chest, 5% per Premium Chest
 - **Epic pity:** Guaranteed Epic gear within 30 Premium Chest opens
 - **Starter pity:** Guaranteed chest-drop starter within 40 Premium Chest opens. It gives a starter the player doesn't own yet, if there is one.
@@ -493,7 +496,7 @@ Gamepasses must only save time. Starting list:
 ## 7. UI/UX
 
 ### 7.1 Lobby screens
-For now the lobby is a set of **menu screens inside the run place** (see 8.1), shown before and between runs. Design: `docs/superpowers/specs/2026-11-17-lobby-design.md` (#109). It's a fourth run state, "Lobby": joining starts there, Play starts a run, and Continue on the run-over banner comes back. Tabs across the top: **Home, Gear, Talents, Chapters, Shop, Cookbook** (Talents and Shop say "Coming soon" until #108 fills them; Battle Pass and Missions are hidden until Phase 3).
+For now the lobby is a set of **menu screens inside the run place** (see 8.1), shown before and between runs. Design: `docs/superpowers/specs/2026-11-17-lobby-design.md` (#109). It's a fourth run state, "Lobby": joining starts there, Play starts a run, and Continue on the run-over banner comes back. Tabs across the top: **Home, Gear, Talents, Chapters, Shop, Cookbook** (Talents says "Coming soon" until #163 fills it; Battle Pass and Missions are hidden until Phase 3).
 
 | Screen | Contents |
 |---|---|

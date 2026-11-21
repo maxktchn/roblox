@@ -16,6 +16,7 @@ local Recipes = require(Config.Recipes)
 local RunRules = require(Config.RunRules)
 local Saving = require(Config.Saving)
 local Starters = require(Config.Starters)
+local Talents = require(Config.Talents)
 local WeaponTypes = require(ReplicatedStorage.Shared.WeaponTypes)
 
 local ConfigCheck = {}
@@ -541,6 +542,39 @@ function ConfigCheck.run(): { string }
 	local cost = Gear.LevelCost
 	if cost.Gold <= 0 or cost.Material <= 0 or cost.Growth < 1 then
 		fail("Gear.LevelCost: Gold and Material must be above 0, Growth at least 1")
+	end
+
+	-- Basic Chests (P2-7d, #164).
+	local basic = Gear.Chests.Basic
+	if basic.Price <= 0 or basic.BulkCount < 2 or basic.BulkCount ~= math.floor(basic.BulkCount) then
+		fail("Gear.Chests.Basic: Price must be above 0, BulkCount a whole number of at least 2")
+	end
+	if basic.StarterDropChance < 0 or basic.StarterDropChance >= 1 then
+		fail("Gear.Chests.Basic.StarterDropChance must be 0 or more and below 1")
+	end
+	local oddsTotal = 0
+	local rarityIds = {}
+	for _, rarity in Gear.Rarities do
+		rarityIds[rarity.Id] = true
+	end
+	for rarityId, chance in basic.Rarities do
+		if not rarityIds[rarityId] then
+			fail(`Gear.Chests.Basic.Rarities: unknown rarity {rarityId}`)
+		elseif chance <= 0 then
+			fail(`Gear.Chests.Basic.Rarities.{rarityId} must be above 0`)
+		end
+		oddsTotal += chance
+	end
+	if math.abs(oddsTotal - 1) > 1e-6 then
+		fail(`Gear.Chests.Basic.Rarities must add up to 1 (they add up to {oddsTotal})`)
+	end
+
+	-- Account levels (P2-7a, #161).
+	if Talents.MaxLevel < 2 or Talents.MaxLevel ~= math.floor(Talents.MaxLevel) then
+		fail("Talents.MaxLevel must be a whole number of at least 2")
+	end
+	if Talents.Xp.Base <= 0 or Talents.Xp.Step < 0 then
+		fail("Talents.Xp: Base must be above 0, Step 0 or more")
 	end
 
 	return problems
