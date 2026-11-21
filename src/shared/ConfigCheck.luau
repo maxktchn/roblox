@@ -13,6 +13,7 @@ local Gadgets = require(Config.Gadgets)
 local Gear = require(Config.Gear)
 local Ingredients = require(Config.Ingredients)
 local Recipes = require(Config.Recipes)
+local RunRewards = require(Config.RunRewards)
 local RunRules = require(Config.RunRules)
 local Saving = require(Config.Saving)
 local Starters = require(Config.Starters)
@@ -575,6 +576,31 @@ function ConfigCheck.run(): { string }
 	end
 	if Talents.Xp.Base <= 0 or Talents.Xp.Step < 0 then
 		fail("Talents.Xp: Base must be above 0, Step 0 or more")
+	end
+
+	-- Run rewards (P2-5, #106).
+	for _, name in { "GoldPerMinute", "XpPerMinute", "MaterialDropsPerMinute", "MinMaterialDrops" } do
+		local value = (RunRewards :: any)[name]
+		if type(value) ~= "number" or value < 0 then
+			fail(`RunRewards.{name} must be a number, 0 or more`)
+		end
+	end
+	for _, name in { "Gold", "Xp", "MaterialDrops" } do
+		local value = (RunRewards.ClearBonus :: any)[name]
+		if type(value) ~= "number" or value < 0 then
+			fail(`RunRewards.ClearBonus.{name} must be a number, 0 or more`)
+		end
+	end
+	for id, chapter in Chapters do
+		if type(chapter.RewardScale) ~= "number" or chapter.RewardScale <= 0 then
+			fail(`Chapter {id}: RewardScale must be a number above 0`)
+		end
+		local reward = chapter.FirstClearReward
+		if reward and not Gear.Items[reward.Item] then
+			fail(`Chapter {id}: FirstClearReward has unknown gear item "{reward.Item}"`)
+		elseif reward and not rarityIds[reward.Rarity] then
+			fail(`Chapter {id}: FirstClearReward has unknown rarity "{reward.Rarity}"`)
+		end
 	end
 
 	return problems
