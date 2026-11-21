@@ -58,7 +58,9 @@ export type Data = {
 		Items: { [string]: GearMath.ItemRecord },
 		Equipped: { [string]: string }, -- [slot] = item id; a missing slot is empty
 	},
-	Talents: { [string]: any }, -- account level, XP and talent nodes (#108)
+	-- Account level, XP into it, and talent nodes bought (TalentService, #161). A new save starts
+	-- empty; TalentService fills in Level 1, Xp 0, Bought 0.
+	Talents: { Level: number?, Xp: number?, Bought: number? },
 	-- Chapters and starters (#151, UnlockService). Cleared: chapters won at least once.
 	-- Starters: starters already given by their UnlockRule (never given twice).
 	Unlocks: { Cleared: { [string]: boolean }?, Starters: { [string]: boolean }? },

@@ -25,6 +25,9 @@
 --   "ReloadSave"       end the save session and load it again, as if the player rejoined (#140)
 --   "FailSave"         load again as if loading failed: the session plays without saving (#140)
 --   "ResetSave"        replace the save with a new player's (#140); also locks every boss power
+--   "GiveXp", amount   add account XP (#161): levels come as they would from runs
+--   "ResetTalents"     back to account Lv 1, 0 XP, no talents bought (#161)
+--   "ChestRoll"        one Basic Chest roll for free, with the reveal (#164)
 -- In the lobby (no run), the run-only actions (RUN_ONLY below) reply LOBBY_TEXT and do nothing.
 -- Replies go back with DevMessage(text) and show on the panel.
 --
@@ -52,8 +55,10 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local RestartService = require(script.Parent.RestartService)
 local RunManager = require(script.Parent.RunManager)
 local RunRules = require(ReplicatedStorage.Config.RunRules)
+local ShopService = require(script.Parent.ShopService)
 local Starters = require(ReplicatedStorage.Config.Starters)
 local StatsService = require(script.Parent.StatsService)
+local TalentService = require(script.Parent.TalentService)
 local UnlockService = require(script.Parent.UnlockService)
 local UpgradeService = require(script.Parent.UpgradeService)
 local WeaponService = require(script.Parent.WeaponService)
@@ -282,6 +287,28 @@ ACTIONS.ResetSave = function(player)
 	lockAllPowers()
 	DataService.resetSave(player)
 	reply(player, "Save reset to a new player's")
+end
+
+ACTIONS.GiveXp = function(player, arg)
+	local amount = toWholeNumber(arg)
+	if amount and amount > 0 then
+		local gained = TalentService.addXp(player, math.min(amount, MAX_CURRENCY_AT_ONCE))
+		local level = TalentService.getLevel(player)
+		reply(
+			player,
+			if gained > 0 then `+{amount} XP: account Lv {level} (+{gained})` else `+{amount} XP (Lv {level})`
+		)
+	end
+end
+
+ACTIONS.ResetTalents = function(player)
+	TalentService.resetTalents(player)
+	reply(player, "Account back to Lv 1, 0 XP, no talents")
+end
+
+ACTIONS.ChestRoll = function(player)
+	local result = ShopService.giveFreeRoll(player)
+	reply(player, if result then `Chest: {result.Rarity} {GearMath.itemName(result.Item)}` else "Save not loaded")
 end
 
 ACTIONS.ResetGear = function(player)

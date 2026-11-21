@@ -25,6 +25,7 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local RunManager = require(script.Parent.RunManager)
 local RunReportService = require(script.Parent.RunReportService)
 local StatsService = require(script.Parent.StatsService)
+local TalentService = require(script.Parent.TalentService)
 local UnlockService = require(script.Parent.UnlockService)
 local UpgradeService = require(script.Parent.UpgradeService)
 local WeaponService = require(script.Parent.WeaponService)
@@ -45,6 +46,7 @@ local function clearRun()
 	StatsService.reset() -- no ingredients
 	UpgradeService.reset() -- Lv 1, rerolls back, closes any open cards
 	UnlockService.clearJustUnlocked() -- unlocks stay; only the banner's announcement goes
+	TalentService.clearJustLeveled() -- the same for the account level line
 end
 
 -- A fresh chef at the SpawnLocation (also undoes any freeze from the card screen).

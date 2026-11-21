@@ -11,6 +11,7 @@
 --   "RunState"                      RunManager: "Playing", "Lost" or "Won" (shows the run-over banner)
 --   "JustUnlocked"                  UnlockService: a boss power this run unlocked (line on the banner)
 --   "JustUnlockedStarter"           UnlockService: a starter this run unlocked (same line, #151)
+--   "JustLeveledAccount"            TalentService: the account level this run reached (same line, #161)
 --   "SaveStatus"                    DataService: "Off" shows the not-saving banner (P2-1, #114)
 --   "ApronReady"                    GearEffectsService: the Apron's block is ready (true), used up
 --                                   (false) or not equipped (nil) (P2-4, #139)
@@ -326,12 +327,19 @@ local function updateRunState()
 		end
 		local power = player:GetAttribute("JustUnlocked")
 		local starter = player:GetAttribute("JustUnlockedStarter")
+		local accountLevel = player:GetAttribute("JustLeveledAccount")
 		local hasPower, hasStarter = type(power) == "string", type(starter) == "string"
-		runOverUnlock.Visible = hasPower or hasStarter
-		runOverUnlock.Text = if hasPower and hasStarter
+		local text = if hasPower and hasStarter
 			then `New power: {power} · New starter: {starter}`
 			elseif hasStarter then `New starter unlocked: {starter}`
-			else `New power unlocked: {power}`
+			elseif hasPower then `New power unlocked: {power}`
+			else ""
+		if type(accountLevel) == "number" then
+			-- #162 adds "New talent ready" once talents can be bought.
+			text = if text == "" then `Account Lv {accountLevel}!` else `{text} · Account Lv {accountLevel}!`
+		end
+		runOverUnlock.Visible = text ~= ""
+		runOverUnlock.Text = text
 		runOverStats.Text =
 			`Reached Lv {player:GetAttribute("Level") or 1} · Defeated {player:GetAttribute("Kills") or 0}`
 	end
@@ -509,7 +517,12 @@ function HUDController:start()
 			updateIcons()
 		elseif name == "Hp" or name == "MaxHp" then
 			updateHp()
-		elseif name == "RunState" or name == "JustUnlocked" or name == "JustUnlockedStarter" then
+		elseif
+			name == "RunState"
+			or name == "JustUnlocked"
+			or name == "JustUnlockedStarter"
+			or name == "JustLeveledAccount"
+		then
 			updateRunState()
 		else
 			updateNumbers()

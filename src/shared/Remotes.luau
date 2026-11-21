@@ -21,6 +21,8 @@ local NAMES = {
 	"HitFx", -- server -> client: { HitFx } recent hits, for enemy flashes and damage numbers (visual only)
 	"GearAction", -- client -> server: (action, arg) from the Gear screen; validated (GearService, P2-4)
 	"GearState", -- server -> client: (state, message?) the player's gear and currencies for the Gear screen
+	"ChestAction", -- client -> server: (count) open 1 or BulkCount Basic Chests; validated (ShopService, P2-7d)
+	"ChestResult", -- server -> client: (results?, why?, count) what the chests gave, or why not (count 0 = DEV free roll)
 }
 
 -- Unreliable remotes: for frequent, throwaway updates where only the latest one matters

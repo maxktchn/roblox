@@ -13,6 +13,10 @@
 --              Placeholders until run rewards (#106) set how much a run pays.
 -- SalvageGold  gold for salvaging an item, by rarity (plus 80% of what was spent levelling it).
 --              Placeholders until #106.
+-- Chests       Basic (P2-7d #164): Price in gold (about 2 runs at ~250 gold a run, rescaled when #106
+--              sets the real payout), BulkCount for "Open x10" (no discount), the rarity odds of a
+--              gear drop (must add up to 1), and StarterDropChance of a chest starter instead.
+--              Premium is Phase 3.
 
 export type Effect = { [string]: any }
 
@@ -155,7 +159,13 @@ return {
 	SalvageRefund = 0.8, -- share of levelling spend given back by salvage and merge
 
 	Chests = {
-		Basic = { Currency = "Gold", StarterDropChance = 0.01 },
+		Basic = {
+			Currency = "Gold",
+			Price = 500,
+			BulkCount = 10,
+			Rarities = { Common = 0.75, Fine = 0.22, Rare = 0.03 } :: { [string]: number },
+			StarterDropChance = 0.01,
+		},
 		Premium = { Currency = "Gems", StarterDropChance = 0.05, EpicPity = 30, StarterPity = 40 },
 	},
 }

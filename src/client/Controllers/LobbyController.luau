@@ -8,15 +8,17 @@
 --
 -- Tabs across the top: HOME, GEAR, TALENTS, CHAPTERS, SHOP, COOKBOOK. The lobby always opens on
 -- HOME. HOME and the flat tabs sit over the kitchen, blurred. GEAR turns the camera to face the
--- chef and docks the Gear screen (GearController) on the right. Talents and Shop say "Coming soon"
--- until their topic (#108) fills them.
+-- chef and docks the Gear screen (GearController) on the right. Talents says "Coming soon" until
+-- P2-7c (#163) fills it. SHOP is the Basic Chest (ShopController, #164).
+--
+-- HOME also shows the account level and an XP bar (#161).
 --
 -- CHAPTERS (#152): one card per chapter by Order, with its twist line and state (ChapterMath).
 -- Tapping a playable one selects it and goes back to HOME, which shows it; Play starts it. The
 -- selection lasts until the server's own chapter changes (it isn't saved).
 --
 -- Reads: "RunState", "Chapter" (RunManager), "LifetimeRuns"/"LifetimeWins"/"BestWinSeconds"
--- (DataService), "Found_<recipeId>" (CookbookService), "Cleared_<chapterId>" (UnlockService),
+-- (DataService), "AccountLevel"/"AccountXp"/"AccountXpNeeded" (TalentService), "Found_<recipeId>" (CookbookService), "Cleared_<chapterId>" (UnlockService),
 -- "GearNew" (GearService, the GEAR tab's NEW badge), and the GearState remote (gold and the
 -- Utensil item, GearService).
 -- Sends: RequestRestart(chapterId) when Play is tapped (accepted only in the lobby, for a chapter
@@ -37,6 +39,7 @@ local Ingredients = require(ReplicatedStorage.Config.Ingredients)
 local Recipes = require(ReplicatedStorage.Config.Recipes)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local RunRules = require(ReplicatedStorage.Config.RunRules)
+local ShopController = require(script.Parent.ShopController)
 local Starters = require(ReplicatedStorage.Config.Starters)
 
 local LobbyController = {}
@@ -47,7 +50,6 @@ local TAB_NAMES = { "HOME", "GEAR", "TALENTS", "CHAPTERS", "SHOP", "COOKBOOK" }
 -- The "Coming soon" tabs: what each will hold.
 local COMING_SOON: { [string]: string } = {
 	TALENTS = "Spend gold on permanent upgrades",
-	SHOP = "Chests and more",
 }
 local TAB_BAR_HEIGHT = 48 -- big enough for a thumb (PRD §7.4)
 local BLUR_SIZE = 18
@@ -81,6 +83,8 @@ local pages: { [string]: Frame } = {} -- one page per tab except GEAR (that's Ge
 local itemLabel: TextLabel
 local chapterLabel: TextLabel
 local statsLabel: TextLabel
+local accountLabel: TextLabel
+local accountFill: Frame
 local playButton: TextButton
 local gearState: GearState? = nil
 local cookbookList: ScrollingFrame
@@ -190,6 +194,21 @@ local function drawHome()
 	end
 
 	goldLabel.Text = if state then `Gold {state.Currencies.Gold or 0}` else "Gold: Loading..."
+
+	-- Account level and XP (#161).
+	local accountLevel = player:GetAttribute("AccountLevel")
+	local xp = player:GetAttribute("AccountXp")
+	local needed = player:GetAttribute("AccountXpNeeded")
+	if type(accountLevel) ~= "number" then
+		accountLabel.Text = ""
+		accountFill.Size = UDim2.fromScale(0, 1)
+	elseif type(needed) == "number" and type(xp) == "number" then
+		accountLabel.Text = `Account Lv {accountLevel} · {xp} / {needed} XP`
+		accountFill.Size = UDim2.fromScale(math.clamp(xp / needed, 0, 1), 1)
+	else
+		accountLabel.Text = `Account Lv {accountLevel} (max)`
+		accountFill.Size = UDim2.fromScale(1, 1)
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -392,6 +411,8 @@ function LobbyController.showTab(name: string)
 		drawCookbook()
 	elseif name == "CHAPTERS" then
 		drawChapters()
+	elseif name == "SHOP" then
+		ShopController.refresh()
 	end
 end
 
@@ -503,7 +524,7 @@ local function build()
 	goldLabel.TextColor3 = COLORS.gold
 
 	-- HOME
-	local home = page("Home", 480, 320)
+	local home = page("Home", 480, 360)
 	pages.HOME = home
 	local homeLayout = Instance.new("UIListLayout")
 	homeLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -521,9 +542,34 @@ local function build()
 		l.LayoutOrder = order
 		l.Size = UDim2.new(1, -24, 0, l.TextSize + 10)
 	end
+	-- Account level and an XP bar (#161).
+	local account = Instance.new("Frame")
+	account.Name = "Account"
+	account.LayoutOrder = 4
+	account.Size = UDim2.new(1, -48, 0, 34)
+	account.BackgroundTransparency = 1
+	account.Parent = home
+	accountLabel = label(account, "Level", "", 15)
+	accountLabel.Size = UDim2.new(1, 0, 0, 20)
+	accountLabel.Font = Enum.Font.GothamMedium
+	local xpBar = Instance.new("Frame")
+	xpBar.Name = "Bar"
+	xpBar.AnchorPoint = Vector2.new(0.5, 1)
+	xpBar.Position = UDim2.fromScale(0.5, 1)
+	xpBar.Size = UDim2.new(0.8, 0, 0, 8)
+	xpBar.BackgroundColor3 = COLORS.tab
+	corner(xpBar, 4)
+	xpBar.Parent = account
+	accountFill = Instance.new("Frame")
+	accountFill.Name = "Fill"
+	accountFill.Size = UDim2.fromScale(0, 1)
+	accountFill.BackgroundColor3 = COLORS.gold
+	corner(accountFill, 4)
+	accountFill.Parent = xpBar
+
 	playButton = Instance.new("TextButton")
 	playButton.Name = "Play"
-	playButton.LayoutOrder = 4
+	playButton.LayoutOrder = 5
 	playButton.Size = UDim2.fromOffset(240, 64)
 	playButton.BackgroundColor3 = COLORS.gold
 	playButton.Font = Enum.Font.FredokaOne
@@ -533,7 +579,7 @@ local function build()
 	corner(playButton, 14)
 	playButton.Parent = home
 
-	-- TALENTS, SHOP: "Coming soon" until their topic fills them.
+	-- TALENTS: "Coming soon" until P2-7c (#163) fills it.
 	for name, line in COMING_SOON do
 		local p = page(name, 420, 220)
 		pages[name] = p
@@ -550,6 +596,11 @@ local function build()
 		soon.Size = UDim2.new(1, 0, 0, 30)
 		soon.TextColor3 = COLORS.faded
 	end
+
+	-- SHOP: the Basic Chest (#164).
+	local shop = page("Shop", 560, 380)
+	pages.SHOP = shop
+	ShopController.build(shop)
 
 	-- CHAPTERS: one full-width card per chapter.
 	local chaptersPage = page("Chapters", 640, 330) -- 4 cards, no empty space below
@@ -630,7 +681,14 @@ function LobbyController:start()
 			end
 		elseif string.match(name, "^Cleared_") and gui.Enabled and currentTab == "CHAPTERS" then
 			drawChapters()
-		elseif name == "LifetimeRuns" or name == "LifetimeWins" or name == "BestWinSeconds" then
+		elseif
+			name == "LifetimeRuns"
+			or name == "LifetimeWins"
+			or name == "BestWinSeconds"
+			or name == "AccountLevel"
+			or name == "AccountXp"
+			or name == "AccountXpNeeded"
+		then
 			if gui.Enabled then
 				drawHome()
 			end
