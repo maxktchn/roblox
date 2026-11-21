@@ -28,6 +28,8 @@
 --   "GiveXp", amount   add account XP (#161): levels come as they would from runs
 --   "ResetTalents"     back to account Lv 1, 0 XP, no talents bought (#161)
 --   "ChestRoll"        one Basic Chest roll for free, with the reveal (#164)
+--   "RewardRun", secs  pay a lost run's reward at that time, 0 to the run length (#106)
+--   "RewardClear"      pay a clear's reward (no first-clear item) (#106)
 -- In the lobby (no run), the run-only actions (RUN_ONLY below) reply LOBBY_TEXT and do nothing.
 -- Replies go back with DevMessage(text) and show on the panel.
 --
@@ -53,6 +55,7 @@ local PlaytestBotService = require(script.Parent.PlaytestBotService)
 local Recipes = require(ReplicatedStorage.Config.Recipes)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local RestartService = require(script.Parent.RestartService)
+local RewardService = require(script.Parent.RewardService)
 local RunManager = require(script.Parent.RunManager)
 local RunRules = require(ReplicatedStorage.Config.RunRules)
 local ShopService = require(script.Parent.ShopService)
@@ -309,6 +312,30 @@ end
 ACTIONS.ChestRoll = function(player)
 	local result = ShopService.giveFreeRoll(player)
 	reply(player, if result then `Chest: {result.Rarity} {GearMath.itemName(result.Item)}` else "Save not loaded")
+end
+
+-- Pay a run reward without playing (#106). Never gives the first-clear item.
+local function payReward(player: Player, seconds: number, won: boolean)
+	local paid = RewardService.pay(player, seconds, won)
+	if paid then
+		GearService.sendState(player)
+		reply(player, `Paid: +{paid.Gold} gold, +{paid.Xp} XP, {paid.MaterialDrops} materials`)
+	else
+		reply(player, "Save not loaded")
+	end
+end
+
+ACTIONS.RewardRun = function(player, arg)
+	local seconds = toWholeNumber(arg)
+	if not seconds or seconds < 0 or seconds > RunRules.RunLengthSeconds then
+		reply(player, `Seconds must be 0 to {RunRules.RunLengthSeconds}`)
+		return
+	end
+	payReward(player, seconds, false)
+end
+
+ACTIONS.RewardClear = function(player)
+	payReward(player, RunRules.RunLengthSeconds, true)
 end
 
 ACTIONS.ResetGear = function(player)

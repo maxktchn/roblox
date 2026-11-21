@@ -65,6 +65,9 @@ export type Data = {
 	-- Starters: starters already given by their UnlockRule (never given twice).
 	Unlocks: { Cleared: { [string]: boolean }?, Starters: { [string]: boolean }? },
 	Cookbook: { [string]: boolean }, -- [recipeId] = true once made in a finished run (P2-8 #145)
+	-- Run rewards (#106, RewardService). FirstClears: chapters whose first-clear item was given
+	-- (never given twice, even after DEV "Reset unlocks").
+	Rewards: { FirstClears: { [string]: boolean }? },
 }
 
 local TEMPLATE: Data = {
@@ -76,6 +79,7 @@ local TEMPLATE: Data = {
 	Talents = {},
 	Unlocks = {},
 	Cookbook = {},
+	Rewards = {},
 }
 
 type Session = {

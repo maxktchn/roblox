@@ -22,6 +22,7 @@ local MiniBossService = require(script.Parent.MiniBossService)
 local PickupService = require(script.Parent.PickupService)
 local PuddleService = require(script.Parent.PuddleService)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local RewardService = require(script.Parent.RewardService)
 local RunManager = require(script.Parent.RunManager)
 local RunReportService = require(script.Parent.RunReportService)
 local StatsService = require(script.Parent.StatsService)
@@ -47,6 +48,7 @@ local function clearRun()
 	UpgradeService.reset() -- Lv 1, rerolls back, closes any open cards
 	UnlockService.clearJustUnlocked() -- unlocks stay; only the banner's announcement goes
 	TalentService.clearJustLeveled() -- the same for the account level line
+	RewardService.clearRewards() -- and the run reward rows (#106)
 end
 
 -- A fresh chef at the SpawnLocation (also undoes any freeze from the card screen).
