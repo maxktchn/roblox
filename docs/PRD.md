@@ -55,7 +55,7 @@ The restaurant's food has gone rotten and come alive. You're the chef, and you h
 6. At **3:00**, a mini-boss appears (Chapter 1: The Big Cheese). Normal spawns stop and the run clock holds at 3:00 until every piece of it is defeated; enemies already in the kitchen stay
 7. At **6:00**, the final boss appears in a closed arena
 8. Beat the final boss to **clear the chapter**. If HP reaches 0, the player can revive once, or the run ends.
-9. Results screen (the run-over banner) shows how far they got and rewards earned; **Continue** goes back to the lobby
+9. Results screen (the run-over banner) shows how far they got and rewards earned (see 2.8); **Continue** goes back to the lobby
 
 ### 2.2 Controls and camera
 - **Move and aim.** All attacks fire automatically. The signature tool (starter) swings toward where the player aims; gadgets don't aim.
@@ -125,13 +125,20 @@ The restaurant's food has gone rotten and come alive. You're the chef, and you h
 - Revives with full HP and briefly pushes back nearby enemies
 
 ### 2.8 Run rewards
-Rewards scale with how long the player survived and how far they got:
-- **Gold**
-- **Account XP**
-- **Gear materials** (see 4.4)
-- **Chance at a gear drop** (higher on chapter clear)
-- **First-clear rewards:** Gems and a gear chest the first time a player reaches 3:00 and the first time they clear the chapter
+Design: `docs/superpowers/specs/2026-11-21-run-rewards-design.md` (#106). Every run that ends, won or lost, pays by **time survived** (the run clock, capped at 6:00), so a loss pays real gold: losing early sends the player back to the lobby to upgrade, and replaying a chapter to grind gold is expected. A clear pays a bonus. Tune in `RunRewards.luau`; each chapter's `RewardScale` (`Chapters.luau`) multiplies everything, so later chapters pay more. Amounts are rounded down.
+
+| | Per minute survived | Clear bonus | Lost at 4:10 | Cleared |
+|---|---|---|---|---|
+| **Gold** | 60 | +140 | 250 | 500 (one Basic Chest) |
+| **Account XP** | 25 | +50 | 104 | 200 |
+| **Material drops** | 4 per whole minute | +5 | 16 | 29 |
+
+- **Materials** (see 4.4): each drop is one of the five materials at random, equally likely. Every run gives at least 1 drop.
+- **First clear:** the first time a chapter is cleared, it gives that chapter's set gear item (`FirstClearReward` in `Chapters.luau`) at Lv 1, marked New. Given **once ever**. Rare for the early chapters, Epic for the later ones; Chapter 1 gives a **Rare Chef's Hat**. (This replaces the gems and "first time reaching 3:00" reward until gems exist in Phase 3.)
+- **No gear drops from runs:** gear comes from chests in the lobby (4.8), first clears and starter unlocks.
 - **Boss power:** defeating a chapter's final boss for the first time unlocks its power (see 3.8)
+- Quitting mid-run pays nothing. Rewards are added when the run ends and saved with it.
+- **The run-over banner** shows "Survived m:ss · Reached Lv N · Defeated K" (the real run time), then gold and XP counting up, a chip per material received, and a "First clear!" box on a first clear.
 
 ---
 
@@ -308,7 +315,7 @@ All 7 ingredients are in the MVP. Ingredients share the 6 combined slots with ga
 
 | # | Map | Notes | MVP |
 |---|---|---|---|
-| 1 | Diner Kitchen | Starter map | Yes |
+| 1 | Diner Kitchen | Starter map. First clear: Rare Chef's Hat (2.8) | Yes |
 | 2 | Bakery | Flour clouds that block vision | No |
 | 3 | Sushi Bar | Conveyor belts that move the player | No |
 | 4 | Walk-in Freezer | Ice floor where players slide | No |
@@ -394,9 +401,9 @@ A full maxed Legendary set is about **x2.8 damage and x2.5 HP**. Chapter 1 stays
 
 ### 4.3 Gear leveling
 - Leveling up gear costs **gold** and the slot's **material**
-- Cost depends only on the level (not the rarity): each level costs about **8%** more than the last. Cheap first levels; rough targets of about 5 runs to Lv 10, 15 runs to Lv 20 and 40 runs to Lv 30 (run payouts in #106 are sized to hit these)
+- Cost depends only on the level (not the rarity): each level costs about **8%** more than the last. Cheap first levels; rough targets of about 5 runs to Lv 10, 15 runs to Lv 20 and 40 runs to Lv 30 (run payouts, 2.8, are sized to hit these: about 250 gold and 3 of each material a typical run)
 - Max level depends on rarity (see 4.2). At the cap, the only way up is merging
-- **Salvage:** Players can salvage any gear item, including one just received. This **destroys the item** and gives **1 of the slot's material**, some gold by rarity (amount set with #106), and **80%** of the gold and materials spent leveling it (starting value, tune later).
+- **Salvage:** Players can salvage any gear item, including one just received. This **destroys the item** and gives **1 of the slot's material**, some gold by rarity (`Gear.SalvageGold`: Common 20, Fine 60, Rare 180, Epic 540, Legendary 1,620), and **80%** of the gold and materials spent leveling it (starting value, tune later).
   - Equipped gear can't be salvaged
   - Your last Chef's Knife can't be salvaged, so players always have a starter
   - Show a confirmation popup before salvaging Epic or Legendary items
@@ -410,11 +417,11 @@ A full maxed Legendary set is about **x2.8 damage and x2.5 HP**. Chapter 1 stays
 | Mitt Pattern | Mitts |
 | Shoe Pattern | Shoes |
 
-Materials come from runs, chests, daily missions, and the battle pass.
+Materials come from runs (random drops, see 2.8), salvage and merges, and later daily missions and the battle pass.
 
 ### 4.5 Talents
 Design: `docs/superpowers/specs/2026-11-20-talents-chests-design.md` (#108).
-- Players earn **account XP** from every run (amount set by run rewards, #106; DEV tools until then)
+- Players earn **account XP** from every run: 25 a minute survived, +50 for a clear (see 2.8)
 - **Account levels 1 to 30** (#161, tune `Talents.luau`): XP for Lv L to L+1 = **80 + 13 x (L - 1)**. At about 100 XP a run that's Lv 5 after ~4 runs, Lv 10 after ~12, Lv 30 after ~76. The lobby's Home shows the level and an XP bar; a level gained during a run shows on the run-over banner ("Account Lv 8!")
 - Each account level unlocks the next talent node, which the player buys with gold
 - **Standard nodes** repeat in a cycle: Attack, Max HP, Armor, Pie healing
@@ -505,7 +512,7 @@ For now the lobby is a set of **menu screens inside the run place** (see 8.1), s
 | Home | Play button, selected chapter, equipped starter, currencies |
 | Gear | 5 gear slots, inventory, level up, merge, reset |
 | Talents | Talent path, account level, unlock button |
-| Chapters | Chapter list (number, name, twist line, state: playable, Cleared, Locked or Coming soon); tap a playable one to select it for Play. First-clear rewards later |
+| Chapters | Chapter list (number, name, twist line, state: playable, Cleared, Locked or Coming soon); tap a playable one to select it for Play. First-clear rewards: see 2.8 |
 | Shop | Chests, gem bundles, gamepasses, odds info |
 | Battle Pass | Free and paid tracks, season timer |
 | Missions | Daily missions and progress |
