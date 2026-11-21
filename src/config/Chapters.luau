@@ -36,6 +36,10 @@ export type Chapter = {
 	Elites: { number }?,
 	Rushes: { Rush }?,
 	Mvp: boolean,
+	-- Run rewards (#106): every payout is multiplied by this, so later chapters pay more.
+	RewardScale: number,
+	-- Given once ever, the first time the chapter is cleared (#106): a gear item at Lv 1.
+	FirstClearReward: { Item: string, Rarity: string }?,
 }
 
 local Chapters: { [string]: Chapter } = {
@@ -43,6 +47,8 @@ local Chapters: { [string]: Chapter } = {
 		Name = "Diner Kitchen",
 		Order = 1,
 		Notes = "Starter map",
+		RewardScale = 1,
+		FirstClearReward = { Item = "ChefsHat", Rarity = "Rare" },
 		MiniBoss = "BigCheese",
 		FinalBoss = "MicrowaveMonster",
 		-- A 6-minute run (RunRules.RunLengthSeconds); phases must run back to back up to it.
@@ -88,6 +94,7 @@ local Chapters: { [string]: Chapter } = {
 		Notes = "Flour clouds that block vision",
 		FinalBoss = "Doughzilla",
 		Mvp = false,
+		RewardScale = 1, -- set when the chapter is designed (#106)
 	},
 	SushiBar = {
 		Name = "Sushi Bar",
@@ -95,6 +102,7 @@ local Chapters: { [string]: Chapter } = {
 		Notes = "Conveyor belts that move the player",
 		FinalBoss = "KrakenRoll",
 		Mvp = false,
+		RewardScale = 1, -- set when the chapter is designed (#106)
 	},
 	WalkInFreezer = {
 		Name = "Walk-in Freezer",
@@ -102,6 +110,7 @@ local Chapters: { [string]: Chapter } = {
 		Notes = "Ice floor where players slide",
 		FinalBoss = "PantryRatKing",
 		Mvp = false,
+		RewardScale = 1, -- set when the chapter is designed (#106)
 	},
 }
 

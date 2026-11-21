@@ -12,6 +12,9 @@
 --   "JustUnlocked"                  UnlockService: a boss power this run unlocked (line on the banner)
 --   "JustUnlockedStarter"           UnlockService: a starter this run unlocked (same line, #151)
 --   "JustLeveledAccount"            TalentService: the account level this run reached (same line, #161)
+--   "RewardGold", "RewardXp",       RewardService: what the run paid (#106), shown on the banner:
+--   "RewardMaterials",              gold and XP count up, a chip per material received, and a
+--   "RewardFirstClear"              "First clear!" box. No rewards (save not loaded): rows hidden.
 --   "SaveStatus"                    DataService: "Off" shows the not-saving banner (P2-1, #114)
 --   "ApronReady"                    GearEffectsService: the Apron's block is ready (true), used up
 --                                   (false) or not equipped (nil) (P2-4, #139)
@@ -24,12 +27,15 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
 local BossPowers = require(ReplicatedStorage.Config.BossPowers)
 local Gadgets = require(ReplicatedStorage.Config.Gadgets)
+local Gear = require(ReplicatedStorage.Config.Gear)
 local Ingredients = require(ReplicatedStorage.Config.Ingredients)
 local Recipes = require(ReplicatedStorage.Config.Recipes)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local RewardMath = require(ReplicatedStorage.Shared.RewardMath)
 local Saving = require(ReplicatedStorage.Config.Saving)
 local Starters = require(ReplicatedStorage.Config.Starters)
 
@@ -48,7 +54,20 @@ local COLORS = {
 	saveOff = Color3.fromRGB(150, 30, 30), -- the not-saving banner (#114)
 	rush = Color3.fromRGB(255, 140, 40), -- the dinner rush banner (#121)
 	note = Color3.fromRGB(190, 190, 190), -- the small test-build note
+	xp = Color3.fromRGB(127, 211, 255), -- account XP on the run-over banner (#106)
+	chip = Color3.fromRGB(70, 60, 54), -- a material chip on the run-over banner
+	firstClear = Color3.fromRGB(31, 59, 102), -- the "First clear!" box
 }
+
+-- Material chip icons on the run-over banner (#106), by currency id.
+local MATERIAL_ICONS: { [string]: string } = {
+	Sharpener = "🔪",
+	HatPattern = "🎩",
+	ApronPattern = "🥼",
+	MittPattern = "🧤",
+	ShoePattern = "👟",
+}
+local COUNT_UP_SECONDS = 1 -- gold and XP count up from 0 over this long
 
 -- Icon colours by item type (same idea as the Order Up! cards).
 local ICON_COLORS = {
@@ -89,6 +108,17 @@ local runOverPanel: Frame
 local runOverTitle: TextLabel
 local runOverStats: TextLabel
 local runOverUnlock: TextLabel
+local rewardRow: Frame -- gold and XP (#106)
+local rewardGold: TextLabel
+local rewardXp: TextLabel
+local materialRow: Frame -- a chip per material received
+local firstClearBox: Frame
+local firstClearText: TextLabel
+local firstClearStroke: UIStroke
+local runOverScale: UIScale -- shrinks the banner to fit small screens
+local countToken = 0 -- a new count-up cancels the one before
+local countedGold: number? = nil -- what the count-up last counted to (nil: banner closed)
+local countedXp: number? = nil
 local continueButton: TextButton
 local orderUpOpen = false -- the "Order Up!" cards are on screen
 
@@ -271,30 +301,87 @@ local function buildScreen()
 	runOverPanel.Name = "RunOver"
 	runOverPanel.AnchorPoint = Vector2.new(0.5, 0.5)
 	runOverPanel.Position = UDim2.fromScale(0.5, 0.45)
-	runOverPanel.Size = UDim2.fromOffset(420, 250)
+	runOverPanel.Size = UDim2.fromOffset(420, 0)
+	runOverPanel.AutomaticSize = Enum.AutomaticSize.Y -- grows with its rows (#106)
 	runOverPanel.BackgroundColor3 = COLORS.barBack
 	runOverPanel.BackgroundTransparency = 0.15
 	runOverPanel.Visible = false
 	corner(runOverPanel, UDim.new(0, 16))
 	runOverPanel.Parent = gui
+	-- Rows top to bottom (LayoutOrder); hidden rows take no space.
+	local panelLayout = Instance.new("UIListLayout")
+	panelLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	panelLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	panelLayout.Padding = UDim.new(0, 6)
+	panelLayout.Parent = runOverPanel
+	local panelPadding = Instance.new("UIPadding")
+	panelPadding.PaddingTop = UDim.new(0, 10)
+	panelPadding.PaddingBottom = UDim.new(0, 16)
+	panelPadding.Parent = runOverPanel
+	runOverScale = Instance.new("UIScale")
+	runOverScale.Parent = runOverPanel
 	runOverTitle = makeLabel(runOverPanel, "Title", 48)
-	runOverTitle.Size = UDim2.new(1, 0, 0, 70)
-	runOverTitle.Position = UDim2.fromOffset(0, 14)
-	runOverStats = makeLabel(runOverPanel, "Stats", 22)
-	runOverStats.Size = UDim2.new(1, 0, 0, 40)
-	runOverStats.Position = UDim2.fromOffset(0, 88)
-	-- Shown only when this run unlocked a boss power (PRD §3.8).
+	runOverTitle.LayoutOrder = 1
+	runOverTitle.Size = UDim2.new(1, 0, 0, 60)
+	-- Shown only when this run unlocked something or levelled the account.
 	runOverUnlock = makeLabel(runOverPanel, "Unlock", 20)
-	runOverUnlock.Size = UDim2.new(1, 0, 0, 28)
-	runOverUnlock.Position = UDim2.fromOffset(0, 128)
+	runOverUnlock.LayoutOrder = 2
+	runOverUnlock.Size = UDim2.new(1, -20, 0, 26)
+	runOverUnlock.TextScaled = true
 	runOverUnlock.TextColor3 = COLORS.tips
 	runOverUnlock.Visible = false
+	runOverStats = makeLabel(runOverPanel, "Stats", 22)
+	runOverStats.LayoutOrder = 3
+	runOverStats.Size = UDim2.new(1, -20, 0, 30)
+	runOverStats.TextScaled = true
+
+	-- What the run paid (#106): gold and XP side by side, then the material chips.
+	rewardRow = Instance.new("Frame")
+	rewardRow.Name = "Rewards"
+	rewardRow.LayoutOrder = 4
+	rewardRow.BackgroundTransparency = 1
+	rewardRow.Size = UDim2.new(1, -40, 0, 40)
+	rewardRow.Parent = runOverPanel
+	rewardGold = makeLabel(rewardRow, "Gold", 32)
+	rewardGold.Size = UDim2.fromScale(0.5, 1)
+	rewardGold.TextColor3 = COLORS.tips
+	rewardXp = makeLabel(rewardRow, "Xp", 32)
+	rewardXp.Position = UDim2.fromScale(0.5, 0)
+	rewardXp.Size = UDim2.fromScale(0.5, 1)
+	rewardXp.TextColor3 = COLORS.xp
+	materialRow = Instance.new("Frame")
+	materialRow.Name = "Materials"
+	materialRow.LayoutOrder = 5
+	materialRow.BackgroundTransparency = 1
+	materialRow.Size = UDim2.new(1, -20, 0, 30)
+	materialRow.Parent = runOverPanel
+	local chipLayout = Instance.new("UIListLayout")
+	chipLayout.FillDirection = Enum.FillDirection.Horizontal
+	chipLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	chipLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	chipLayout.Padding = UDim.new(0, 6)
+	chipLayout.Parent = materialRow
+
+	-- A chapter's first clear: the gear item it gave, edged in its rarity colour.
+	firstClearBox = Instance.new("Frame")
+	firstClearBox.Name = "FirstClear"
+	firstClearBox.LayoutOrder = 6
+	firstClearBox.BackgroundColor3 = COLORS.firstClear
+	firstClearBox.Size = UDim2.new(1, -40, 0, 44)
+	firstClearBox.Visible = false
+	firstClearBox.Parent = runOverPanel
+	corner(firstClearBox, UDim.new(0, 10))
+	firstClearStroke = Instance.new("UIStroke")
+	firstClearStroke.Thickness = 2
+	firstClearStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	firstClearStroke.Parent = firstClearBox
+	firstClearText = makeLabel(firstClearBox, "Text", 20)
+	firstClearText.Size = UDim2.fromScale(1, 1)
 
 	-- "Continue" (P2-8 #143): back to the lobby (RestartService). Play is in the lobby now.
 	continueButton = Instance.new("TextButton")
 	continueButton.Name = "Continue"
-	continueButton.AnchorPoint = Vector2.new(0.5, 0)
-	continueButton.Position = UDim2.new(0.5, 0, 0, 172)
+	continueButton.LayoutOrder = 7
 	continueButton.Size = UDim2.fromOffset(220, 56) -- big enough for a thumb (PRD §7.4)
 	continueButton.BackgroundColor3 = COLORS.tips
 	continueButton.Font = Enum.Font.FredokaOne
@@ -303,6 +390,90 @@ local function buildScreen()
 	continueButton.Text = "Continue"
 	corner(continueButton, UDim.new(0, 12))
 	continueButton.Parent = runOverPanel
+end
+
+-- Count gold and XP up from 0 (a new count cancels the old one).
+local function countUp(gold: number, xp: number)
+	countToken += 1
+	local myToken = countToken
+	countedGold, countedXp = gold, xp
+	task.spawn(function()
+		local started = os.clock()
+		while myToken == countToken do
+			local fraction = math.min((os.clock() - started) / COUNT_UP_SECONDS, 1)
+			rewardGold.Text = `💰 +{math.floor(gold * fraction)}`
+			rewardXp.Text = `⭐ +{math.floor(xp * fraction)} XP`
+			if fraction >= 1 then
+				break
+			end
+			task.wait()
+		end
+	end)
+end
+
+-- The reward rows from the Reward* attributes (#106). Hidden when the run paid nothing.
+local function updateRewards()
+	local gold, xp = player:GetAttribute("RewardGold"), player:GetAttribute("RewardXp")
+	local hasRewards = type(gold) == "number" and type(xp) == "number"
+	rewardRow.Visible = hasRewards
+	materialRow.Visible = hasRewards
+	if hasRewards and (gold ~= countedGold or xp ~= countedXp) then
+		countUp(gold :: number, xp :: number)
+	elseif not hasRewards then
+		countToken += 1
+		countedGold, countedXp = nil, nil
+	end
+
+	for _, child in materialRow:GetChildren() do
+		if child:IsA("TextLabel") then
+			child:Destroy()
+		end
+	end
+	local text = player:GetAttribute("RewardMaterials")
+	local materials = RewardMath.parseMaterials(if type(text) == "string" then text else "")
+	local ids = {}
+	for id in materials do
+		table.insert(ids, id)
+	end
+	table.sort(ids)
+	for order, id in ids do
+		local chip = makeLabel(materialRow, `Chip_{id}`, 18)
+		chip.LayoutOrder = order
+		chip.Size = UDim2.fromOffset(62, 30)
+		chip.BackgroundTransparency = 0
+		chip.BackgroundColor3 = COLORS.chip
+		chip.Text = `{MATERIAL_ICONS[id] or id} +{materials[id]}`
+		corner(chip, UDim.new(0, 8))
+	end
+
+	local firstClear = player:GetAttribute("RewardFirstClear")
+	firstClearBox.Visible = type(firstClear) == "string"
+	if type(firstClear) == "string" then
+		firstClearText.Text = `🏆 First clear! {firstClear}`
+		local rarityId = string.match(firstClear, "^(%a+)")
+		firstClearStroke.Color = COLORS.tips
+		for _, rarity in Gear.Rarities do
+			if rarity.Id == rarityId then
+				firstClearStroke.Color = rarity.Color
+			end
+		end
+	end
+end
+
+-- Shrink the banner on short screens so Continue stays reachable.
+local function fitRunOver()
+	local camera = Workspace.CurrentCamera
+	if not camera or runOverScale.Scale <= 0 then
+		return
+	end
+	local fullHeight = runOverPanel.AbsoluteSize.Y / runOverScale.Scale
+	if fullHeight <= 0 then
+		return
+	end
+	local scale = math.min(1, (camera.ViewportSize.Y * 0.9) / fullHeight)
+	if math.abs(scale - runOverScale.Scale) > 0.01 then
+		runOverScale.Scale = scale
+	end
 end
 
 -- The run-over banner, with how far the player got.
@@ -340,8 +511,17 @@ local function updateRunState()
 		end
 		runOverUnlock.Visible = text ~= ""
 		runOverUnlock.Text = text
+		local seconds = player:GetAttribute("RunSeconds")
+		local survived = if type(seconds) == "number"
+			then string.format("Survived %d:%02d · ", seconds // 60, seconds % 60)
+			else ""
 		runOverStats.Text =
-			`Reached Lv {player:GetAttribute("Level") or 1} · Defeated {player:GetAttribute("Kills") or 0}`
+			`{survived}Reached Lv {player:GetAttribute("Level") or 1} · Defeated {player:GetAttribute("Kills") or 0}`
+		updateRewards()
+		fitRunOver()
+	else
+		countToken += 1 -- the banner closed: the next one counts up again
+		countedGold, countedXp = nil, nil
 	end
 end
 
@@ -522,6 +702,7 @@ function HUDController:start()
 			or name == "JustUnlocked"
 			or name == "JustUnlockedStarter"
 			or name == "JustLeveledAccount"
+			or string.match(name, "^Reward")
 		then
 			updateRunState()
 		else
@@ -533,6 +714,12 @@ function HUDController:start()
 		task.spawn(attachHpBar, player.Character)
 	end
 	player.CharacterAdded:Connect(attachHpBar)
+
+	runOverPanel:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitRunOver)
+	local camera = Workspace.CurrentCamera
+	if camera then
+		camera:GetPropertyChangedSignal("ViewportSize"):Connect(fitRunOver)
+	end
 
 	-- Hide the HUD while the "Order Up!" cards are open (UpgradeUIController's "OrderUp" screen):
 	-- nothing on it changes during a pick, and its top bar would show through behind the title.
