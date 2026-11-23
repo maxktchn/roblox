@@ -27,6 +27,8 @@
 --   "ResetSave"        replace the save with a new player's (#140); also locks every boss power
 --   "GiveXp", amount   add account XP (#161): levels come as they would from runs
 --   "ResetTalents"     back to account Lv 1, 0 XP, no talents bought (#161)
+--   "BotTalents", n    the bot's runs use n talent nodes (0 to Talents.MaxLevel), or -1 for the
+--                      save's (#162). Only bot runs; the save isn't changed.
 --   "ChestRoll"        one Basic Chest roll for free, with the reveal (#164)
 --   "RewardRun", secs  pay a lost run's reward at that time, 0 to the run length (#106)
 --   "RewardClear"      pay a clear's reward (no first-clear item) (#106)
@@ -307,6 +309,20 @@ end
 ACTIONS.ResetTalents = function(player)
 	TalentService.resetTalents(player)
 	reply(player, "Account back to Lv 1, 0 XP, no talents")
+end
+
+ACTIONS.BotTalents = function(player, arg)
+	local nodes = toWholeNumber(arg)
+	if not nodes then
+		return
+	end
+	if nodes < 0 then
+		TalentService.setBotNodes(player, nil)
+		reply(player, "Bot runs use the save's talents")
+	else
+		TalentService.setBotNodes(player, nodes)
+		reply(player, `Bot runs use {player:GetAttribute("BotTalents")} talent nodes`)
+	end
 end
 
 ACTIONS.ChestRoll = function(player)

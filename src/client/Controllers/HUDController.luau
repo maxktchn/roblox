@@ -11,7 +11,10 @@
 --   "RunState"                      RunManager: "Playing", "Lost" or "Won" (shows the run-over banner)
 --   "JustUnlocked"                  UnlockService: a boss power this run unlocked (line on the banner)
 --   "JustUnlockedStarter"           UnlockService: a starter this run unlocked (same line, #151)
---   "JustLeveledAccount"            TalentService: the account level this run reached (same line, #161)
+--   "JustLeveledAccount"            TalentService: the account level this run reached (same line, #161),
+--                                   plus "New talent ready" when the next node can be bought with
+--                                   the gold after this run's pay ("AccountLevel", "TalentsBought"
+--                                   and the GearState remote's gold; #162)
 --   "RewardGold", "RewardXp",       RewardService: what the run paid (#106), shown on the banner:
 --   "RewardMaterials",              gold and XP count up, a chip per material received, and a
 --   "RewardFirstClear"              "First clear!" box. No rewards (save not loaded): rows hidden.
@@ -38,6 +41,7 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local RewardMath = require(ReplicatedStorage.Shared.RewardMath)
 local Saving = require(ReplicatedStorage.Config.Saving)
 local Starters = require(ReplicatedStorage.Config.Starters)
+local TalentMath = require(ReplicatedStorage.Shared.TalentMath)
 
 local HUDController = {}
 
@@ -108,6 +112,7 @@ local runOverPanel: Frame
 local runOverTitle: TextLabel
 local runOverStats: TextLabel
 local runOverUnlock: TextLabel
+local currentGold = 0 -- from the GearState remote, for "New talent ready" (#162)
 local rewardRow: Frame -- gold and XP (#106)
 local rewardGold: TextLabel
 local rewardXp: TextLabel
@@ -476,6 +481,33 @@ local function fitRunOver()
 	end
 end
 
+-- The run-over banner's unlock line: new power / starter, then the account level (#161) and
+-- "New talent ready" if the next node can now be bought (#162).
+local function updateUnlockLine()
+	if not runOverUnlock then
+		return
+	end
+	local power = player:GetAttribute("JustUnlocked")
+	local starter = player:GetAttribute("JustUnlockedStarter")
+	local accountLevel = player:GetAttribute("JustLeveledAccount")
+	local hasPower, hasStarter = type(power) == "string", type(starter) == "string"
+	local text = if hasPower and hasStarter
+		then `New power: {power} · New starter: {starter}`
+		elseif hasStarter then `New starter unlocked: {starter}`
+		elseif hasPower then `New power unlocked: {power}`
+		else ""
+	if type(accountLevel) == "number" then
+		local line = `Account Lv {accountLevel}!`
+		local bought = player:GetAttribute("TalentsBought")
+		if type(bought) == "number" and TalentMath.canBuyNext(accountLevel, bought, currentGold) then
+			line ..= " New talent ready"
+		end
+		text = if text == "" then line else `{text} · {line}`
+	end
+	runOverUnlock.Visible = text ~= ""
+	runOverUnlock.Text = text
+end
+
 -- The run-over banner, with how far the player got.
 local function updateRunState()
 	local state = player:GetAttribute("RunState")
@@ -496,21 +528,7 @@ local function updateRunState()
 			runOverTitle.Text = "SHIFT OVER"
 			runOverTitle.TextColor3 = COLORS.hpLow
 		end
-		local power = player:GetAttribute("JustUnlocked")
-		local starter = player:GetAttribute("JustUnlockedStarter")
-		local accountLevel = player:GetAttribute("JustLeveledAccount")
-		local hasPower, hasStarter = type(power) == "string", type(starter) == "string"
-		local text = if hasPower and hasStarter
-			then `New power: {power} · New starter: {starter}`
-			elseif hasStarter then `New starter unlocked: {starter}`
-			elseif hasPower then `New power unlocked: {power}`
-			else ""
-		if type(accountLevel) == "number" then
-			-- #162 adds "New talent ready" once talents can be bought.
-			text = if text == "" then `Account Lv {accountLevel}!` else `{text} · Account Lv {accountLevel}!`
-		end
-		runOverUnlock.Visible = text ~= ""
-		runOverUnlock.Text = text
+		updateUnlockLine()
 		local seconds = player:GetAttribute("RunSeconds")
 		local survived = if type(seconds) == "number"
 			then string.format("Survived %d:%02d · ", seconds // 60, seconds % 60)
@@ -692,6 +710,11 @@ function HUDController:start()
 	updateNumbers()
 	updateIcons()
 	updateRunState()
+	-- Gold, for "New talent ready" (it arrives as the run ends, after the run's pay).
+	Remotes.get("GearState").OnClientEvent:Connect(function(state: { Currencies: { [string]: number } })
+		currentGold = state.Currencies.Gold or 0
+		updateUnlockLine()
+	end)
 	player.AttributeChanged:Connect(function(name: string)
 		if string.match(name, "^Weapon_") or string.match(name, "^Ingredient_") then
 			updateIcons()
@@ -701,10 +724,11 @@ function HUDController:start()
 			name == "RunState"
 			or name == "JustUnlocked"
 			or name == "JustUnlockedStarter"
-			or name == "JustLeveledAccount"
 			or string.match(name, "^Reward")
 		then
 			updateRunState()
+		elseif name == "JustLeveledAccount" or name == "AccountLevel" or name == "TalentsBought" then
+			updateUnlockLine()
 		else
 			updateNumbers()
 		end

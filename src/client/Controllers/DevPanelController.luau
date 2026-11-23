@@ -309,6 +309,15 @@ local function buildPanel()
 		send("Bot", 0)
 	end)
 
+	-- The talent nodes the bot's runs use (#162); "Save" = whatever the save has bought.
+	makeHeader(pages.BOT, "Bot talents (bot runs only)")
+	local botTalents = makeGrid(pages.BOT)
+	for _, nodes in { -1, 0, 15, 30 } do
+		makeButton(botTalents, if nodes < 0 then "Save's" else `{nodes} nodes`, COLORS.button, function()
+			send("BotTalents", nodes)
+		end)
+	end
+
 	-- GIVE (+1 level each tap)
 	makeHeader(pages.GIVE, "Gadgets")
 	local give = makeGrid(pages.GIVE)

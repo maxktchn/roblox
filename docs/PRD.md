@@ -423,9 +423,11 @@ Materials come from runs (random drops, see 2.8), salvage and merges, and later 
 Design: `docs/superpowers/specs/2026-11-20-talents-chests-design.md` (#108).
 - Players earn **account XP** from every run: 25 a minute survived, +50 for a clear (see 2.8)
 - **Account levels 1 to 30** (#161, tune `Talents.luau`): XP for Lv L to L+1 = **80 + 13 x (L - 1)**. At about 100 XP a run that's Lv 5 after ~4 runs, Lv 10 after ~12, Lv 30 after ~76. The lobby's Home shows the level and an XP bar; a level gained during a run shows on the run-over banner ("Account Lv 8!")
-- Each account level unlocks the next talent node, which the player buys with gold
-- **Standard nodes** repeat in a cycle: Attack, Max HP, Armor, Pie healing
-- **Special nodes** every 5 levels give bigger effects (for example, start each run with 1 extra Pie, or +1 reroll per run)
+- **30 talent nodes, one per account level** (#162, tune `Talents.luau`). Node N needs account Lv N and the nodes before it, and costs **125 + 13 x (N - 1) gold** (125 to 502, about 9,400 for all 30). No branches and no respec.
+- **Standard nodes** repeat in a cycle: **+2% attack, +3% max HP, +0.5 armor, +5% pie healing**. Each appears 6 times: +12%, +18%, +3 armor and pies heal 30% more at the end. Attack and max HP add to gear's % totals.
+- **Special nodes** every 5 levels: Lv 5 **+1 reroll**, Lv 10 **start each run with a Pie** beside the chef, Lv 15 **+1 free Order Up! pick** at the start, Lv 20 **+10% tip pickup range**, Lv 25 **+1 reroll**, Lv 30 **+5% move speed**.
+- **The TALENTS tab** (#163) lists every node: ✓ when bought, ★ and a gold border for specials, BUY with the price on the next one, "🔒 Account Lv N" on later ones. It opens scrolled to the next node, adds up everything bought at the bottom, and shows a NEW badge while the next node can be bought. The run-over banner adds "New talent ready" to the level line when a new level and the gold after the run's pay make the next node buyable.
+- **Playtest bot:** the DEV BOT tab can make bot runs use 0, 15 or 30 nodes instead of the save's, without changing the save.
 
 ### 4.6 No energy system
 Players can start as many runs as they want. There is no energy or stamina cost.
@@ -505,7 +507,7 @@ Gamepasses must only save time. Starting list:
 ## 7. UI/UX
 
 ### 7.1 Lobby screens
-For now the lobby is a set of **menu screens inside the run place** (see 8.1), shown before and between runs. Design: `docs/superpowers/specs/2026-11-17-lobby-design.md` (#109). It's a fourth run state, "Lobby": joining starts there, Play starts a run, and Continue on the run-over banner comes back. Tabs across the top: **Home, Gear, Talents, Chapters, Shop, Cookbook** (Talents says "Coming soon" until #163 fills it; Battle Pass and Missions are hidden until Phase 3).
+For now the lobby is a set of **menu screens inside the run place** (see 8.1), shown before and between runs. Design: `docs/superpowers/specs/2026-11-17-lobby-design.md` (#109). It's a fourth run state, "Lobby": joining starts there, Play starts a run, and Continue on the run-over banner comes back. Tabs across the top: **Home, Gear, Talents, Chapters, Shop, Cookbook** (Battle Pass and Missions are hidden until Phase 3).
 
 | Screen | Contents |
 |---|---|

@@ -578,6 +578,54 @@ function ConfigCheck.run(): { string }
 		fail("Talents.Xp: Base must be above 0, Step 0 or more")
 	end
 
+	-- The talent path (P2-7b, #162): every level 1 to MaxLevel has a node, specials sit on
+	-- multiples of SpecialEvery, and every amount is above 0.
+	if Talents.Cost.Base <= 0 or Talents.Cost.Step < 0 then
+		fail("Talents.Cost: Base must be above 0, Step 0 or more")
+	end
+	if Talents.SpecialEvery < 1 or Talents.SpecialEvery % 1 ~= 0 then
+		fail("Talents.SpecialEvery must be a whole number of at least 1")
+	end
+	local talentKinds = {
+		Attack = "standard",
+		MaxHp = "standard",
+		Armor = "standard",
+		PieHealing = "standard",
+		Reroll = "special",
+		StartingPie = "special",
+		FreePick = "special",
+		PickupRange = "special",
+		MoveSpeed = "special",
+	}
+	local function checkTalentNode(where: string, node: any, group: string)
+		if talentKinds[node.Kind] ~= group then
+			fail(`{where}: Kind "{node.Kind}" isn't a {group} talent kind`)
+		end
+		if type(node.Amount) ~= "number" or node.Amount <= 0 then
+			fail(`{where}: Amount must be above 0`)
+		end
+		if type(node.Text) ~= "string" or node.Text == "" then
+			fail(`{where}: needs a Text for players`)
+		end
+	end
+	if #Talents.StandardCycle == 0 then
+		fail("Talents.StandardCycle needs at least one entry")
+	end
+	for i, node in Talents.StandardCycle do
+		checkTalentNode(`Talents.StandardCycle[{i}]`, node, "standard")
+	end
+	for number, node in Talents.Specials do
+		if number % Talents.SpecialEvery ~= 0 or number < 1 or number > Talents.MaxLevel then
+			fail(`Talents.Specials[{number}] must be on a multiple of SpecialEvery, 1 to MaxLevel`)
+		end
+		checkTalentNode(`Talents.Specials[{number}]`, node, "special")
+	end
+	for number = Talents.SpecialEvery, Talents.MaxLevel, math.max(Talents.SpecialEvery, 1) do
+		if not Talents.Specials[number] then
+			fail(`Talents.Specials has no node for level {number}`)
+		end
+	end
+
 	-- Run rewards (P2-5, #106).
 	for _, name in { "GoldPerMinute", "XpPerMinute", "MaterialDropsPerMinute", "MinMaterialDrops" } do
 		local value = (RunRewards :: any)[name]

@@ -8,8 +8,8 @@
 --
 -- Tabs across the top: HOME, GEAR, TALENTS, CHAPTERS, SHOP, COOKBOOK. The lobby always opens on
 -- HOME. HOME and the flat tabs sit over the kitchen, blurred. GEAR turns the camera to face the
--- chef and docks the Gear screen (GearController) on the right. Talents says "Coming soon" until
--- P2-7c (#163) fills it. SHOP is the Basic Chest (ShopController, #164).
+-- chef and docks the Gear screen (GearController) on the right. TALENTS is the talent path
+-- (TalentsController, #163) and SHOP the Basic Chest (ShopController, #164).
 --
 -- HOME also shows the account level and an XP bar (#161).
 --
@@ -19,7 +19,7 @@
 --
 -- Reads: "RunState", "Chapter" (RunManager), "LifetimeRuns"/"LifetimeWins"/"BestWinSeconds"
 -- (DataService), "AccountLevel"/"AccountXp"/"AccountXpNeeded" (TalentService), "Found_<recipeId>" (CookbookService), "Cleared_<chapterId>" (UnlockService),
--- "GearNew" (GearService, the GEAR tab's NEW badge), and the GearState remote (gold and the
+-- "GearNew" (GearService, the GEAR tab's NEW badge; TalentsController drives the TALENTS one), and the GearState remote (gold and the
 -- Utensil item, GearService).
 -- Sends: RequestRestart(chapterId) when Play is tapped (accepted only in the lobby, for a chapter
 -- the player can play).
@@ -41,16 +41,13 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local RunRules = require(ReplicatedStorage.Config.RunRules)
 local ShopController = require(script.Parent.ShopController)
 local Starters = require(ReplicatedStorage.Config.Starters)
+local TalentsController = require(script.Parent.TalentsController)
 
 local LobbyController = {}
 
 local player = Players.LocalPlayer
 
 local TAB_NAMES = { "HOME", "GEAR", "TALENTS", "CHAPTERS", "SHOP", "COOKBOOK" }
--- The "Coming soon" tabs: what each will hold.
-local COMING_SOON: { [string]: string } = {
-	TALENTS = "Spend gold on permanent upgrades",
-}
 local TAB_BAR_HEIGHT = 48 -- big enough for a thumb (PRD §7.4)
 local BLUR_SIZE = 18
 
@@ -79,6 +76,7 @@ local gui: ScreenGui
 local blur: BlurEffect
 local goldLabel: TextLabel
 local tabButtons: { [string]: TextButton } = {}
+local newBadges: { [string]: TextLabel } = {}
 local pages: { [string]: Frame } = {} -- one page per tab except GEAR (that's GearController)
 local itemLabel: TextLabel
 local chapterLabel: TextLabel
@@ -116,7 +114,7 @@ local function label(parent: Instance, name: string, text: string, size: number)
 	return l
 end
 
--- A centred panel over the blurred kitchen (Home, the "Coming soon" tabs, the Cookbook).
+-- A centred panel over the blurred kitchen (Home, Talents, Shop, Chapters, the Cookbook).
 local function page(name: string, width: number, height: number): Frame
 	local f = Instance.new("Frame")
 	f.Name = name
@@ -413,6 +411,8 @@ function LobbyController.showTab(name: string)
 		drawChapters()
 	elseif name == "SHOP" then
 		ShopController.refresh()
+	elseif name == "TALENTS" then
+		TalentsController.show()
 	end
 end
 
@@ -494,9 +494,10 @@ local function build()
 		end)
 		b.Parent = bar
 		tabButtons[name] = b
-		if name == "GEAR" then
-			-- NEW badge (#151): an item is new and the Gear screen hasn't been opened since
-			-- (player attribute "GearNew", GearService; opening Gear clears it).
+		-- NEW badges: GEAR while an item is new and the Gear screen hasn't been opened since
+		-- (player attribute "GearNew", GearService; opening Gear clears it, #151). TALENTS while
+		-- the next node can be bought (TalentsController, #163).
+		if name == "GEAR" or name == "TALENTS" then
 			local badge = Instance.new("TextLabel")
 			badge.Name = "NewBadge"
 			badge.AnchorPoint = Vector2.new(1, 0)
@@ -508,14 +509,17 @@ local function build()
 			badge.TextSize = 14
 			badge.TextColor3 = Color3.new(1, 1, 1)
 			badge.Text = "NEW"
-			badge.Visible = player:GetAttribute("GearNew") == true
+			badge.Visible = false
 			corner(badge, 8)
 			badge.Parent = b
-			player:GetAttributeChangedSignal("GearNew"):Connect(function()
-				badge.Visible = player:GetAttribute("GearNew") == true
-			end)
+			newBadges[name] = badge
 		end
 	end
+	local gearBadge = newBadges.GEAR
+	gearBadge.Visible = player:GetAttribute("GearNew") == true
+	player:GetAttributeChangedSignal("GearNew"):Connect(function()
+		gearBadge.Visible = player:GetAttribute("GearNew") == true
+	end)
 	goldLabel = label(gui, "Gold", "Gold: Loading...", 18)
 	goldLabel.AnchorPoint = Vector2.new(1, 0)
 	goldLabel.Position = UDim2.new(1, -12, 0, 8)
@@ -579,23 +583,10 @@ local function build()
 	corner(playButton, 14)
 	playButton.Parent = home
 
-	-- TALENTS: "Coming soon" until P2-7c (#163) fills it.
-	for name, line in COMING_SOON do
-		local p = page(name, 420, 220)
-		pages[name] = p
-		local title = label(p, "Title", name, 30)
-		title.Position = UDim2.fromScale(0, 0.18)
-		title.Size = UDim2.new(1, 0, 0, 40)
-		title.TextColor3 = COLORS.gold
-		local what = label(p, "Line", line, 18)
-		what.Position = UDim2.fromScale(0, 0.45)
-		what.Size = UDim2.new(1, -24, 0, 30)
-		what.Font = Enum.Font.GothamMedium
-		local soon = label(p, "Soon", "Coming soon", 22)
-		soon.Position = UDim2.fromScale(0, 0.68)
-		soon.Size = UDim2.new(1, 0, 0, 30)
-		soon.TextColor3 = COLORS.faded
-	end
+	-- TALENTS: the 30-node talent path (#163).
+	local talents = page("Talents", 620, 520)
+	pages.TALENTS = talents
+	TalentsController.build(talents, newBadges.TALENTS)
 
 	-- SHOP: the Basic Chest (#164).
 	local shop = page("Shop", 560, 380)
