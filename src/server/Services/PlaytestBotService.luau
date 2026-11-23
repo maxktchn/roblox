@@ -24,6 +24,7 @@ local RestartService = require(script.Parent.RestartService)
 local RunManager = require(script.Parent.RunManager)
 local RunReportService = require(script.Parent.RunReportService)
 local Starters = require(ReplicatedStorage.Config.Starters)
+local TalentService = require(script.Parent.TalentService)
 local UnlockService = require(script.Parent.UnlockService)
 local UpgradeService = require(script.Parent.UpgradeService)
 local WeaponService = require(script.Parent.WeaponService)
@@ -160,7 +161,12 @@ local function onRunOver()
 	local report = RunReportService.getLastReport()
 	if report then
 		local starter = Starters[WeaponService.getStarter()]
-		table.insert(reports, `[Bot run {runNumber}: {strategyFor(runNumber)}, {starter.Name}] {report}`)
+		local player = getPlayer()
+		local talents = if player then TalentService.getRunNodes(player) else 0
+		table.insert(
+			reports,
+			`[Bot run {runNumber}: {strategyFor(runNumber)}, {starter.Name}, talents {talents}] {report}`
+		)
 	end
 	task.delay(SECONDS_BETWEEN_RUNS, function()
 		if not running then

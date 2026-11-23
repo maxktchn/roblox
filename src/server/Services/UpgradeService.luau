@@ -388,6 +388,16 @@ function UpgradeService.reroll(): boolean
 	return true
 end
 
+-- Give `count` more rerolls for this run (talents, #162). Call after reset().
+function UpgradeService.addRerolls(count: number)
+	if count > 0 then
+		rerollsLeft += count
+		if currentOffer then
+			sendOffer() -- the open cards show the new count
+		end
+	end
+end
+
 -- How many rerolls are left this run.
 function UpgradeService.getRerollsLeft(): number
 	return rerollsLeft

@@ -10,6 +10,10 @@
 --   maxHp  = RunRules.ChefMaxHp * StatsService.getMaxHpMultiplier()
 -- Flat stats (Armor) are added as-is:  hit = rawDamage - StatsService.getStat("Armor")
 --
+-- Talents (P2-7b #162) are set when a run starts, like gear: Attack and MaxHp add to gear's %
+-- totals, and Armor, PickupRange and MoveSpeed are included in getStat (on top of ingredients).
+-- Pie healing is getPieHealMultiplier().
+--
 -- The chef's walk speed is set here too, and only here (#117): base RunRules.ChefWalkSpeed,
 -- plus Butter's MoveSpeed bonus, times any slow (a Rotten Tomato puddle, PuddleService).
 
@@ -32,6 +36,11 @@ local slow = 0
 -- multiplier on top of ingredients, so a gear upgrade isn't watered down by Hot Sauce or Bread.
 local gearAttack = 0
 local gearHp = 0
+-- This run's talent bonuses (TalentService sets them when a run starts, #162).
+local talentAttack = 0
+local talentHp = 0
+local talentStats: { [string]: number } = {} -- Armor, PickupRange, MoveSpeed
+local talentPieHealing = 0
 -- A short burst of extra walk speed (0.3 = 30% faster; the Shoes' bonus effect after a hit).
 local speedBoost = 0
 
@@ -69,7 +78,7 @@ end
 -- Total bonus for one stat from every owned ingredient. 0 when none give it.
 -- Examples: Hot Sauce Lv 2 -> getStat("Damage") == 0.12; Beef Jerky Lv 2 -> getStat("Armor") == 2.
 function StatsService.getStat(stat: Ingredients.Stat): number
-	local total = 0
+	local total = talentStats[stat] or 0
 	for ingredientId, level in ingredientLevels do
 		local ingredient = Ingredients[ingredientId]
 		if ingredient.Stat == stat then
@@ -86,14 +95,37 @@ function StatsService.setGearBonuses(attack: number, hp: number)
 	gearHp = hp
 end
 
--- Everything that multiplies the chef's damage: gear Attack, then ingredients (Hot Sauce).
-function StatsService.getDamageMultiplier(): number
-	return (1 + gearAttack) * (1 + StatsService.getStat("Damage"))
+-- Set this run's talent bonuses (TalentService, when a run starts; reset() leaves them alone).
+-- Fractions except Armor (flat): { Attack = 0.12, MaxHp = 0.18, Armor = 3, PieHealing = 0.3,
+-- PickupRange = 0.1, MoveSpeed = 0.05 }.
+function StatsService.setTalentBonuses(bonuses: {
+	Attack: number,
+	MaxHp: number,
+	Armor: number,
+	PieHealing: number,
+	PickupRange: number,
+	MoveSpeed: number,
+})
+	talentAttack = bonuses.Attack
+	talentHp = bonuses.MaxHp
+	talentPieHealing = bonuses.PieHealing
+	talentStats = { Armor = bonuses.Armor, PickupRange = bonuses.PickupRange, MoveSpeed = bonuses.MoveSpeed }
+	applyWalkSpeed()
 end
 
--- Everything that multiplies the chef's max HP: gear HP, then ingredients (Bread).
+-- Everything that multiplies the chef's damage: gear and talent Attack, then ingredients (Hot Sauce).
+function StatsService.getDamageMultiplier(): number
+	return (1 + gearAttack + talentAttack) * (1 + StatsService.getStat("Damage"))
+end
+
+-- Everything that multiplies the chef's max HP: gear and talent HP, then ingredients (Bread).
 function StatsService.getMaxHpMultiplier(): number
-	return (1 + gearHp) * (1 + StatsService.getStat("MaxHp"))
+	return (1 + gearHp + talentHp) * (1 + StatsService.getStat("MaxHp"))
+end
+
+-- How much more a pie heals than RunRules.PieHealFraction (talents: 1.3 = 30% more).
+function StatsService.getPieHealMultiplier(): number
+	return 1 + talentPieHealing
 end
 
 -- The chef's walk speed right now, in studs per second.

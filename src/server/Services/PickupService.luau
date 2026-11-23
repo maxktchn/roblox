@@ -181,7 +181,7 @@ local function updatePies(chefPosition: Vector3)
 		local pie = pies[i]
 		local offset = Vector3.new(chefPosition.X - pie.position.X, 0, chefPosition.Z - pie.position.Z)
 		if offset.Magnitude <= RunRules.PiePickupDistance then
-			RunManager.healPlayer(RunRules.PieHealFraction)
+			RunManager.healPlayer(RunRules.PieHealFraction * StatsService.getPieHealMultiplier())
 			piesEaten += 1
 			pie.part.CFrame = PARK_CFRAME
 			table.insert(sparePieParts, pie.part)
